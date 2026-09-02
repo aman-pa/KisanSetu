@@ -1,0 +1,348 @@
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import MainLayout from '../layouts/MainLayout';
+import API from '../services/api';
+import {
+  Sprout,
+  UserCheck,
+  ShieldCheck,
+  Building2,
+  Truck,
+  Store,
+  CheckCircle2,
+  AlertTriangle,
+  Mail,
+  Key,
+  X,
+  ArrowRight,
+  Phone,
+} from 'lucide-react';
+
+const RegisterPage = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('FARMER');
+
+  // Address
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('Karnal');
+  const [state, setState] = useState('Haryana');
+  const [pincode, setPincode] = useState('132001');
+
+  // Role details
+  const [farmSizeAcres, setFarmSizeAcres] = useState(5);
+  const [orgName, setOrgName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState('');
+
+  // OTP Verification States
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [inputOtp, setInputOtp] = useState('');
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const { register, setUser } = useAuth();
+  const navigate = useNavigate();
+
+  // Step 1: Send OTP to Email/Phone
+  const handleInitiateRegistration = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await API.post('/auth/send-registration-otp', {
+        name,
+        email,
+        phone,
+      });
+
+      if (data.success) {
+        setSuccessMsg(data.message || `Verification OTP code dispatched to ${email}!`);
+        setOtpModalOpen(true);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send registration OTP verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Verify OTP & Create Account
+  const handleVerifyOTPAndRegister = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const payload = {
+        name,
+        email,
+        phone,
+        password,
+        role,
+        address: { street, city, state, pincode },
+        profileDetails: {
+          farmSizeAcres: Number(farmSizeAcres),
+          orgName,
+          businessName,
+          vehicleNumber,
+        },
+        otp: inputOtp,
+      };
+
+      const { data } = await API.post('/auth/verify-registration-otp', payload);
+
+      if (data.success) {
+        localStorage.setItem('kisansetu_token', data.token);
+        setUser(data.user);
+        setOtpModalOpen(false);
+
+        if (role === 'FARMER') navigate('/farmer/dashboard');
+        else if (role === 'FPO') navigate('/fpo/dashboard');
+        else if (role === 'BULK_BUYER') navigate('/buyer/procurement');
+        else if (role === 'LOGISTICS') navigate('/logistics/dashboard');
+        else navigate('/marketplace');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid OTP code. Please check your email.');
+    } font: {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <MainLayout>
+      <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#F4F6F4]">
+        <div className="max-w-3xl w-full bg-white rounded-3xl p-8 sm:p-10 shadow-agri-lg border border-slate-100 space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-agri-dark text-white flex items-center justify-center font-bold mb-2">
+                <Sprout className="w-6 h-6" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">Create KisanSetu AI Account</h2>
+              <p className="text-xs text-slate-500 font-medium">Real-Time Verified Role-Based Registration</p>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Role Selection Tabs */}
+          <div>
+            <label className="block text-xs font-extrabold text-slate-700 mb-2">Select Your Platform Role:</label>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+              {[
+                { id: 'FARMER', label: '🌾 Farmer', desc: 'Sell Crop Lots' },
+                { id: 'FPO', label: '🏬 FPO Co-op', desc: 'Aggregate Produce' },
+                { id: 'BULK_BUYER', label: '🏬 Bulk Buyer', desc: 'Supermarket Procurement' },
+                { id: 'LOGISTICS', label: '🚚 Logistics', desc: 'Cold Transport' },
+                { id: 'CONSUMER', label: '🛒 Consumer', desc: 'Direct Buy' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setRole(item.id)}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    role === item.id
+                      ? 'border-agri-primary bg-emerald-50 text-agri-dark font-black shadow-sm ring-2 ring-agri-primary/20'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <p className="font-extrabold">{item.label}</p>
+                  <p className="text-[10px] text-slate-500 font-medium">{item.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Registration Form */}
+          <form onSubmit={handleInitiateRegistration} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-agri-primary"
+                  placeholder="Ramesh Kumar"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-agri-primary"
+                  placeholder="amanpandey10a3@gmail.com"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Mobile Phone Number</label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-agri-primary"
+                  placeholder="9876543210"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-agri-primary"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-agri-primary"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Street Address</label>
+                <input
+                  type="text"
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold"
+                  placeholder="Kheri Village / GT Road"
+                />
+              </div>
+            </div>
+
+            {/* Role-Specific Field */}
+            {role === 'FARMER' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Total Farm Size (Acres)</label>
+                <input
+                  type="number"
+                  value={farmSizeAcres}
+                  onChange={(e) => setFarmSizeAcres(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold"
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-extrabold text-xs shadow-agri-sm hover:shadow-agri-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {loading ? 'Dispatching Verification OTP...' : 'Register & Send Verification OTP →'}
+            </button>
+          </form>
+
+          <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100">
+            Already have an account?{' '}
+            <Link to="/login" className="font-extrabold text-agri-primary hover:underline">
+              Sign In Here
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Real-Time OTP Verification Modal */}
+      {otpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-agri-primary" />
+                <h3 className="text-base font-extrabold text-slate-900">Verify Real-Time Registration OTP</h3>
+              </div>
+              <button
+                onClick={() => setOtpModalOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {successMsg && (
+              <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-3 bg-rose-100 border border-rose-300 text-rose-900 text-xs font-bold rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-700 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyOTPAndRegister} className="space-y-4">
+              <p className="text-xs text-slate-600 font-medium">
+                Enter the <b>6-digit verification OTP code</b> sent to <b>{email}</b>:
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Verification OTP Code</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={inputOtp}
+                  onChange={(e) => setInputOtp(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-center text-lg font-mono font-black tracking-widest text-slate-900 focus:ring-2 focus:ring-agri-primary"
+                  placeholder="739104"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {loading ? 'Verifying & Creating Account...' : 'Verify OTP & Complete Registration ✓'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </MainLayout>
+  );
+};
+
+export default RegisterPage;
