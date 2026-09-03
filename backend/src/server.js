@@ -31,6 +31,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const aiProxyRoutes = require('./routes/aiProxyRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const marketDataRoutes = require('./routes/marketDataRoutes');
+const forecastRoutes = require('./routes/forecastRoutes');
 
 // API Mounts
 app.use('/api/auth', authRoutes);
@@ -43,6 +44,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api', aiProxyRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/market-data', marketDataRoutes);
+app.use('/api/forecast', forecastRoutes);
 
 // Health Check API
 app.get('/api/health', (req, res) => {

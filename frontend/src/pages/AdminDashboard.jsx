@@ -13,6 +13,7 @@ import {
   DollarSign,
   Package,
 } from 'lucide-react';
+import DemandForecastCard from '../components/DemandForecastCard';
 
 const AdminDashboard = () => {
   const [adminStats, setAdminStats] = useState(null);
@@ -123,6 +124,9 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Phase 2: AI Agricultural Demand Forecasting Pipeline */}
+        <DemandForecastCard defaultCommodity="Tomato" defaultDistrict="Delhi NCR" />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Admin Policy Controller: Configurable Consumer Max Limit */}

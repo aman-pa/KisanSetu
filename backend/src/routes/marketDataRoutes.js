@@ -23,6 +23,10 @@ router.get('/arrivals', getArrivals);
 // Supply Indicator Analytics
 router.get('/supply', getRegionalSupplyIndicators);
 
+// Real Data-Driven Time-Series Demand Forecast (Phase 2)
+const { getDemandForecast } = require('../controllers/aiProxyController');
+router.get('/forecast', getDemandForecast);
+
 // Data Provider Diagnostics
 router.get('/providers/status', getProviderStatus);
 

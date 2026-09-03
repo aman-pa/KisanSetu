@@ -28,8 +28,15 @@ def read_root():
     }
 
 @app.get("/forecast")
-def get_forecast(crop: str = Query("Tomato"), district: str = Query("Delhi NCR")):
-    return predict_demand(crop, district)
+def get_forecast(
+    commodity: str = Query(None),
+    crop: str = Query(None),
+    district: str = Query("Delhi NCR"),
+    state: str = Query("Delhi"),
+    horizon: int = Query(30)
+):
+    target_crop = commodity or crop or "Tomato"
+    return predict_demand(crop_name=target_crop, district=district, state=state, horizon=horizon)
 
 @app.get("/price-recommendation")
 def get_price_recommendation(crop: str = Query("Tomato"), grade: str = Query("GRADE_A"), district: str = Query("Delhi NCR")):

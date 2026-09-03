@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import DemandForecastCard from '../components/DemandForecastCard';
 
 const FarmerDashboard = () => {
   const [listings, setListings] = useState([]);
@@ -180,6 +181,9 @@ const FarmerDashboard = () => {
             Create Produce Listing →
           </Link>
         </div>
+
+        {/* Phase 2: Real Data-Driven AI Demand Forecasting Engine */}
+        <DemandForecastCard defaultCommodity="Tomato" defaultDistrict="Delhi NCR" />
 
         {/* Sales & Revenue Analytics Chart */}
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
