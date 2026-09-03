@@ -1,15 +1,13 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const Otp = require('../models/Otp');
 const FarmerProfile = require('../models/FarmerProfile');
 const FPOProfile = require('../models/FPOProfile');
 const BuyerProfile = require('../models/BuyerProfile');
 const LogisticsProfile = require('../models/LogisticsProfile');
 const TrustScore = require('../models/TrustScore');
 const sendEmail = require('../utils/sendEmail');
-
-// Temporary in-memory store for registration OTPs
-const registrationOTPStore = new Map();
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -28,16 +26,25 @@ const sendRegistrationOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide email address' });
     }
 
-    const userExists = await User.findOne({ email: email.toLowerCase() });
+    const userExists = await User.findOne({ email: email.toLowerCase().trim() });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'User with this email already exists' });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    registrationOTPStore.set(email.toLowerCase(), {
-      otp,
-      expiresAt: Date.now() + 15 * 60 * 1000,
+    // Generate cryptographically secure 6-digit OTP
+    const otp = Math.floor(100000 + crypto.randomInt(0, 900000)).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Invalidate any previous pending registration OTPs for this email
+    await Otp.deleteMany({ email: email.toLowerCase().trim(), purpose: 'REGISTRATION' });
+
+    // Store new OTP document with MongoDB TTL
+    await Otp.create({
+      email: email.toLowerCase().trim(),
+      otpHash,
+      purpose: 'REGISTRATION',
+      expiresAt,
     });
 
     const htmlText = `
@@ -66,17 +73,22 @@ const sendRegistrationOTP = async (req, res) => {
       </div>
     `;
 
-    await sendEmail({
-      to: email.toLowerCase(),
+    const emailResult = await sendEmail({
+      to: email.toLowerCase().trim(),
       subject: `[KisanSetu AI] Account Registration OTP Verification Code: ${otp}`,
       htmlText,
-      plainText: `Your KisanSetu AI registration verification OTP code is ${otp}`,
+      plainText: `Your KisanSetu AI registration verification OTP code is ${otp}. It will expire in 15 minutes.`,
     });
+
+    const isEthereal = emailResult.provider === 'ETHEREAL';
 
     return res.json({
       success: true,
-      message: `Verification OTP sent to ${email}! Please check your email inbox to complete registration.`,
-      otp, // Included for seamless SIH demonstration
+      message: isEthereal
+        ? `Verification OTP dispatched via test inbox. Please check your email to complete registration.`
+        : `Verification OTP dispatched to ${email}! Please check your email inbox to complete registration.`,
+      email: email.toLowerCase().trim(),
+      provider: emailResult.provider,
     });
   } catch (error) {
     console.error('Send registration OTP error:', error);
@@ -94,19 +106,26 @@ const verifyRegistrationOTPAndCreateUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide all required registration details and OTP' });
     }
 
-    const storedData = registrationOTPStore.get(email.toLowerCase());
-    if (!storedData || storedData.otp !== otp.trim()) {
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanOtp = String(otp).trim();
+    const computedHash = crypto.createHash('sha256').update(cleanOtp).digest('hex');
+
+    // Retrieve active OTP record from MongoDB
+    const otpRecord = await Otp.findOne({ email: cleanEmail, purpose: 'REGISTRATION' });
+
+    if (!otpRecord || otpRecord.otpHash !== computedHash) {
       return res.status(400).json({ success: false, message: 'Invalid 6-digit OTP code. Please check your verification email.' });
     }
 
-    if (storedData.expiresAt < Date.now()) {
+    if (otpRecord.expiresAt < new Date()) {
+      await Otp.deleteMany({ email: cleanEmail, purpose: 'REGISTRATION' });
       return res.status(400).json({ success: false, message: 'OTP code has expired. Please request a new verification code.' });
     }
 
-    // OTP Verified! Clear OTP from memory
-    registrationOTPStore.delete(email.toLowerCase());
+    // OTP successfully verified! Clean up OTP record immediately
+    await Otp.deleteMany({ email: cleanEmail, purpose: 'REGISTRATION' });
 
-    const userExists = await User.findOne({ email: email.toLowerCase() });
+    const userExists = await User.findOne({ email: cleanEmail });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'User with this email already exists' });
     }
@@ -561,7 +580,7 @@ const changePassword = async (req, res) => {
   }
 };
 
-// @desc Direct Gmail One-Click Reset Email Dispatch
+// @desc Dispatch Password Reset Email (Direct Link + 6-Digit OTP)
 // @route POST /api/auth/forgot-password
 const forgotPassword = async (req, res) => {
   try {
@@ -570,23 +589,37 @@ const forgotPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide your registered email address' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(404).json({ success: false, message: 'No registered account found with this email address' });
     }
 
+    // 1. Generate 1-click token
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
     await user.save();
 
+    // 2. Generate 6-digit Reset OTP and store in Otp collection
+    const resetOtp = Math.floor(100000 + crypto.randomInt(0, 900000)).toString();
+    const resetOtpHash = crypto.createHash('sha256').update(resetOtp).digest('hex');
+    await Otp.deleteMany({ email: cleanEmail, purpose: 'PASSWORD_RESET' });
+    await Otp.create({
+      email: cleanEmail,
+      otpHash: resetOtpHash,
+      purpose: 'PASSWORD_RESET',
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
     const directResetUrl = `http://localhost:5000/api/auth/direct-email-reset?token=${resetToken}`;
+    const frontendResetUrl = `http://localhost:5173/reset-password?email=${encodeURIComponent(cleanEmail)}&otp=${resetOtp}`;
 
     const htmlText = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
         <div style="background-color: #0A2412; padding: 24px; border-radius: 12px; text-align: center; color: #ffffff;">
           <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900;">🌾 KisanSetu AI</h1>
-          <p style="margin: 6px 0 0; color: #4ade80; font-size: 11px; font-weight: 800; tracking: 2px; text-transform: uppercase;">Direct Gmail Account Password Reset</p>
+          <p style="margin: 6px 0 0; color: #4ade80; font-size: 11px; font-weight: 800; tracking: 2px; text-transform: uppercase;">Account Password Reset</p>
         </div>
 
         <div style="padding: 24px 0;">
@@ -594,8 +627,14 @@ const forgotPassword = async (req, res) => {
           <p style="color: #475569; font-size: 14px; line-height: 1.6;">Hello <b>${user.name}</b> (${user.role}),</p>
           <p style="color: #475569; font-size: 14px; line-height: 1.6;">We received a password reset request for your registered KisanSetu AI account (<b>${user.email}</b>).</p>
           
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${directResetUrl}" style="background-color: #166534; color: #ffffff; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 900; font-size: 15px; display: inline-block;">
+          <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0;">
+            <p style="margin: 0; color: #64748b; font-size: 12px; font-weight: 700;">Your 6-Digit Password Reset OTP Code:</p>
+            <h2 style="margin: 6px 0 0; color: #166534; font-size: 32px; font-weight: 900; letter-spacing: 8px;">${resetOtp}</h2>
+            <p style="margin: 6px 0 0; color: #94a3b8; font-size: 11px;">Valid for 15 minutes</p>
+          </div>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${directResetUrl}" style="background-color: #166534; color: #ffffff; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; display: inline-block;">
               🔑 Click Here To Instantly Reset Password & Log In →
             </a>
           </div>
@@ -603,20 +642,79 @@ const forgotPassword = async (req, res) => {
       </div>
     `;
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: user.email,
-      subject: `[KisanSetu AI] Direct Password Reset Link for ${user.name}`,
+      subject: `[KisanSetu AI] Password Reset Verification Code: ${resetOtp}`,
       htmlText,
-      plainText: `Click this link to reset your KisanSetu AI password: ${directResetUrl}`,
+      plainText: `Your KisanSetu AI password reset OTP code is ${resetOtp}. Or use this link: ${directResetUrl}`,
     });
+
+    const isEthereal = emailResult.provider === 'ETHEREAL';
 
     return res.json({
       success: true,
-      message: `Direct password reset link sent to ${email}! Please check your Gmail/Email inbox on your phone or computer.`,
-      email: email.toLowerCase(),
+      message: isEthereal
+        ? `Password reset instructions dispatched via test inbox. Please check your email inbox.`
+        : `Password reset instructions sent to ${cleanEmail}! Please check your email inbox.`,
+      email: cleanEmail,
+      provider: emailResult.provider,
     });
   } catch (error) {
     console.error('Forgot password error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc Step 2 for Reset Password: Verify Reset OTP and Update Password
+// @route POST /api/auth/verify-otp-reset-password
+const verifyOtpResetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide email, OTP code, and new password' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanOtp = String(otp).trim();
+    const computedHash = crypto.createHash('sha256').update(cleanOtp).digest('hex');
+
+    // Retrieve active OTP record from MongoDB
+    const otpRecord = await Otp.findOne({ email: cleanEmail, purpose: 'PASSWORD_RESET' });
+
+    if (!otpRecord || otpRecord.otpHash !== computedHash) {
+      return res.status(400).json({ success: false, message: 'Invalid 6-digit OTP code. Please check your reset email.' });
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      await Otp.deleteMany({ email: cleanEmail, purpose: 'PASSWORD_RESET' });
+      return res.status(400).json({ success: false, message: 'OTP code has expired. Please request a new reset code.' });
+    }
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update password
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    // Clean up OTP record
+    await Otp.deleteMany({ email: cleanEmail, purpose: 'PASSWORD_RESET' });
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully! You can now log in with your new password.',
+    });
+  } catch (error) {
+    console.error('Verify OTP reset password error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -663,5 +761,6 @@ module.exports = {
   updateProfile,
   changePassword,
   forgotPassword,
+  verifyOtpResetPassword,
   directEmailResetPassword,
 };

@@ -45,6 +45,7 @@ const RegisterPage = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const { register, setUser } = useAuth();
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ const RegisterPage = () => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+    setInputOtp('');
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -79,6 +81,30 @@ const RegisterPage = () => {
     }
   };
 
+  // Resend OTP handler
+  const handleResendOTP = async () => {
+    setError('');
+    setSuccessMsg('');
+    setResending(true);
+    setInputOtp('');
+
+    try {
+      const { data } = await API.post('/auth/send-registration-otp', {
+        name,
+        email,
+        phone,
+      });
+
+      if (data.success) {
+        setSuccessMsg(`New verification code dispatched to ${email}!`);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend verification code.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   // Step 2: Verify OTP & Create Account
   const handleVerifyOTPAndRegister = async (e) => {
     e.preventDefault();
@@ -88,8 +114,8 @@ const RegisterPage = () => {
     try {
       const payload = {
         name,
-        email,
-        phone,
+        email: email.trim(),
+        phone: phone.trim(),
         password,
         role,
         address: { street, city, state, pincode },
@@ -99,7 +125,7 @@ const RegisterPage = () => {
           businessName,
           vehicleNumber,
         },
-        otp: inputOtp,
+        otp: inputOtp.trim(),
       };
 
       const { data } = await API.post('/auth/verify-registration-otp', payload);
@@ -117,7 +143,7 @@ const RegisterPage = () => {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid OTP code. Please check your email.');
-    } font: {
+    } finally {
       setLoading(false);
     }
   };
@@ -321,19 +347,34 @@ const RegisterPage = () => {
                 <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Verification OTP Code</label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   required
                   maxLength={6}
                   value={inputOtp}
-                  onChange={(e) => setInputOtp(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-center text-lg font-mono font-black tracking-widest text-slate-900 focus:ring-2 focus:ring-agri-primary"
-                  placeholder="739104"
+                  onChange={(e) => setInputOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-center text-lg font-mono font-black tracking-widest text-slate-900 focus:ring-2 focus:ring-agri-primary focus:border-emerald-600"
+                  placeholder="874053"
+                  autoFocus
                 />
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 text-[11px]">Didn't receive code?</span>
+                <button
+                  type="button"
+                  disabled={resending || loading}
+                  onClick={handleResendOTP}
+                  className="font-extrabold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer disabled:opacity-50"
+                >
+                  {resending ? 'Dispatching new OTP...' : 'Resend Verification Code ↻'}
+                </button>
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={loading || inputOtp.length !== 6}
+                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
               >
                 {loading ? 'Verifying & Creating Account...' : 'Verify OTP & Complete Registration ✓'}
               </button>
