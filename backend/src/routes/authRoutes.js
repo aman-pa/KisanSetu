@@ -10,6 +10,7 @@ const {
   updateProfile,
   changePassword,
   forgotPassword,
+  verifyOtpResetPassword,
   directEmailResetPassword,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
@@ -23,6 +24,7 @@ router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 router.put('/change-password', protect, changePassword);
 router.post('/forgot-password', forgotPassword);
+router.post('/verify-otp-reset-password', verifyOtpResetPassword);
 router.get('/direct-email-reset', directEmailResetPassword);
 
 module.exports = router;
