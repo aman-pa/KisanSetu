@@ -1,10 +1,21 @@
 node_modules/
 .env
-.env.local
+.env.*
+!.env.example
 dist/
 build/
 __pycache__/
 *.pyc
 .pytest_cache/
 venv/
+.venv/
 .DS_Store
+Thumbs.db
+
+# MongoDB local storage & cache
+backend/data/
+data/
+*.wt
+*.lock
+diagnostic.data/
+storage.bson

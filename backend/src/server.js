@@ -30,6 +30,7 @@ const logisticsRoutes = require('./routes/logisticsRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const aiProxyRoutes = require('./routes/aiProxyRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const marketDataRoutes = require('./routes/marketDataRoutes');
 
 // API Mounts
 app.use('/api/auth', authRoutes);
@@ -41,6 +42,7 @@ app.use('/api/logistics', logisticsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', aiProxyRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/market-data', marketDataRoutes);
 
 // Health Check API
 app.get('/api/health', (req, res) => {

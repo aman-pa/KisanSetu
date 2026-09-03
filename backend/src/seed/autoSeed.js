@@ -11,9 +11,17 @@ const BatchTraceability = require('../models/BatchTraceability');
 const SystemConfig = require('../models/SystemConfig');
 const DemandForecast = require('../models/DemandForecast');
 const TrustScore = require('../models/TrustScore');
+const MarketPrice = require('../models/MarketPrice');
+const seedMarketData = require('./seedMarketData');
 
 const autoSeedIfEmpty = async () => {
   try {
+    // 0. Ensure Agricultural Market Data is seeded idempotently
+    const marketPricesCount = await MarketPrice.countDocuments();
+    if (marketPricesCount === 0) {
+      await seedMarketData(false);
+    }
+
     const userCount = await User.countDocuments();
     if (userCount > 0) {
       // Ensure amanpandey10a3@gmail.com exists as Farmer
