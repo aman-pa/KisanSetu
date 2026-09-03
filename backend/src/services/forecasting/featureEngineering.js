@@ -1,16 +1,24 @@
 /**
  * featureEngineering.js
- * Feature extraction and economic demand proxy derivation for agricultural market time-series.
+ * Feature extraction and Heuristic Market Absorption & Pressure Proxy derivation
+ * for agricultural market time-series.
  */
 
-const BETA_PRICE_ELASTICITY = 0.5; // Empirical APMC elasticity coefficient
+// Explicit heuristic sensitivity parameter (buffers physical arrival volume against clearing price premiums)
+const HEURISTIC_PRICE_SENSITIVITY_WEIGHT = 0.5;
 
 /**
- * Derives realized absorbed market demand proxy from physical arrivals and equilibrium clearing prices.
- * D_t = Arrival_t * (1 + beta * (P_t - P_30d) / P_30d)
+ * Derives the Realized Market Absorption & Pressure Proxy from physical arrivals and clearing prices.
+ * Formula:
+ *   M_t = Arrival_t * (1 + lambda_heuristic * (P_t - P_30d) / P_30d)
+ * 
+ * IMPORTANT SCIENTIFIC NOTE:
+ * - This is NOT direct consumer retail checkout demand.
+ * - This is an explicit heuristic proxy representing realized buying absorption pressure in APMC mandis.
+ * - lambda_heuristic (0.5) is an explicit modeling assumption, NOT an econometrically estimated elasticity.
  * 
  * @param {Array<Object>} rawDailySeries - Sorted array of { date, modalPrice, arrivalQuantity, isSynthetic }
- * @returns {Array<Object>} Enriched series with demandProxyTonnes and demandIndex
+ * @returns {Array<Object>} Enriched series with demandProxyTonnes (Market Pressure Proxy) and demandIndex
  */
 function deriveDemandFeatures(rawDailySeries) {
   if (!rawDailySeries || rawDailySeries.length === 0) {
@@ -36,13 +44,18 @@ function deriveDemandFeatures(rawDailySeries) {
     const priceRatio = (currentP - avgP30) / (avgP30 + 1e-6);
     const arrivalRatio = (currentA - avgA30) / (avgA30 + 1e-6);
 
-    // Demand Proxy in Tonnes (bounded to >= 1.0)
-    const demandProxy = Math.max(1.0, Math.round(currentA * (1.0 + BETA_PRICE_ELASTICITY * priceRatio) * 10) / 10);
+    // Derived Market Pressure Proxy in Tonnes (bounded to >= 1.0)
+    const marketPressureProxy = Math.max(
+      1.0,
+      Math.round(currentA * (1.0 + HEURISTIC_PRICE_SENSITIVITY_WEIGHT * priceRatio) * 10) / 10
+    );
 
-    // 0-100 Demand Pressure Index
-    const demandIndex = Math.max(0, Math.min(100, Math.round(50.0 + 25.0 * priceRatio + 25.0 * arrivalRatio)));
+    // 0-100 Normalized Demand Pressure Index
+    const demandIndex = Math.max(
+      0,
+      Math.min(100, Math.round(50.0 + 25.0 * priceRatio + 25.0 * arrivalRatio))
+    );
 
-    // Day of week
     const dateObj = new Date(rawDailySeries[i].date);
     const dow = dateObj.getDay();
 
@@ -54,7 +67,8 @@ function deriveDemandFeatures(rawDailySeries) {
       rollingPrice30d: Math.round(avgP30),
       rollingArrival30d: Math.round(avgA30 * 10) / 10,
       priceVelocityPercent: Math.round(priceRatio * 1000) / 10,
-      demandProxyTonnes: demandProxy,
+      demandProxyTonnes: marketPressureProxy, // Maintained for API compatibility
+      marketPressureProxyTonnes: marketPressureProxy,
       demandIndex,
       isSynthetic: rawDailySeries[i].isSynthetic ?? true,
     });
@@ -65,5 +79,5 @@ function deriveDemandFeatures(rawDailySeries) {
 
 module.exports = {
   deriveDemandFeatures,
-  BETA_PRICE_ELASTICITY,
+  HEURISTIC_PRICE_SENSITIVITY_WEIGHT,
 };

@@ -117,14 +117,15 @@ class HybridDampedFourierModel:
 
 def _derive_demand_proxy(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Computes derived demand proxy from observed market arrivals and modal price elasticity.
-    D_t = Arrival_t * (1 + beta * (P_t - P_30d) / P_30d)
+    Computes Heuristic Market Absorption & Pressure Proxy from physical arrivals and clearing prices.
+    Formula: M_t = Arrival_t * (1 + lambda_heuristic * (P_t - P_30d) / P_30d)
+    where lambda_heuristic = 0.5 is an explicit heuristic price-adjustment weight (NOT empirical elasticity).
     """
     df = df.sort_values("date").reset_index(drop=True)
     df["rolling_price_30"] = df["modalPrice"].rolling(30, min_periods=1).mean()
     df["price_ratio"] = (df["modalPrice"] - df["rolling_price_30"]) / df["rolling_price_30"]
     
-    # beta = 0.5 (Empirical price elasticity coefficient for APMC agricultural demand pressure)
+    # lambda_heuristic = 0.5 (Heuristic sensitivity parameter buffering physical supply against clearing price premiums)
     df["demand_proxy"] = (df["arrivalQuantity"] * (1.0 + 0.5 * df["price_ratio"])).clip(lower=1.0)
     
     # 0-100 Demand Pressure Index
@@ -308,9 +309,10 @@ def predict_demand(
                 "levels": ["80%", "95%"],
                 "method": "Empirical In-Sample Residual Variance with sqrt(h) Horizon Scaling"
             },
+            "targetVariable": "Heuristic Market Absorption & Pressure Proxy (Price-Adjusted Arrival Volume in Tonnes)",
             "isSynthetic": is_synthetic,
             "dataProvenance": "SEEDED_DEMO_AGMARKNET" if is_synthetic else "OBSERVED_APMC_FEED",
-            "disclaimer": "Forecast is an algorithmic estimate derived from mandi arrival volumes and price elasticity proxies. Not a commercial guarantee."
+            "disclaimer": "Forecast is an algorithmic projection of mandi market absorption and buying pressure proxy. It does not represent direct retail consumer checkout ground truth."
         },
         "generatedAt": datetime.utcnow().isoformat() + "Z"
     }

@@ -182,9 +182,11 @@ async function generateDemandForecast({ commodity = 'Tomato', district, mandi, s
         levels: ['80%', '95%'],
         method: 'Empirical In-Sample Residual Variance with sqrt(h) Horizon Scaling',
       },
+      targetVariable: 'Heuristic Market Absorption & Pressure Proxy (Price-Adjusted Arrival Volume in Tonnes)',
+      targetFormula: 'M_t = Arrival_t * (1 + 0.5 * (Price_t - RollingPrice30d) / RollingPrice30d)',
       isSynthetic: enrichedHistory[0]?.isSynthetic ?? true,
       dataProvenance: enrichedHistory[0]?.isSynthetic ? 'SEEDED_DEMO_AGMARKNET' : 'OBSERVED_APMC_FEED',
-      disclaimer: 'Forecast is an algorithmic estimate derived from mandi arrival volumes and price elasticity proxies. Not a commercial guarantee.',
+      disclaimer: 'Forecast is an algorithmic projection of mandi market absorption and buying pressure proxy. It does not represent direct retail consumer checkout ground truth.',
     },
     generatedAt: new Date().toISOString(),
   };

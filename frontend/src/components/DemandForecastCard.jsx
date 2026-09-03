@@ -115,14 +115,14 @@ const DemandForecastCard = ({ defaultCommodity = 'Tomato', defaultDistrict = 'De
               <TrendingUp className="w-5 h-5" />
             </span>
             <h3 className="text-base font-extrabold text-slate-900">
-              AI Agricultural Demand Forecasting Pipeline
+              Agricultural Demand & Market Pressure Forecasting Pipeline
             </h3>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-300">
               Phase 2 Engine
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Data-driven time-series forecasting with trend-seasonality decomposition & calibrated confidence bands
+            Data-driven time-series projection of mandi market absorption proxy with trend-seasonality decomposition & statistical confidence intervals
           </p>
         </div>
 
@@ -254,13 +254,13 @@ const DemandForecastCard = ({ defaultCommodity = 'Tomato', defaultDistrict = 'De
           {/* Time Series Chart */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span>Historical vs Projected Demand Trajectory (Tonnes)</span>
+              <span>Historical vs Projected Market Absorption & Demand Proxy (Tonnes)</span>
               <div className="flex items-center gap-4 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-0.5 bg-slate-400"></span> Historical Realized Demand
+                  <span className="w-3 h-0.5 bg-slate-400"></span> Historical Market Pressure Proxy
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-0.5 bg-emerald-600"></span> AI Forecast
+                  <span className="w-3 h-0.5 bg-emerald-600"></span> Projected Proxy
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 bg-emerald-100 border border-emerald-300 rounded-sm"></span> 80% / 95% Confidence Band
@@ -284,7 +284,7 @@ const DemandForecastCard = ({ defaultCommodity = 'Tomato', defaultDistrict = 'De
                           {d.isForecast ? (
                             <>
                               <p className="text-emerald-700 font-extrabold">
-                                Predicted Demand: {d.predictedDemand} Tonnes
+                                Projected Market Pressure: {d.predictedDemand} Tonnes
                               </p>
                               <p className="text-slate-500 text-[10px]">
                                 80% CI: [{d.lower80} - {d.upper80}] T
@@ -296,7 +296,7 @@ const DemandForecastCard = ({ defaultCommodity = 'Tomato', defaultDistrict = 'De
                           ) : (
                             <>
                               <p className="text-slate-700 font-bold">
-                                Historical Realized Demand: {d.historicalDemand} Tonnes
+                                Historical Market Pressure Proxy: {d.historicalDemand} Tonnes
                               </p>
                               <p className="text-slate-500 text-[10px]">
                                 Observed Mandi Arrival: {d.arrivalQuantity} Tonnes
