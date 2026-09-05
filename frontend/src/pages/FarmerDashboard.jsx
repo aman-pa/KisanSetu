@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import DemandForecastCard from '../components/DemandForecastCard';
+import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
 
 const FarmerDashboard = () => {
   const [listings, setListings] = useState([]);
@@ -181,6 +182,9 @@ const FarmerDashboard = () => {
             Create Produce Listing →
           </Link>
         </div>
+
+        {/* Phase 3: AI Price Intelligence & Farmer Selling Recommendation Engine */}
+        <PriceIntelligenceCard defaultCommodity="Tomato" defaultMandi="Karnal" />
 
         {/* Phase 2: Real Data-Driven AI Demand Forecasting Engine */}
         <DemandForecastCard defaultCommodity="Tomato" defaultDistrict="Delhi NCR" />
