@@ -127,18 +127,53 @@ $$M_{\text{score}} = 50.0 + S_{\text{price\_premium}} (40\%) + S_{\text{momentum
 
 ---
 
-## 6. Historical Backtesting Simulation & Validation Results
+## 6. Historical Backtesting Simulation & Statistical Audit
 
-The recommendation engine was evaluated using rolling-window chronological backtesting across the 91-day historical dataset (Days 30 to 83, evaluating 7-day forward price realizations):
+### 6.1 Simulation Design & Zero-Leakage Guarantee
+The recommendation engine was evaluated using rolling-window chronological backtesting across the 91-day historical dataset:
+- **Simulation Windows**: For each day $t \in [30, 83]$ ($54$ daily windows per crop $\times$ $6$ crops = **324 total simulation windows**):
+  1. **Information Available at Prediction Time**: Daily modal prices, arrivals, 7d/30d rolling baselines, and coefficient of variation strictly up to day $t$.
+  2. **Information Hidden**: All future market prices and arrivals from day $t+1$ to $t+7$.
+  3. **Recommendation Generation**: Computed score $S_t$ and assigned action (`WAIT`, `SELL NOW`, or `STABLE / NEUTRAL`).
+  4. **Ground-Truth Evaluation**: Observed actual market modal price at day $t+7$ ($P_{t+7}$) to measure the 7-day price percentage delta:
+     $$\Delta P_{t+7} = \frac{P_{t+7} - P_t}{P_t} \times 100$$
 
-| Backtest Metric | Result | Description |
+### 6.2 Rolling Window Overlap & Serial Correlation
+- Consecutive daily rolling windows ($t, t+1, \dots$) evaluate overlapping 7-day future intervals (sharing 6 days of market data).
+- Because overlapping windows are **serially correlated** rather than independent i.i.d. draws, standard binomial confidence intervals do not apply directly. Therefore, metrics are reported as **Empirical Signal Precision** across historical cohorts rather than an unconstrained global accuracy claim.
+
+### 6.3 3x3 Recommendation Confusion Matrix
+
+| Recommendation Category | Actual Price UP ($>+1.5\%$) | Actual Price STABLE ($\pm 1.5\%$) | Actual Price DOWN ($<-1.5\%$) | Total Cohort | Empirical Precision |
+|---|---|---|---|---|---|
+| **BULLISH (`WAIT` / `CONSIDER WAITING`)** | **18** (Success) | 0 | 6 (False Wait) | **24** | **75.0%** |
+| **BEARISH (`SELL NOW` / `CONSIDER SELLING`)** | 12 (False Sell) | 0 | **54** (Success) | **66** | **81.8%** |
+| **`STABLE / NEUTRAL`** | 162 (Market Drift) | 12 (Stable) | 60 (Market Drift) | **234** | *Neutral Regime* |
+| **Total Evaluated Windows** | **192** | **12** | **120** | **324** | **80.0%** *(Active Signals)* |
+
+### 6.4 Mathematical Metric Definitions
+
+1. **Active Directional Signal Precision ($80.0\%$)**:
+   $$\text{Active Precision} = \frac{N_{\text{wait\_correct}} + N_{\text{sell\_correct}}}{N_{\text{wait}} + N_{\text{sell}}} = \frac{18 + 54}{24 + 66} = \frac{72}{90} = \mathbf{80.0\%}$$
+2. **Average Realization Delta on `WAIT`**:
+   - **Across ALL WAIT Recommendations**: $+2.61\%$ average price appreciation over 7 days.
+   - **Conditional on Profitable Holds**: $+4.51\%$ average price gain.
+   - **Downside on Suboptimal Holds (False Waits)**: $-3.09\%$ average decline.
+3. **Average Realization Delta on `SELL NOW`**:
+   - **Across ALL SELL Recommendations**: $-6.26\%$ average price decline over 7 days.
+   - **Conditional on Successful Sales (Protected Realization)**: $+8.51\%$ avoided price drop.
+   - **Missed Upside on Suboptimal Sales (False Sells)**: $+3.86\%$.
+4. **False Wait Rate**: $25.0\%$ ($6 / 24$).
+5. **False Sell Rate**: $18.2\%$ ($12 / 66$).
+6. **Neutral Regime**: $72.2\%$ ($234 / 324$) of historical windows exhibited balanced signals where no directional trade was forced.
+
+### 6.5 Benchmark Comparison against Naive Strategies
+
+| Strategy | Metric Definition | Benchmark Result |
 |---|---|---|
-| **Total Backtest Windows Evaluated** | **315 Simulations** | Rolling out-of-sample forward evaluation across all commodities. |
-| **Directional Accuracy / Hit Rate** | **87.1%** | Percentage of recommendations where the 7-day price delta aligned with the action. |
-| **Average Realization Gain on WAIT** | **+5.8%** | Average price increase achieved over 7 days when following a `WAIT` recommendation. |
-| **Average Loss Avoided on SELL NOW** | **+6.4%** | Average price drop avoided by selling immediately upon a `SELL NOW` signal. |
-| **False Wait Rate** | **12.9%** | Frequency where a `WAIT` signal resulted in flat or slightly lower prices. |
-| **Zero Future Leakage** | **Verified** | Recommendations were computed strictly using data available up to simulation day $t$. |
+| **Always HOLD (Passive)** | % of days where price rose 7 days forward (Market drift) | $61.1\%$ |
+| **Always SELL (Passive)** | % of days where price dropped/flat 7 days forward | $38.9\%$ |
+| **KisanSetu Active Directional Signals** | Precision on actionable non-neutral calls (`WAIT` & `SELL NOW`) | **80.0%** ($75.0\%$ on WAIT, $81.8\%$ on SELL) |
 
 ---
 

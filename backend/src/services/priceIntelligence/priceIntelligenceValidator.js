@@ -2,7 +2,11 @@
  * priceIntelligenceValidator.js
  * Chronological out-of-sample backtesting simulation for Farmer Selling Recommendations.
  * 
- * Evaluates historical decision outcomes over 7-day forward horizons with zero future leakage.
+ * METHODOLOGICAL RIGOR & HONESTY:
+ * - Rolling windows are evaluated chronologically with zero future leakage.
+ * - Distinguishes between Actionable Directional Signals (WAIT & SELL) vs Neutral Regime.
+ * - Reports conditional gains/losses as well as full-cohort averages.
+ * - Explicitly notes serial correlation across overlapping rolling windows.
  */
 
 const { extractPriceSignals } = require('./priceSignals');
@@ -27,22 +31,36 @@ function runRecommendationBacktest(fullHistorySeries, evaluationHorizonDays = 7)
   }
 
   let totalSimulations = 0;
-  let correctDecisions = 0;
+
+  // Directional Recommendation Buckets
   let waitCount = 0;
   let waitSuccessCount = 0;
+  let totalWaitAllDelta = 0;
+  let totalWaitProfitDelta = 0;
+  let totalWaitLossDelta = 0;
+
   let sellCount = 0;
   let sellSuccessCount = 0;
-  let neutralCount = 0;
-  let neutralSuccessCount = 0;
+  let totalSellAllDelta = 0;
+  let totalSellAvoidedDrop = 0;
+  let totalSellMissedUpside = 0;
 
-  let totalWaitGainPercent = 0;
-  let totalSellAvoidedLossPercent = 0;
+  let neutralCount = 0;
+  let neutralStableCount = 0;
+
+  // 3x3 Confusion Matrix: rows=recommendation, cols=actualMarketDelta
+  // Categories: UP (> +1.5%), STABLE ([-1.5%, +1.5%]), DOWN (< -1.5%)
+  const confusionMatrix = {
+    WAIT: { UP: 0, STABLE: 0, DOWN: 0 },
+    SELL: { UP: 0, STABLE: 0, DOWN: 0 },
+    NEUTRAL: { UP: 0, STABLE: 0, DOWN: 0 },
+  };
 
   const simulationRecords = [];
 
   // Iterate over all valid simulation start dates
   for (let t = minLookback; t < n - evaluationHorizonDays; t++) {
-    // 1. History available strictly up to day t
+    // 1. History available strictly up to day t (strictly backward-looking)
     const subHistory = fullHistorySeries.slice(0, t + 1);
     const currentDate = subHistory[t].date;
     const currentPrice = subHistory[t].modalPrice;
@@ -51,6 +69,11 @@ function runRecommendationBacktest(fullHistorySeries, evaluationHorizonDays = 7)
     const futureDate = fullHistorySeries[t + evaluationHorizonDays].date;
     const futurePrice = fullHistorySeries[t + evaluationHorizonDays].modalPrice;
     const actualPriceChangePercent = ((futurePrice - currentPrice) / (currentPrice + 1e-6)) * 100;
+
+    // Categorize actual market movement
+    let marketMovement = 'STABLE';
+    if (actualPriceChangePercent > 1.5) marketMovement = 'UP';
+    else if (actualPriceChangePercent < -1.5) marketMovement = 'DOWN';
 
     // 3. Generate recommendation with zero future information
     try {
@@ -65,38 +88,44 @@ function runRecommendationBacktest(fullHistorySeries, evaluationHorizonDays = 7)
 
       if (decision === 'WAIT' || decision === 'CONSIDER WAITING') {
         waitCount++;
+        totalWaitAllDelta += actualPriceChangePercent;
+        confusionMatrix.WAIT[marketMovement]++;
+
         if (actualPriceChangePercent > 0) {
           isSuccess = true;
           waitSuccessCount++;
           outcomeLabel = 'PROFITABLE_HOLD';
-          totalWaitGainPercent += actualPriceChangePercent;
+          totalWaitProfitDelta += actualPriceChangePercent;
         } else {
           outcomeLabel = 'SUBOPTIMAL_HOLD';
+          totalWaitLossDelta += actualPriceChangePercent;
         }
       } else if (decision === 'SELL NOW' || decision === 'CONSIDER SELLING') {
         sellCount++;
+        totalSellAllDelta += actualPriceChangePercent;
+        confusionMatrix.SELL[marketMovement]++;
+
         if (actualPriceChangePercent <= 0) {
           isSuccess = true;
           sellSuccessCount++;
           outcomeLabel = 'PROTECTED_PROFIT';
-          totalSellAvoidedLossPercent += Math.abs(actualPriceChangePercent);
+          totalSellAvoidedDrop += Math.abs(actualPriceChangePercent);
         } else {
           outcomeLabel = 'MISSED_UPSIDE';
+          totalSellMissedUpside += actualPriceChangePercent;
         }
       } else {
         // STABLE / NEUTRAL
         neutralCount++;
+        confusionMatrix.NEUTRAL[marketMovement]++;
+
         if (Math.abs(actualPriceChangePercent) <= 2.5) {
           isSuccess = true;
-          neutralSuccessCount++;
+          neutralStableCount++;
           outcomeLabel = 'STABLE_PREDICTION';
         } else {
-          outcomeLabel = 'UNEXPECTED_VOLATILITY';
+          outcomeLabel = 'MARKET_DRIFT';
         }
-      }
-
-      if (isSuccess) {
-        correctDecisions++;
       }
 
       simulationRecords.push({
@@ -121,34 +150,46 @@ function runRecommendationBacktest(fullHistorySeries, evaluationHorizonDays = 7)
     };
   }
 
-  const overallHitRate = (correctDecisions / totalSimulations) * 100;
-  const waitAccuracy = waitCount > 0 ? (waitSuccessCount / waitCount) * 100 : 0;
-  const sellAccuracy = sellCount > 0 ? (sellSuccessCount / sellCount) * 100 : 0;
-  const avgWaitGain = waitSuccessCount > 0 ? totalWaitGainPercent / waitSuccessCount : 0;
-  const avgAvoidedLoss = sellSuccessCount > 0 ? totalSellAvoidedLossPercent / sellSuccessCount : 0;
+  const activeDecisionsCount = waitCount + sellCount;
+  const activeSuccessCount = waitSuccessCount + sellSuccessCount;
+  const activePrecision = activeDecisionsCount > 0 ? (activeSuccessCount / activeDecisionsCount) * 100 : 0;
+
+  const waitPrecision = waitCount > 0 ? (waitSuccessCount / waitCount) * 100 : 0;
+  const sellPrecision = sellCount > 0 ? (sellSuccessCount / sellCount) * 100 : 0;
+
+  const avgWaitAllDelta = waitCount > 0 ? totalWaitAllDelta / waitCount : 0;
+  const avgWaitProfitableGain = waitSuccessCount > 0 ? totalWaitProfitDelta / waitSuccessCount : 0;
+  const avgWaitLoss = waitCount - waitSuccessCount > 0 ? totalWaitLossDelta / (waitCount - waitSuccessCount) : 0;
+
+  const avgSellAllDelta = sellCount > 0 ? totalSellAllDelta / sellCount : 0;
+  const avgSellAvoidedDrop = sellSuccessCount > 0 ? totalSellAvoidedDrop / sellSuccessCount : 0;
 
   return {
     isValidated: true,
     totalSimulations,
     evaluationHorizonDays,
     metrics: {
-      overallHitRatePercent: Math.round(overallHitRate * 10) / 10,
-      directionalAccuracyPercent: Math.round(overallHitRate * 10) / 10,
-      waitRecommendationAccuracyPercent: Math.round(waitAccuracy * 10) / 10,
-      sellRecommendationAccuracyPercent: Math.round(sellAccuracy * 10) / 10,
-      averageRealizationGainOnWaitPercent: Math.round(avgWaitGain * 10) / 10,
-      averageAvoidedLossOnSellPercent: Math.round(avgAvoidedLoss * 10) / 10,
-      falseWaitRatePercent: Math.round((100 - waitAccuracy) * 10) / 10,
-      falseSellRatePercent: Math.round((100 - sellAccuracy) * 10) / 10,
+      activeDirectionalPrecisionPercent: Math.round(activePrecision * 10) / 10,
+      waitRecommendationPrecisionPercent: Math.round(waitPrecision * 10) / 10,
+      sellRecommendationPrecisionPercent: Math.round(sellPrecision * 10) / 10,
+      averagePriceDeltaAcrossAllWaitsPercent: Math.round(avgWaitAllDelta * 10) / 10,
+      averageGainOnProfitableWaitsPercent: Math.round(avgWaitProfitableGain * 10) / 10,
+      averageLossOnSuboptimalWaitsPercent: Math.round(avgWaitLoss * 10) / 10,
+      averagePriceDeltaAcrossAllSellsPercent: Math.round(avgSellAllDelta * 10) / 10,
+      averageDropAvoidedOnProfitableSellsPercent: Math.round(avgSellAvoidedDrop * 10) / 10,
+      falseWaitRatePercent: Math.round((100 - waitPrecision) * 10) / 10,
+      falseSellRatePercent: Math.round((100 - sellPrecision) * 10) / 10,
     },
     decisionDistribution: {
+      totalActiveDirectionalCalls: activeDecisionsCount,
       totalWaitDecisions: waitCount,
       totalSellDecisions: sellCount,
       totalNeutralDecisions: neutralCount,
+      neutralRegimePercent: Math.round((neutralCount / totalSimulations) * 1000) / 10,
     },
-    sampleRecentSimulations: simulationRecords.slice(-5),
-    methodology:
-      'Rolling-window out-of-sample chronological backtesting. Evaluates 7-day forward price realizations against historical recommendation decisions with zero future data leakage.',
+    confusionMatrix,
+    methodologyNote:
+      'Evaluated via rolling-window out-of-sample chronological backtesting over 7-day forward evaluation horizons with zero future data leakage. Note that daily rolling windows overlap by 6 days and are serially correlated.',
   };
 }
 

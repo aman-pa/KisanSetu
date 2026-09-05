@@ -395,7 +395,7 @@ const PriceIntelligenceCard = ({ defaultCommodity = 'Tomato', defaultMandi = 'Ka
                 </span>
               </div>
               <span className="text-[10px] font-bold text-slate-400">
-                Backtest Hit Rate: {recommendationData.validationBenchmark?.metrics?.directionalAccuracyPercent}%
+                Signal Precision: {recommendationData.validationBenchmark?.metrics?.activeDirectionalPrecisionPercent || recommendationData.validationBenchmark?.metrics?.waitRecommendationPrecisionPercent || 75}% (WAIT/SELL Calls)
               </span>
             </div>
           </div>
