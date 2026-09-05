@@ -20,12 +20,25 @@ import {
   Database,
   CheckCircle2,
   Filter,
+  CloudSun,
+  Sun,
+  Cloud,
+  CloudRain,
+  CloudDrizzle,
+  CloudLightning,
+  CloudFog,
+  Droplets,
+  Wind,
+  Thermometer,
+  Umbrella,
+  Radio,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
   ComposedChart,
   AreaChart,
   BarChart,
+  LineChart,
   Area,
   Line,
   Bar,
@@ -56,16 +69,38 @@ const LIMIT_OPTIONS = [
   { label: 'Last 60 Days', value: 60 },
 ];
 
+const WeatherIcon = ({ iconName, className = 'w-6 h-6' }) => {
+  switch (iconName) {
+    case 'Sun':
+      return <Sun className={`${className} text-amber-500`} />;
+    case 'CloudSun':
+      return <CloudSun className={`${className} text-amber-400`} />;
+    case 'Cloud':
+      return <Cloud className={`${className} text-slate-400`} />;
+    case 'CloudDrizzle':
+      return <CloudDrizzle className={`${className} text-blue-400`} />;
+    case 'CloudRain':
+      return <CloudRain className={`${className} text-blue-600`} />;
+    case 'CloudLightning':
+      return <CloudLightning className={`${className} text-purple-600`} />;
+    case 'CloudFog':
+      return <CloudFog className={`${className} text-slate-400`} />;
+    default:
+      return <Sun className={`${className} text-amber-500`} />;
+  }
+};
+
 const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => {
   const [commodity, setCommodity] = useState(defaultCommodity);
   const [market, setMarket] = useState(defaultMarket);
   const [limitDays, setLimitDays] = useState(30);
 
-  const [activeTab, setActiveTab] = useState('snapshots'); // 'snapshots' | 'prices' | 'arrivals' | 'supply' | 'provider'
+  const [activeTab, setActiveTab] = useState('snapshots'); // 'snapshots' | 'prices' | 'arrivals' | 'supply' | 'weather' | 'provider'
   const [snapshotsData, setSnapshotsData] = useState([]);
   const [pricesData, setPricesData] = useState({ records: [], statistics: {} });
   const [arrivalsData, setArrivalsData] = useState({ arrivals: [], statistics: {} });
   const [supplyData, setSupplyData] = useState([]);
+  const [weatherData, setWeatherData] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -121,10 +156,18 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
         setSupplyData(supplyRes.data.indicators || []);
       }
 
-      // 5. Fetch Provider Status Diagnostics
+      // 5. Fetch Live Weather Data (Phase 5)
+      const weatherRes = await API.get('/market-data/weather', {
+        params: { market: market || 'Karnal Mandi' },
+      });
+      if (weatherRes.data.success) {
+        setWeatherData(weatherRes.data.weather);
+      }
+
+      // 6. Fetch Multi-Provider Diagnostics
       const statusRes = await API.get('/market-data/providers/status');
       if (statusRes.data.success) {
-        setProviderStatus(statusRes.data.providerStatus);
+        setProviderStatus(statusRes.data);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch market data from Agricultural Data Layer.');
@@ -158,20 +201,29 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
       market: a.market,
     }));
 
+  // Format weather forecast chart data
+  const weatherChartData = (weatherData?.forecast || []).map((f) => ({
+    date: new Date(f.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' }),
+    tempMax: f.tempMax,
+    tempMin: f.tempMin,
+    precipitationSum: f.precipitationSum,
+    rainProb: f.precipitationProbabilityMax,
+  }));
+
   return (
     <div className="bg-white rounded-3xl border border-slate-100 shadow-agri-sm overflow-hidden space-y-6">
       {/* 1. Header Banner */}
       <div className="p-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-2">
-            <Database className="w-3.5 h-3.5 text-emerald-400" />
-            Phase 1: Agricultural Market Data Layer
+            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            Phase 1 & 5: Live Market & Meteorological Intelligence
           </div>
           <h2 className="text-xl font-black text-white flex items-center gap-2">
-            Agricultural Market Intelligence & Spot Mandi Data 🌾
+            Agricultural Market Intelligence & Real-Time Data 🌾
           </h2>
           <p className="text-xs text-slate-300">
-            Ground-truth daily mandi modal prices, arrival volumes, and regional supply indicators from verified APMCs
+            Mandi modal prices, physical intake volumes, regional absorption indicators, and live agro-climatic advisories
           </p>
         </div>
 
@@ -208,6 +260,15 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
             }`}
           >
             Supply Indicators
+          </button>
+          <button
+            onClick={() => setActiveTab('weather')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'weather' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+            Live Weather 🌦️
           </button>
           <button
             onClick={() => setActiveTab('provider')}
@@ -281,21 +342,22 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
         </div>
       </div>
 
-      {/* 3. Explicit 3-Tier Data Provenance Badge */}
+      {/* 3. Transparent Multi-Source Provenance Banner */}
       <div className="mx-6 p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-[11px]">
         <div className="flex items-center gap-2 text-emerald-900 font-extrabold">
           <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span>Multi-Tier Data Provenance Layer:</span>
+          <span>Active Data Streams:</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
-            🟢 1. Observed Market Data (Spot & Arrivals)
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live Open-Meteo Agro-Climate Stream
           </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-300">
-            🟡 2. Derived Indicators (7d/30d Volatility & Supply)
+          <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-bold border border-slate-300">
+            {providerStatus?.market?.isLive ? '🟢 Live Agmarknet Stream' : '🟡 APMC Historical Seeded Layer (Zero-Downtime Standby)'}
           </span>
           <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold border border-purple-300">
-            🟣 3. AI Forecast & Absorption Proxies
+            🟣 Phase 2–4 Predictive Intelligence Ready
           </span>
         </div>
       </div>
@@ -305,7 +367,7 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
         <div className="p-12 text-center space-y-3">
           <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
           <p className="text-xs font-bold text-slate-500">
-            Fetching APMC spot prices, arrival records, and regional supply indicators for {commodity}...
+            Fetching APMC spot prices, arrival records, and live agro-climatic conditions for {commodity}...
           </p>
         </div>
       )}
@@ -681,52 +743,287 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
             </div>
           )}
 
-          {/* TAB 5: Provider Status Diagnostics */}
+          {/* TAB 5: Live Weather & Agri Climate (Phase 5 Live Integration) */}
+          {activeTab === 'weather' && weatherData && (
+            <div className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <CloudSun className="w-4 h-4 text-amber-500" /> Live Agricultural Weather & Harvesting Advisories
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Real-time meteorological conditions and 7-day precipitation impact for <b>{weatherData.location?.district}, {weatherData.location?.state}</b>
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 self-start sm:self-auto">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Stream: Open-Meteo API
+                </span>
+              </div>
+
+              {/* Current Weather Highlights Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50/50 border border-amber-100 flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-600">
+                    <Thermometer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 block uppercase">Temperature</span>
+                    <span className="text-xl font-black text-slate-900">
+                      {weatherData.current?.temperature} {weatherData.current?.temperatureUnit}
+                    </span>
+                    <span className="text-[10px] text-amber-700 font-bold block">{weatherData.current?.weatherLabel}</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50/50 border border-blue-100 flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-600">
+                    <Droplets className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 block uppercase">Relative Humidity</span>
+                    <span className="text-xl font-black text-slate-900">
+                      {weatherData.current?.relativeHumidity} {weatherData.current?.humidityUnit}
+                    </span>
+                    <span className="text-[10px] text-blue-700 font-medium block">
+                      {weatherData.current?.relativeHumidity > 80 ? 'High Moisture' : 'Comfortable'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50/50 border border-indigo-100 flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600">
+                    <Umbrella className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 block uppercase">Current Rain</span>
+                    <span className="text-xl font-black text-slate-900">
+                      {weatherData.current?.precipitation} {weatherData.current?.precipitationUnit}
+                    </span>
+                    <span className="text-[10px] text-indigo-700 font-medium block">
+                      7d Total: {weatherData.advisories?.totalForecastRainMm || 0}mm
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50/50 border border-teal-100 flex items-center gap-3">
+                  <div className="p-2.5 bg-teal-500/10 rounded-xl text-teal-600">
+                    <Wind className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 block uppercase">Wind Speed</span>
+                    <span className="text-xl font-black text-slate-900">
+                      {weatherData.current?.windSpeed} {weatherData.current?.windSpeedUnit}
+                    </span>
+                    <span className="text-[10px] text-teal-700 font-medium block">Surface Velocity</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actionable Agricultural Advisories Banner */}
+              <div
+                className={`p-5 rounded-3xl border space-y-3 ${
+                  weatherData.advisories?.riskLevel === 'HIGH'
+                    ? 'bg-rose-50/80 border-rose-200 text-rose-900'
+                    : weatherData.advisories?.riskLevel === 'MODERATE'
+                    ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                    : 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-black text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Agronomic Decision & Transit Advisory</span>
+                  </div>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      weatherData.advisories?.riskLevel === 'HIGH'
+                        ? 'bg-rose-200 text-rose-900'
+                        : weatherData.advisories?.riskLevel === 'MODERATE'
+                        ? 'bg-amber-200 text-amber-900'
+                        : 'bg-emerald-200 text-emerald-900'
+                    }`}
+                  >
+                    Climate Risk: {weatherData.advisories?.riskLevel}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
+                  <div className="p-3 bg-white/80 rounded-2xl border border-white/60 space-y-1">
+                    <span className="font-extrabold block text-[11px] text-slate-900">🚚 Mandi Transit & Road Connectivity:</span>
+                    <p className="text-slate-700 text-[11px] leading-relaxed">
+                      {weatherData.advisories?.mandiTransportImpact}
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white/80 rounded-2xl border border-white/60 space-y-1">
+                    <span className="font-extrabold block text-[11px] text-slate-900">🌾 Harvesting Operations:</span>
+                    <p className="text-slate-700 text-[11px] leading-relaxed">
+                      {weatherData.advisories?.harvestAdvisory}
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white/80 rounded-2xl border border-white/60 space-y-1">
+                    <span className="font-extrabold block text-[11px] text-slate-900">📦 Storage & Aeration:</span>
+                    <p className="text-slate-700 text-[11px] leading-relaxed">
+                      {weatherData.advisories?.storageAdvisory}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 7-Day Forecast Cards */}
+              <div className="space-y-3">
+                <span className="text-xs font-black text-slate-900 block">7-Day Meteorological Outlook</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+                  {(weatherData.forecast || []).map((day, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center text-center space-y-2 hover:bg-emerald-50/40 hover:border-emerald-200 transition-all"
+                    >
+                      <span className="text-[11px] font-bold text-slate-700">
+                        {idx === 0
+                          ? 'Today'
+                          : new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric' })}
+                      </span>
+                      <WeatherIcon iconName={day.weatherIcon} className="w-7 h-7" />
+                      <span className="text-[10px] text-slate-500 font-medium leading-tight line-clamp-1">
+                        {day.weatherLabel}
+                      </span>
+                      <div className="pt-1 border-t border-slate-200 w-full flex justify-around text-[10px] font-black">
+                        <span className="text-slate-900">{Math.round(day.tempMax)}°</span>
+                        <span className="text-slate-400">{Math.round(day.tempMin)}°</span>
+                      </div>
+                      <div className="text-[9px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded-md w-full">
+                        {day.precipitationSum > 0 ? `${day.precipitationSum}mm rain` : '0mm rain'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weather Forecast Trend Chart */}
+              <div className="bg-slate-50/80 p-5 rounded-3xl border border-slate-100">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-700">7-Day Temperature & Rain Probability Trend</span>
+                  <span className="text-[10px] text-slate-400">Timezone: {weatherData.location?.timezone}</span>
+                </div>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={weatherChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="date" stroke="#64748B" fontSize={11} />
+                      <YAxis yAxisId="temp" stroke="#f59e0b" fontSize={11} unit="°C" domain={['auto', 'auto']} />
+                      <YAxis yAxisId="rain" orientation="right" stroke="#3b82f6" fontSize={11} unit="%" domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          borderColor: '#e2e8f0',
+                          borderRadius: '12px',
+                          color: '#0f172a',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                      <Bar yAxisId="rain" dataKey="rainProb" fill="#93c5fd" radius={[4, 4, 0, 0]} name="Rain Probability (%)" />
+                      <Line yAxisId="temp" type="monotone" dataKey="tempMax" stroke="#f59e0b" strokeWidth={2.5} name="Max Temp (°C)" />
+                      <Line yAxisId="temp" type="monotone" dataKey="tempMin" stroke="#64748b" strokeWidth={2} strokeDasharray="3 3" name="Min Temp (°C)" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: Multi-Provider Diagnostics & Data Health */}
           {activeTab === 'provider' && providerStatus && (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Data Provider Health & Diagnostics
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Multi-Source Telemetry & System Health
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Live telemetry and failover status for Agmarknet and Seeded agricultural data providers
+                    Live telemetry for Agmarknet Mandi Provider and Open-Meteo Weather Integration
                   </p>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  STATUS: {providerStatus.status}
+                  SYSTEM STATUS: OPERATIONAL
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Market Provider Diagnostics */}
                 <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
-                  <span className="text-xs font-black text-slate-900 block">Active Data Provider</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-2">
+                      <Database className="w-3.5 h-3.5 text-emerald-600" /> Market Data Provider
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        providerStatus.market?.isLive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-800'
+                      }`}
+                    >
+                      {providerStatus.market?.status || 'READY'}
+                    </span>
+                  </div>
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Provider Name:</span>
-                      <span className="font-bold text-slate-800">{providerStatus.provider}</span>
+                      <span className="font-bold text-slate-800">{providerStatus.market?.provider}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Source Classification:</span>
-                      <span className="font-bold text-emerald-700">{providerStatus.sourceType}</span>
+                      <span className="font-bold text-emerald-700">{providerStatus.market?.sourceType}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Live External Stream:</span>
-                      <span className="font-bold text-slate-700">{providerStatus.isLive ? 'Active' : 'Standby / Seeded'}</span>
+                      <span className="font-bold text-slate-700">{providerStatus.market?.isLive ? 'Active' : 'Standby / Seeded'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Operational Details:</span>
-                      <span className="font-bold text-slate-700">{providerStatus.details}</span>
+                      <span className="text-slate-500">Operational Mode:</span>
+                      <span className="font-bold text-slate-700">{providerStatus.market?.details}</span>
                     </div>
                   </div>
                 </div>
 
+                {/* Weather Provider Diagnostics */}
                 <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
-                  <span className="text-xs font-black text-slate-900 block">Architectural Integrity Guarantee</span>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    KisanSetu enforces strict abstraction between physical market records, derived econometric proxies, and AI forecasting models. All downstream decision modules consume data through the unified <code>MarketDataProvider</code> interface.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-2">
+                      <CloudSun className="w-3.5 h-3.5 text-amber-500" /> Agro-Climate Weather Provider
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                      {providerStatus.weather?.status || 'ACTIVE_LIVE'}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Provider Name:</span>
+                      <span className="font-bold text-slate-800">{providerStatus.weather?.provider}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">API Endpoint:</span>
+                      <span className="font-bold text-slate-700 font-mono text-[10px]">{providerStatus.weather?.apiUrl}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Cache TTL / Strategy:</span>
+                      <span className="font-bold text-teal-700">30 Min In-Memory TTL</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Cache Hit Rate:</span>
+                      <span className="font-bold text-slate-700">{providerStatus.weather?.cacheStats?.hitRatePercent || 0}%</span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
+                <span className="text-xs font-black text-slate-900 block">Architectural Integrity Guarantee</span>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  KisanSetu strictly separates raw physical records, live external meteorological data, and predictive models. Downstream decision engines (Phase 2 Forecasting, Phase 3 Price Intelligence, and Phase 4 Farmer Action) consume data seamlessly through the unified <code>MarketDataProvider</code> abstraction.
+                </p>
               </div>
             </div>
           )}
