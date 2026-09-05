@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
+import FarmerActionCard from '../components/FarmerActionCard';
 
 const AdminDashboard = () => {
   const [adminStats, setAdminStats] = useState(null);
@@ -125,6 +126,9 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Phase 4: Farmer Action Intelligence & Personalized Decision Support */}
+        <FarmerActionCard defaultCommodity="Wheat" defaultMandi="Karnal" />
 
         {/* Phase 3: AI Price Intelligence & Farmer Selling Recommendation Engine */}
         <PriceIntelligenceCard defaultCommodity="Tomato" defaultMandi="Karnal" />

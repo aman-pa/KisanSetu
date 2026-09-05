@@ -19,6 +19,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
+import FarmerActionCard from '../components/FarmerActionCard';
 
 const FarmerDashboard = () => {
   const [listings, setListings] = useState([]);
@@ -182,6 +183,9 @@ const FarmerDashboard = () => {
             Create Produce Listing →
           </Link>
         </div>
+
+        {/* Phase 4: Farmer Action Intelligence & Personalized Decision Support */}
+        <FarmerActionCard defaultCommodity="Wheat" defaultMandi="Karnal" />
 
         {/* Phase 3: AI Price Intelligence & Farmer Selling Recommendation Engine */}
         <PriceIntelligenceCard defaultCommodity="Tomato" defaultMandi="Karnal" />
