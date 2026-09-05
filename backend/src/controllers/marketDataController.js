@@ -77,7 +77,11 @@ const getHistoricalPrices = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getHistoricalPrices Error]', err.message);
+    console.error('[marketDataController:getHistoricalPrices Error]', {
+      commodity: req.query.commodity,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to fetch historical market prices.',
@@ -109,7 +113,11 @@ const getCurrentPrices = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getCurrentPrices Error]', err.message);
+    console.error('[marketDataController:getCurrentPrices Error]', {
+      commodity: req.query.commodity,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to fetch current market prices.',
@@ -155,7 +163,11 @@ const getArrivals = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getArrivals Error]', err.message);
+    console.error('[marketDataController:getArrivals Error]', {
+      commodity: req.query.commodity,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to fetch commodity arrivals.',
@@ -186,7 +198,11 @@ const getRegionalSupplyIndicators = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getRegionalSupplyIndicators Error]', err.message);
+    console.error('[marketDataController:getRegionalSupplyIndicators Error]', {
+      commodity: req.query.commodity,
+      district: req.query.district,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to compute regional supply indicators.',
@@ -209,7 +225,11 @@ const getWeatherData = async (req, res) => {
       weather: weatherReport,
     });
   } catch (err) {
-    console.error('[getWeatherData Error]', err.message);
+    console.error('[marketDataController:getWeatherData Error]', {
+      district: req.query.district,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(500).json({
       success: false,
       message: err.message || 'Failed to fetch live agricultural weather data.',
@@ -232,6 +252,7 @@ const getProviderStatus = async (req, res) => {
       providerStatus: combinedStatus.market,
     });
   } catch (err) {
+    console.error('[marketDataController:getProviderStatus Error]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };

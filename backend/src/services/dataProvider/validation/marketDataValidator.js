@@ -6,6 +6,40 @@
 
 class MarketDataValidator {
   /**
+   * Robust parser for dates formatted as DD/MM/YYYY (e.g. 05/09/2026), DD-MM-YYYY, or ISO formats.
+   * @param {string|Date} dateInput
+   * @returns {Date}
+   */
+  static parseArrivalDate(dateInput) {
+    if (!dateInput) return new Date();
+    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) return dateInput;
+
+    const str = String(dateInput).trim();
+    // Match DD/MM/YYYY or DD-MM-YYYY (Agmarknet official date format)
+    const ddmmyyyyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const day = parseInt(ddmmyyyyMatch[1], 10);
+      const month = parseInt(ddmmyyyyMatch[2], 10) - 1; // 0-indexed in JS
+      const year = parseInt(ddmmyyyyMatch[3], 10);
+      const parsed = new Date(year, month, day);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+
+    // Match YYYY-MM-DD (ISO format)
+    const yyyymmddMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (yyyymmddMatch) {
+      const year = parseInt(yyyymmddMatch[1], 10);
+      const month = parseInt(yyyymmddMatch[2], 10) - 1;
+      const day = parseInt(yyyymmddMatch[3], 10);
+      const parsed = new Date(year, month, day);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+
+    const fallback = new Date(str);
+    return isNaN(fallback.getTime()) ? new Date() : fallback;
+  }
+
+  /**
    * Validate raw Agmarknet / data.gov.in price record.
    * @param {Object} raw
    * @returns {{ isValid: boolean, sanitized: Object|null, errors: Array<string> }}
@@ -40,7 +74,7 @@ class MarketDataValidator {
       errors.push(`Invalid maxPrice: ${raw.max_price || raw.maxPrice}`);
     }
 
-    // Logic consistency: minPrice <= modalPrice <= maxPrice (auto-correct inverted spreads if close)
+    // Logic consistency: minPrice <= modalPrice <= maxPrice
     let finalMin = minPrice > 0 ? minPrice : modalPrice;
     let finalMax = maxPrice > 0 ? maxPrice : modalPrice;
     let finalModal = modalPrice;
@@ -48,11 +82,8 @@ class MarketDataValidator {
     if (finalMin > finalModal) finalMin = finalModal;
     if (finalMax < finalModal) finalMax = finalModal;
 
-    // Parse arrival date
-    let arrivalDate = new Date(raw.arrival_date || raw.arrivalDate || Date.now());
-    if (isNaN(arrivalDate.getTime())) {
-      arrivalDate = new Date();
-    }
+    // Parse arrival date accurately (DD/MM/YYYY support)
+    const arrivalDate = this.parseArrivalDate(raw.arrival_date || raw.arrivalDate);
 
     if (errors.length > 0) {
       return { isValid: false, sanitized: null, errors };
@@ -100,10 +131,7 @@ class MarketDataValidator {
       errors.push(`Invalid arrivalQuantity: ${raw.arrival_quantity || raw.arrivalQuantity}`);
     }
 
-    let arrivalDate = new Date(raw.arrival_date || raw.arrivalDate || Date.now());
-    if (isNaN(arrivalDate.getTime())) {
-      arrivalDate = new Date();
-    }
+    const arrivalDate = this.parseArrivalDate(raw.arrival_date || raw.arrivalDate);
 
     if (errors.length > 0) {
       return { isValid: false, sanitized: null, errors };

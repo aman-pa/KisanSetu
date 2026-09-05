@@ -109,68 +109,100 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
   const fetchMarketData = async () => {
     setLoading(true);
     setError('');
+
     try {
-      // 1. Fetch Current Snapshots
-      const currentRes = await API.get('/market-data/prices/current', {
-        params: { commodity, market: market || undefined },
-      });
-      if (currentRes.data.success) {
-        setSnapshotsData(currentRes.data.snapshots || []);
+      // Execute all queries concurrently in parallel
+      const [currentRes, pricesRes, arrivalsRes, supplyRes, weatherRes, statusRes] = await Promise.allSettled([
+        API.get('/market-data/prices/current', {
+          params: { commodity, market: market || undefined },
+        }),
+        API.get('/market-data/prices', {
+          params: {
+            commodity,
+            market: market || undefined,
+            limit: limitDays,
+          },
+        }),
+        API.get('/market-data/arrivals', {
+          params: {
+            commodity,
+            market: market || undefined,
+            limit: limitDays,
+          },
+        }),
+        API.get('/market-data/supply', {
+          params: { commodity },
+        }),
+        API.get('/market-data/weather', {
+          params: { market: market || 'Karnal Mandi' },
+        }),
+        API.get('/market-data/providers/status'),
+      ]);
+
+      let hasCoreData = false;
+
+      // 1. Process Current Snapshots
+      if (currentRes.status === 'fulfilled' && currentRes.value?.data?.success) {
+        setSnapshotsData(currentRes.value.data.snapshots || []);
+        hasCoreData = true;
+      } else {
+        console.warn('[MarketDataCard] Snapshots fetch failed:', currentRes.reason?.message);
       }
 
-      // 2. Fetch Historical Prices
-      const pricesRes = await API.get('/market-data/prices', {
-        params: {
-          commodity,
-          market: market || undefined,
-          limit: limitDays,
-        },
-      });
-      if (pricesRes.data.success) {
+      // 2. Process Historical Prices
+      if (pricesRes.status === 'fulfilled' && pricesRes.value?.data?.success) {
         setPricesData({
-          records: pricesRes.data.records || [],
-          statistics: pricesRes.data.statistics || {},
+          records: pricesRes.value.data.records || [],
+          statistics: pricesRes.value.data.statistics || {},
         });
+        hasCoreData = true;
+      } else {
+        console.warn('[MarketDataCard] Prices fetch failed:', pricesRes.reason?.message);
       }
 
-      // 3. Fetch Mandi Arrivals
-      const arrivalsRes = await API.get('/market-data/arrivals', {
-        params: {
-          commodity,
-          market: market || undefined,
-          limit: limitDays,
-        },
-      });
-      if (arrivalsRes.data.success) {
+      // 3. Process Mandi Arrivals
+      if (arrivalsRes.status === 'fulfilled' && arrivalsRes.value?.data?.success) {
         setArrivalsData({
-          arrivals: arrivalsRes.data.arrivals || [],
-          statistics: arrivalsRes.data.statistics || {},
+          arrivals: arrivalsRes.value.data.arrivals || [],
+          statistics: arrivalsRes.value.data.statistics || {},
         });
+      } else {
+        console.warn('[MarketDataCard] Arrivals fetch failed:', arrivalsRes.reason?.message);
       }
 
-      // 4. Fetch Regional Supply Indicators
-      const supplyRes = await API.get('/market-data/supply', {
-        params: { commodity },
-      });
-      if (supplyRes.data.success) {
-        setSupplyData(supplyRes.data.indicators || []);
+      // 4. Process Regional Supply Indicators
+      if (supplyRes.status === 'fulfilled' && supplyRes.value?.data?.success) {
+        setSupplyData(supplyRes.value.data.indicators || []);
+      } else {
+        console.warn('[MarketDataCard] Supply indicators fetch failed:', supplyRes.reason?.message);
       }
 
-      // 5. Fetch Live Weather Data (Phase 5)
-      const weatherRes = await API.get('/market-data/weather', {
-        params: { market: market || 'Karnal Mandi' },
-      });
-      if (weatherRes.data.success) {
-        setWeatherData(weatherRes.data.weather);
+      // 5. Process Live Weather Data (Phase 5)
+      if (weatherRes.status === 'fulfilled' && weatherRes.value?.data?.success) {
+        setWeatherData(weatherRes.value.data.weather || null);
+      } else {
+        console.warn('[MarketDataCard] Weather fetch failed:', weatherRes.reason?.message);
       }
 
-      // 6. Fetch Multi-Provider Diagnostics
-      const statusRes = await API.get('/market-data/providers/status');
-      if (statusRes.data.success) {
-        setProviderStatus(statusRes.data);
+      // 6. Process Multi-Provider Diagnostics
+      if (statusRes.status === 'fulfilled' && statusRes.value?.data?.success) {
+        setProviderStatus(statusRes.value.data || null);
+      } else {
+        console.warn('[MarketDataCard] Provider status fetch failed:', statusRes.reason?.message);
+      }
+
+      // Only display global error if both core price endpoints failed
+      if (!hasCoreData) {
+        const errorMsg =
+          currentRes.reason?.response?.data?.message ||
+          pricesRes.reason?.response?.data?.message ||
+          currentRes.reason?.message ||
+          'Unable to connect to Agricultural Market Data Layer. Check server status on port 5000.';
+        setError(`Agricultural Data Layer: ${errorMsg}`);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch market data from Agricultural Data Layer.');
+      console.error('[MarketDataCard Error]', err);
+      setError(err.response?.data?.message || err.message || 'Failed to fetch market data from Agricultural Data Layer.');
     } finally {
       setLoading(false);
     }
@@ -374,9 +406,17 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
 
       {/* Error State */}
       {error && !loading && (
-        <div className="mx-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-2xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-          <span>{error}</span>
+        <div className="mx-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-2xl flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchMarketData}
+            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold transition-all"
+          >
+            Retry
+          </button>
         </div>
       )}
 

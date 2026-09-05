@@ -12,19 +12,45 @@ const MarketDataNormalizer = require('../normalization/marketDataNormalizer');
 class AgmarknetLiveProvider extends MarketDataProvider {
   constructor(options = {}) {
     super('AgmarknetLiveProvider', DATA_SOURCES.LIVE_EXTERNAL);
-    this.apiKey = options.apiKey || process.env.AGMARKNET_API_KEY || process.env.DATA_GOV_IN_API_KEY || null;
+    this.apiKey = options.apiKey || null;
     this.apiUrl = options.apiUrl || process.env.AGMARKNET_API_URL || 'https://api.data.gov.in/resource';
     this.resourceId = options.resourceId || process.env.AGMARKNET_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
     this.timeoutMs = options.timeoutMs || 8000;
     this.cache = new SimpleTtlCache(options.cacheTtlSeconds || 900); // 15 min cache
     this.lastSuccessfulFetch = null;
     this.lastFailure = null;
+    this._seededFallback = null;
   }
 
+  /**
+   * Lazily acquire SeededDataProvider instance for graceful fallback.
+   */
+  getSeededFallback() {
+    if (!this._seededFallback) {
+      const SeededDataProvider = require('../SeededDataProvider');
+      this._seededFallback = new SeededDataProvider();
+    }
+    return this._seededFallback;
+  }
+
+  /**
+   * Dynamically resolve API key from instance options or environment variables.
+   */
+  getApiKey() {
+    return this.apiKey || process.env.AGMARKNET_API_KEY || process.env.DATA_GOV_IN_API_KEY || null;
+  }
+
+  /**
+   * Check if live Agmarknet API credentials are fully configured.
+   */
   isConfigured() {
-    return Boolean(this.apiKey && this.resourceId && this.apiKey !== 'your_datagov_api_key_here');
+    const key = this.getApiKey();
+    return Boolean(key && this.resourceId && key !== 'your_datagov_api_key_here');
   }
 
+  /**
+   * Return telemetry and connection health diagnostics (never exposing secret keys).
+   */
   async getProviderStatus() {
     const configured = this.isConfigured();
     return {
@@ -36,17 +62,17 @@ class AgmarknetLiveProvider extends MarketDataProvider {
       lastFailure: this.lastFailure,
       cacheStats: this.cache.getStats(),
       details: configured
-        ? `Connected to data.gov.in resource ${this.resourceId}`
+        ? `Connected to live data.gov.in resource ${this.resourceId}`
         : 'API key not configured in environment. Seeded database provider actively serving APMC records.',
     };
   }
 
   /**
-   * Fetch historical/spot prices with validation, normalization, and TTL cache.
+   * Fetch historical/filtered prices with validation, normalization, and TTL cache.
    */
   async getHistoricalPrices(query = {}) {
     if (!this.isConfigured()) {
-      throw new Error('AgmarknetLiveProvider is not configured with valid API key.');
+      return this.getSeededFallback().getHistoricalPrices(query);
     }
 
     const cacheKey = SimpleTtlCache.makeKey('agmarknet_prices', query);
@@ -57,7 +83,7 @@ class AgmarknetLiveProvider extends MarketDataProvider {
 
     try {
       const params = {
-        'api-key': this.apiKey,
+        'api-key': this.getApiKey(),
         format: 'json',
         offset: ((Number(query.page) || 1) - 1) * (Number(query.limit) || 50),
         limit: Number(query.limit) || 50,
@@ -73,7 +99,7 @@ class AgmarknetLiveProvider extends MarketDataProvider {
         timeout: this.timeoutMs,
       });
 
-      const rawRecords = response.data.records || [];
+      const rawRecords = response.data?.records || [];
       const normalized = MarketDataNormalizer.normalizePrices(rawRecords, {
         source: DATA_SOURCES.LIVE_EXTERNAL,
         sourceTimestamp: new Date().toISOString(),
@@ -98,11 +124,13 @@ class AgmarknetLiveProvider extends MarketDataProvider {
           latestDate: normalized.records[normalized.records.length - 1]?.arrivalDate || null,
         },
         metadata: {
-          total: response.data.total || normalized.validCount,
+          total: response.data?.total || normalized.validCount,
           page: Number(query.page) || 1,
           limit: Number(query.limit) || 50,
           source: DATA_SOURCES.LIVE_EXTERNAL,
+          isLive: true,
           isSynthetic: false,
+          provider: this.providerName,
           retrievedAt: new Date().toISOString(),
         },
       };
@@ -113,26 +141,119 @@ class AgmarknetLiveProvider extends MarketDataProvider {
       return result;
     } catch (err) {
       this.lastFailure = err.message;
-      throw new Error(`AgmarknetLiveProvider request failed: ${err.message}`);
+      console.warn(`[AgmarknetLiveProvider Warning] Live query failed (${err.message}). Falling back to SeededDataProvider.`);
+      return this.getSeededFallback().getHistoricalPrices(query);
     }
   }
 
+  /**
+   * Get latest modal price snapshots per commodity and market.
+   * Returns structured { snapshots: [...], metadata: {...} } contract matching frontend expectation.
+   */
   async getCurrentPrices(query = {}) {
-    return this.getHistoricalPrices({ ...query, limit: 10 });
+    if (!this.isConfigured()) {
+      return this.getSeededFallback().getCurrentPrices(query);
+    }
+
+    const cacheKey = SimpleTtlCache.makeKey('agmarknet_current', query);
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const params = {
+        'api-key': this.getApiKey(),
+        format: 'json',
+        limit: 50,
+      };
+
+      if (query.commodity) params['filters[commodity]'] = query.commodity;
+      if (query.state) params['filters[state]'] = query.state;
+      if (query.district) params['filters[district]'] = query.district;
+      if (query.market) params['filters[market]'] = query.market;
+
+      const response = await axios.get(`${this.apiUrl}/${this.resourceId}`, {
+        params,
+        timeout: this.timeoutMs,
+      });
+
+      const rawRecords = response.data?.records || [];
+      const normalized = MarketDataNormalizer.normalizePrices(rawRecords, {
+        source: DATA_SOURCES.LIVE_EXTERNAL,
+        sourceTimestamp: new Date().toISOString(),
+      });
+
+      // Group records by market taking latest observation per market
+      const marketMap = {};
+      normalized.records.forEach((r) => {
+        const key = `${r.market}_${r.commodity}`.toLowerCase();
+        if (!marketMap[key] || new Date(r.arrivalDate) > new Date(marketMap[key].arrivalDate)) {
+          marketMap[key] = r;
+        }
+      });
+
+      const snapshots = Object.values(marketMap).map((r) => ({
+        commodity: r.commodity,
+        market: r.market,
+        district: r.district,
+        state: r.state,
+        variety: r.variety,
+        grade: r.grade,
+        currentModalPrice: r.modalPrice,
+        currentModalPricePerKg: r.modalPricePerKg,
+        minPrice: r.minPrice,
+        maxPrice: r.maxPrice,
+        change7d: null, // Unfabricated: live snapshot does not invent unobserved historical delta
+        changePercent: null,
+        trend: 'LIVE_AUCTION',
+        arrivalDate: r.arrivalDate,
+        observationDate: r.arrivalDate,
+        source: DATA_SOURCES.LIVE_EXTERNAL,
+        isSynthetic: false,
+        isLive: true,
+      }));
+
+      const result = {
+        snapshots,
+        count: snapshots.length,
+        metadata: {
+          total: snapshots.length,
+          source: DATA_SOURCES.LIVE_EXTERNAL,
+          isSynthetic: false,
+          isLive: true,
+          provider: this.providerName,
+          retrievedAt: new Date().toISOString(),
+        },
+      };
+
+      this.cache.set(cacheKey, result);
+      this.lastSuccessfulFetch = new Date().toISOString();
+      this.lastFailure = null;
+      return result;
+    } catch (err) {
+      this.lastFailure = err.message;
+      console.warn(`[AgmarknetLiveProvider Warning] getCurrentPrices failed (${err.message}). Falling back to SeededDataProvider.`);
+      return this.getSeededFallback().getCurrentPrices(query);
+    }
   }
 
+  /**
+   * Fetch arrival volumes. Falls back to SeededDataProvider if external arrivals series is unindexed.
+   */
   async getArrivals(query = {}) {
     if (!this.isConfigured()) {
-      throw new Error('AgmarknetLiveProvider is not configured.');
+      return this.getSeededFallback().getArrivals(query);
     }
-    return { arrivals: [], statistics: {}, metadata: { source: DATA_SOURCES.LIVE_EXTERNAL, isSynthetic: false } };
+    // data.gov.in daily prices endpoint provides prices and arrival dates; volume series aggregates via seeded/historical db
+    return this.getSeededFallback().getArrivals(query);
   }
 
+  /**
+   * Regional supply velocity indicators. Uses SeededDataProvider historical baselines.
+   */
   async getRegionalSupplyIndicators(query = {}) {
-    if (!this.isConfigured()) {
-      throw new Error('AgmarknetLiveProvider is not configured.');
-    }
-    return { indicators: [], metadata: { source: DATA_SOURCES.LIVE_EXTERNAL, isSynthetic: false } };
+    return this.getSeededFallback().getRegionalSupplyIndicators(query);
   }
 }
 
