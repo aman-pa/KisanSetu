@@ -1,6 +1,6 @@
 /**
  * marketDataRoutes.js
- * Express routing for agricultural market data layer endpoints.
+ * Express routing for agricultural market data layer and live weather endpoints.
  */
 
 const express = require('express');
@@ -10,6 +10,7 @@ const {
   getCurrentPrices,
   getArrivals,
   getRegionalSupplyIndicators,
+  getWeatherData,
   getProviderStatus,
 } = require('../controllers/marketDataController');
 
@@ -27,7 +28,11 @@ router.get('/supply', getRegionalSupplyIndicators);
 const { getDemandForecast } = require('../controllers/aiProxyController');
 router.get('/forecast', getDemandForecast);
 
-// Data Provider Diagnostics
+// Live Agricultural Weather & Harvesting Advisories (Phase 5)
+router.get('/weather', getWeatherData);
+
+// Data Provider Diagnostics & Multi-Source Telemetry
 router.get('/providers/status', getProviderStatus);
+router.get('/provider-status', getProviderStatus); // legacy alias
 
 module.exports = router;

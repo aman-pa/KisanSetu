@@ -4,7 +4,12 @@
  * Validates inputs, routes queries to active data providers, and delivers normalized responses.
  */
 
-const { getActiveProvider, DATA_SOURCES } = require('../services/dataProvider');
+const {
+  getActiveProvider,
+  getWeatherData: fetchWeatherData,
+  getCombinedProviderStatus,
+  DATA_SOURCES,
+} = require('../services/dataProvider');
 
 // Input validation helper
 const validateDateParams = (from, to) => {
@@ -72,7 +77,11 @@ const getHistoricalPrices = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getHistoricalPrices Error]', err.message);
+    console.error('[marketDataController:getHistoricalPrices Error]', {
+      commodity: req.query.commodity,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to fetch historical market prices.',
@@ -104,7 +113,11 @@ const getCurrentPrices = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getCurrentPrices Error]', err.message);
+    console.error('[marketDataController:getCurrentPrices Error]', {
+      commodity: req.query.commodity,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to fetch current market prices.',
@@ -150,7 +163,11 @@ const getArrivals = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getArrivals Error]', err.message);
+    console.error('[marketDataController:getArrivals Error]', {
+      commodity: req.query.commodity,
+      market: req.query.market,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to fetch commodity arrivals.',
@@ -181,7 +198,11 @@ const getRegionalSupplyIndicators = async (req, res) => {
       metadata: result.metadata,
     });
   } catch (err) {
-    console.error('[getRegionalSupplyIndicators Error]', err.message);
+    console.error('[marketDataController:getRegionalSupplyIndicators Error]', {
+      commodity: req.query.commodity,
+      district: req.query.district,
+      error: err.message,
+    });
     res.status(400).json({
       success: false,
       message: err.message || 'Failed to compute regional supply indicators.',
@@ -190,21 +211,48 @@ const getRegionalSupplyIndicators = async (req, res) => {
 };
 
 /**
- * @route   GET /api/market-data/provider-status
- * @desc    Get active and standby provider configuration status
+ * @route   GET /api/market-data/weather
+ * @desc    Get live agricultural weather conditions, 7-day forecast, and crop harvesting/transit advisories
+ * @access  Public
+ */
+const getWeatherData = async (req, res) => {
+  try {
+    const { district, state, market, lat, lon } = req.query;
+    const weatherReport = await fetchWeatherData({ district, state, market, lat, lon });
+
+    res.json({
+      success: true,
+      weather: weatherReport,
+    });
+  } catch (err) {
+    console.error('[marketDataController:getWeatherData Error]', {
+      district: req.query.district,
+      market: req.query.market,
+      error: err.message,
+    });
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to fetch live agricultural weather data.',
+    });
+  }
+};
+
+/**
+ * @route   GET /api/market-data/providers/status
+ * @desc    Get comprehensive multi-provider telemetry (Market Data + Live Weather)
  * @access  Public
  */
 const getProviderStatus = async (req, res) => {
   try {
-    const provider = getActiveProvider();
-    const status = await provider.getProviderStatus();
+    const combinedStatus = await getCombinedProviderStatus();
 
     res.json({
-      success: true,
-      providerStatus: status,
-      availableSources: DATA_SOURCES,
+      ...combinedStatus,
+      // Backward-compatibility alias
+      providerStatus: combinedStatus.market,
     });
   } catch (err) {
+    console.error('[marketDataController:getProviderStatus Error]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -214,5 +262,6 @@ module.exports = {
   getCurrentPrices,
   getArrivals,
   getRegionalSupplyIndicators,
+  getWeatherData,
   getProviderStatus,
 };
