@@ -31,6 +31,7 @@ const DashboardLayout = ({ children }) => {
       case 'FARMER':
         return [
           { label: 'Overview', path: '/farmer/dashboard', icon: LayoutDashboard },
+          { label: 'Market Intelligence', path: '/market-intelligence', icon: BarChart3 },
           { label: 'Add Produce Listing', path: '/farmer/add-produce', icon: PackagePlus },
           { label: 'My Listings', path: '/farmer/produce', icon: Package },
           { label: 'Demand Forecast', path: '/farmer/demand-forecast', icon: TrendingUp },
@@ -40,9 +41,10 @@ const DashboardLayout = ({ children }) => {
       case 'FPO':
         return [
           { label: 'FPO Overview', path: '/fpo/dashboard', icon: LayoutDashboard },
+          { label: 'Market Intelligence', path: '/market-intelligence', icon: BarChart3 },
           { label: 'Member Farmers', path: '/fpo/dashboard', icon: Users },
           { label: 'Bulk Listings', path: '/farmer/add-produce', icon: PackagePlus },
-          { label: 'Regional Supply', path: '/farmer/demand-forecast', icon: BarChart3 },
+          { label: 'Regional Supply', path: '/farmer/demand-forecast', icon: TrendingUp },
         ];
       case 'BULK_BUYER':
         return [

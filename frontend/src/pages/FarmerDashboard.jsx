@@ -20,6 +20,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
 import FarmerActionCard from '../components/FarmerActionCard';
+import MarketDataCard from '../components/MarketDataCard';
 
 const FarmerDashboard = () => {
   const [listings, setListings] = useState([]);
@@ -186,6 +187,9 @@ const FarmerDashboard = () => {
 
         {/* Phase 4: Farmer Action Intelligence & Personalized Decision Support */}
         <FarmerActionCard defaultCommodity="Wheat" defaultMandi="Karnal" />
+
+        {/* Phase 1: Agricultural Market Data Layer — Spot Prices & Mandi Arrivals */}
+        <MarketDataCard defaultCommodity="Tomato" defaultMarket="" />
 
         {/* Phase 3: AI Price Intelligence & Farmer Selling Recommendation Engine */}
         <PriceIntelligenceCard defaultCommodity="Tomato" defaultMandi="Karnal" />
