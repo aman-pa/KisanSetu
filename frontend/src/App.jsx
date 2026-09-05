@@ -17,6 +17,7 @@ import BulkBuyerDashboard from './pages/BulkBuyerDashboard';
 import LogisticsDashboard from './pages/LogisticsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import BatchTraceabilityPage from './pages/BatchTraceabilityPage';
+import MarketIntelligencePage from './pages/MarketIntelligencePage';
 
 function App() {
   return (
@@ -28,15 +29,17 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/marketplace" element={<ConsumerMarketplace />} />
+          <Route path="/market-intelligence" element={<MarketIntelligencePage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/cart" element={<CartCheckoutPage />} />
 
           {/* Role Dashboards */}
           <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
+          <Route path="/farmer/market-intelligence" element={<MarketIntelligencePage />} />
           <Route path="/farmer/add-produce" element={<AddProducePage />} />
           <Route path="/farmer/produce" element={<FarmerDashboard />} />
-          <Route path="/farmer/demand-forecast" element={<FarmerDashboard />} />
-          <Route path="/farmer/price-recommendation" element={<AddProducePage />} />
+          <Route path="/farmer/demand-forecast" element={<MarketIntelligencePage />} />
+          <Route path="/farmer/price-recommendation" element={<MarketIntelligencePage />} />
           <Route path="/farmer/quality" element={<FarmerDashboard />} />
 
           <Route path="/fpo/dashboard" element={<FPODashboard />} />

@@ -24,6 +24,7 @@ import {
   CreditCard,
   Truck,
   Sparkles,
+  TrendingUp,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -238,6 +239,9 @@ const Navbar = () => {
             <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
               <Link to="/marketplace" className="hover:text-agri-primary transition-colors flex items-center gap-1.5 font-bold">
                 <Search className="w-4 h-4 text-agri-accent" /> Marketplace
+              </Link>
+              <Link to="/market-intelligence" className="hover:text-agri-primary transition-colors flex items-center gap-1.5 font-bold">
+                <TrendingUp className="w-4 h-4 text-emerald-600" /> Market Intelligence
               </Link>
               <Link to="/trace/KS-BATCH-994821" className="hover:text-agri-primary transition-colors flex items-center gap-1.5 font-bold">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" /> Batch QR Trace
