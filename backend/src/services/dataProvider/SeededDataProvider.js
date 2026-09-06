@@ -96,6 +96,7 @@ class SeededDataProvider extends MarketDataProvider {
         maxPricePerKg: Math.round((r.maxPrice / 100) * 100) / 100,
         source: r.source || DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: r.isSynthetic !== undefined ? r.isSynthetic : true,
+        isLive: false,
       })),
       statistics: {
         totalRecords: total,
@@ -112,6 +113,8 @@ class SeededDataProvider extends MarketDataProvider {
         totalPages: Math.ceil(total / limit) || 1,
         source: DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: true,
+        isLive: false,
+        provider: this.providerName,
         disclaimer: 'Curated agricultural demo market dataset for SIH 2026 prototyping and ML model validation.',
         retrievedAt: new Date().toISOString(),
       },
@@ -204,6 +207,7 @@ class SeededDataProvider extends MarketDataProvider {
         changePercent,
         source: s.source || DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: s.isSynthetic !== undefined ? s.isSynthetic : true,
+        isLive: false,
       };
     });
 
@@ -213,6 +217,8 @@ class SeededDataProvider extends MarketDataProvider {
         totalSnapshots: enrichedSnapshots.length,
         source: DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: true,
+        isLive: false,
+        provider: this.providerName,
         retrievedAt: new Date().toISOString(),
       },
     };
@@ -287,6 +293,7 @@ class SeededDataProvider extends MarketDataProvider {
         ...a,
         source: a.source || DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: a.isSynthetic !== undefined ? a.isSynthetic : true,
+        isLive: false,
       })),
       statistics: {
         totalRecords: total,
@@ -299,6 +306,8 @@ class SeededDataProvider extends MarketDataProvider {
         totalPages: Math.ceil(total / limit) || 1,
         source: DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: true,
+        isLive: false,
+        provider: this.providerName,
         retrievedAt: new Date().toISOString(),
       },
     };
@@ -384,6 +393,7 @@ class SeededDataProvider extends MarketDataProvider {
         latestArrivalDate: item.latestArrivalDate,
         source: DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: true,
+        isLive: false,
       };
     });
 
@@ -393,6 +403,8 @@ class SeededDataProvider extends MarketDataProvider {
         totalRegionsAnalyzed: indicators.length,
         source: DATA_SOURCES.SEEDED_DEMO,
         isSynthetic: true,
+        isLive: false,
+        provider: this.providerName,
         computedAt: new Date().toISOString(),
       },
     };

@@ -17,6 +17,9 @@ class AgmarknetLiveProvider extends MarketDataProvider {
     this.resourceId = options.resourceId || process.env.AGMARKNET_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
     this.timeoutMs = options.timeoutMs || 8000;
     this.cache = new SimpleTtlCache(options.cacheTtlSeconds || 900); // 15 min cache
+    this.rateLimitCooldownMs = options.rateLimitCooldownMs || 60000; // 60s cooldown on 429
+    this.rateLimitUntil = null;
+    this.inFlightRequests = new Map();
     this.lastSuccessfulFetch = null;
     this.lastFailure = null;
     this._seededFallback = null;
@@ -49,20 +52,65 @@ class AgmarknetLiveProvider extends MarketDataProvider {
   }
 
   /**
+   * Check if live provider is currently in a 429 rate limit cooldown window.
+   */
+  isRateLimited() {
+    return Boolean(this.rateLimitUntil && Date.now() < this.rateLimitUntil);
+  }
+
+  /**
+   * Handle 429 rate limiting by setting a cooldown window.
+   */
+  handleRateLimit(err) {
+    this.rateLimitUntil = Date.now() + this.rateLimitCooldownMs;
+    const retryTime = new Date(this.rateLimitUntil).toLocaleTimeString();
+    this.lastFailure = `HTTP 429: Rate limit exceeded (cooldown active until ${retryTime})`;
+    console.warn(`[AgmarknetLiveProvider Warning] Rate limit encountered (HTTP 429). Activating ${this.rateLimitCooldownMs / 1000}s cooldown and falling back to SeededDataProvider.`);
+  }
+
+  /**
    * Return telemetry and connection health diagnostics (never exposing secret keys).
+   * Truthfully separates provider configuration from active live runtime health.
    */
   async getProviderStatus() {
     const configured = this.isConfigured();
+    const inCooldown = this.isRateLimited();
+    const isHealthy = configured && !inCooldown && !this.lastFailure;
+
+    let status = 'UNCONFIGURED_STANDBY';
+    let currentDataSource = DATA_SOURCES.SEEDED_DEMO;
+
+    if (configured) {
+      if (inCooldown) {
+        status = 'DEGRADED_RATE_LIMITED';
+        currentDataSource = DATA_SOURCES.SEEDED_DEMO;
+      } else if (this.lastFailure) {
+        status = 'DEGRADED_FALLBACK';
+        currentDataSource = DATA_SOURCES.SEEDED_DEMO;
+      } else {
+        status = 'ACTIVE_LIVE';
+        currentDataSource = DATA_SOURCES.LIVE_EXTERNAL;
+      }
+    }
+
     return {
       provider: this.providerName,
-      isLive: configured,
-      sourceType: configured ? DATA_SOURCES.LIVE_EXTERNAL : DATA_SOURCES.SEEDED_DEMO,
-      status: configured ? (this.lastFailure ? 'DEGRADED_LIVE' : 'ACTIVE_CONFIGURED') : 'UNCONFIGURED_STANDBY',
+      providerConfigured: configured,
+      liveFetchHealthy: Boolean(isHealthy),
+      isLive: Boolean(isHealthy),
+      sourceType: currentDataSource,
+      currentDataSource: currentDataSource,
+      status: status,
       lastSuccessfulFetch: this.lastSuccessfulFetch,
       lastFailure: this.lastFailure,
+      rateLimitCooldownUntil: inCooldown ? new Date(this.rateLimitUntil).toISOString() : null,
       cacheStats: this.cache.getStats(),
       details: configured
-        ? `Connected to live data.gov.in resource ${this.resourceId}`
+        ? (inCooldown
+            ? `Live source rate-limited (HTTP 429). Standby fallback active until ${new Date(this.rateLimitUntil).toLocaleTimeString()}.`
+            : (this.lastFailure
+                ? `Live fetch degraded (${this.lastFailure}). Seeded fallback active.`
+                : `Connected to live data.gov.in resource ${this.resourceId}`))
         : 'API key not configured in environment. Seeded database provider actively serving APMC records.',
     };
   }
@@ -81,69 +129,90 @@ class AgmarknetLiveProvider extends MarketDataProvider {
       return cached;
     }
 
-    try {
-      const params = {
-        'api-key': this.getApiKey(),
-        format: 'json',
-        offset: ((Number(query.page) || 1) - 1) * (Number(query.limit) || 50),
-        limit: Number(query.limit) || 50,
-      };
-
-      if (query.commodity) params['filters[commodity]'] = query.commodity;
-      if (query.state) params['filters[state]'] = query.state;
-      if (query.district) params['filters[district]'] = query.district;
-      if (query.market) params['filters[market]'] = query.market;
-
-      const response = await axios.get(`${this.apiUrl}/${this.resourceId}`, {
-        params,
-        timeout: this.timeoutMs,
-      });
-
-      const rawRecords = response.data?.records || [];
-      const normalized = MarketDataNormalizer.normalizePrices(rawRecords, {
-        source: DATA_SOURCES.LIVE_EXTERNAL,
-        sourceTimestamp: new Date().toISOString(),
-      });
-
-      // Compute statistics
-      const prices = normalized.records.map((r) => r.modalPrice);
-      const avgPrice = prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0;
-      const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-      const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-
-      const result = {
-        records: normalized.records,
-        statistics: {
-          totalRecords: normalized.validCount,
-          rejectedRecords: normalized.rejectedCount,
-          avgModalPrice: avgPrice,
-          avgModalPricePerKg: Number((avgPrice / 100).toFixed(2)),
-          minObservedPrice: minPrice,
-          maxObservedPrice: maxPrice,
-          earliestDate: normalized.records[0]?.arrivalDate || null,
-          latestDate: normalized.records[normalized.records.length - 1]?.arrivalDate || null,
-        },
-        metadata: {
-          total: response.data?.total || normalized.validCount,
-          page: Number(query.page) || 1,
-          limit: Number(query.limit) || 50,
-          source: DATA_SOURCES.LIVE_EXTERNAL,
-          isLive: true,
-          isSynthetic: false,
-          provider: this.providerName,
-          retrievedAt: new Date().toISOString(),
-        },
-      };
-
-      this.cache.set(cacheKey, result);
-      this.lastSuccessfulFetch = new Date().toISOString();
-      this.lastFailure = null;
-      return result;
-    } catch (err) {
-      this.lastFailure = err.message;
-      console.warn(`[AgmarknetLiveProvider Warning] Live query failed (${err.message}). Falling back to SeededDataProvider.`);
+    if (this.isRateLimited()) {
       return this.getSeededFallback().getHistoricalPrices(query);
     }
+
+    if (this.inFlightRequests.has(cacheKey)) {
+      return this.inFlightRequests.get(cacheKey);
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const params = {
+          'api-key': this.getApiKey(),
+          format: 'json',
+          offset: ((Number(query.page) || 1) - 1) * (Number(query.limit) || 50),
+          limit: Number(query.limit) || 50,
+        };
+
+        if (query.commodity) params['filters[commodity]'] = query.commodity;
+        if (query.state) params['filters[state]'] = query.state;
+        if (query.district) params['filters[district]'] = query.district;
+        if (query.market) params['filters[market]'] = query.market;
+
+        const response = await axios.get(`${this.apiUrl}/${this.resourceId}`, {
+          params,
+          timeout: this.timeoutMs,
+        });
+
+        const rawRecords = response.data?.records || [];
+        const normalized = MarketDataNormalizer.normalizePrices(rawRecords, {
+          source: DATA_SOURCES.LIVE_EXTERNAL,
+          sourceTimestamp: new Date().toISOString(),
+        });
+
+        // Compute statistics
+        const prices = normalized.records.map((r) => r.modalPrice);
+        const avgPrice = prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0;
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+
+        const result = {
+          records: normalized.records,
+          statistics: {
+            totalRecords: normalized.validCount,
+            rejectedRecords: normalized.rejectedCount,
+            avgModalPrice: avgPrice,
+            avgModalPricePerKg: Number((avgPrice / 100).toFixed(2)),
+            minObservedPrice: minPrice,
+            maxObservedPrice: maxPrice,
+            earliestDate: normalized.records[0]?.arrivalDate || null,
+            latestDate: normalized.records[normalized.records.length - 1]?.arrivalDate || null,
+          },
+          metadata: {
+            total: response.data?.total || normalized.validCount,
+            page: Number(query.page) || 1,
+            limit: Number(query.limit) || 50,
+            source: DATA_SOURCES.LIVE_EXTERNAL,
+            isLive: true,
+            isSynthetic: false,
+            provider: this.providerName,
+            retrievedAt: new Date().toISOString(),
+          },
+        };
+
+        this.cache.set(cacheKey, result);
+        this.lastSuccessfulFetch = new Date().toISOString();
+        this.lastFailure = null;
+        this.rateLimitUntil = null;
+        return result;
+      } catch (err) {
+        const is429 = err.response?.status === 429 || (err.message && err.message.includes('429'));
+        if (is429) {
+          this.handleRateLimit(err);
+        } else {
+          this.lastFailure = err.message;
+          console.warn(`[AgmarknetLiveProvider Warning] Live query failed (${err.message}). Falling back to SeededDataProvider.`);
+        }
+        return this.getSeededFallback().getHistoricalPrices(query);
+      } finally {
+        this.inFlightRequests.delete(cacheKey);
+      }
+    })();
+
+    this.inFlightRequests.set(cacheKey, requestPromise);
+    return requestPromise;
   }
 
   /**
@@ -161,81 +230,102 @@ class AgmarknetLiveProvider extends MarketDataProvider {
       return cached;
     }
 
-    try {
-      const params = {
-        'api-key': this.getApiKey(),
-        format: 'json',
-        limit: 50,
-      };
+    if (this.isRateLimited()) {
+      return this.getSeededFallback().getCurrentPrices(query);
+    }
 
-      if (query.commodity) params['filters[commodity]'] = query.commodity;
-      if (query.state) params['filters[state]'] = query.state;
-      if (query.district) params['filters[district]'] = query.district;
-      if (query.market) params['filters[market]'] = query.market;
+    if (this.inFlightRequests.has(cacheKey)) {
+      return this.inFlightRequests.get(cacheKey);
+    }
 
-      const response = await axios.get(`${this.apiUrl}/${this.resourceId}`, {
-        params,
-        timeout: this.timeoutMs,
-      });
+    const requestPromise = (async () => {
+      try {
+        const params = {
+          'api-key': this.getApiKey(),
+          format: 'json',
+          limit: 50,
+        };
 
-      const rawRecords = response.data?.records || [];
-      const normalized = MarketDataNormalizer.normalizePrices(rawRecords, {
-        source: DATA_SOURCES.LIVE_EXTERNAL,
-        sourceTimestamp: new Date().toISOString(),
-      });
+        if (query.commodity) params['filters[commodity]'] = query.commodity;
+        if (query.state) params['filters[state]'] = query.state;
+        if (query.district) params['filters[district]'] = query.district;
+        if (query.market) params['filters[market]'] = query.market;
 
-      // Group records by market taking latest observation per market
-      const marketMap = {};
-      normalized.records.forEach((r) => {
-        const key = `${r.market}_${r.commodity}`.toLowerCase();
-        if (!marketMap[key] || new Date(r.arrivalDate) > new Date(marketMap[key].arrivalDate)) {
-          marketMap[key] = r;
-        }
-      });
+        const response = await axios.get(`${this.apiUrl}/${this.resourceId}`, {
+          params,
+          timeout: this.timeoutMs,
+        });
 
-      const snapshots = Object.values(marketMap).map((r) => ({
-        commodity: r.commodity,
-        market: r.market,
-        district: r.district,
-        state: r.state,
-        variety: r.variety,
-        grade: r.grade,
-        currentModalPrice: r.modalPrice,
-        currentModalPricePerKg: r.modalPricePerKg,
-        minPrice: r.minPrice,
-        maxPrice: r.maxPrice,
-        change7d: null, // Unfabricated: live snapshot does not invent unobserved historical delta
-        changePercent: null,
-        trend: 'LIVE_AUCTION',
-        arrivalDate: r.arrivalDate,
-        observationDate: r.arrivalDate,
-        source: DATA_SOURCES.LIVE_EXTERNAL,
-        isSynthetic: false,
-        isLive: true,
-      }));
+        const rawRecords = response.data?.records || [];
+        const normalized = MarketDataNormalizer.normalizePrices(rawRecords, {
+          source: DATA_SOURCES.LIVE_EXTERNAL,
+          sourceTimestamp: new Date().toISOString(),
+        });
 
-      const result = {
-        snapshots,
-        count: snapshots.length,
-        metadata: {
-          total: snapshots.length,
+        // Group records by market taking latest observation per market
+        const marketMap = {};
+        normalized.records.forEach((r) => {
+          const key = `${r.market}_${r.commodity}`.toLowerCase();
+          if (!marketMap[key] || new Date(r.arrivalDate) > new Date(marketMap[key].arrivalDate)) {
+            marketMap[key] = r;
+          }
+        });
+
+        const snapshots = Object.values(marketMap).map((r) => ({
+          commodity: r.commodity,
+          market: r.market,
+          district: r.district,
+          state: r.state,
+          variety: r.variety,
+          grade: r.grade,
+          currentModalPrice: r.modalPrice,
+          currentModalPricePerKg: r.modalPricePerKg,
+          minPrice: r.minPrice,
+          maxPrice: r.maxPrice,
+          change7d: null, // Unfabricated: live snapshot does not invent unobserved historical delta
+          changePercent: null,
+          trend: 'LIVE_AUCTION',
+          arrivalDate: r.arrivalDate,
+          observationDate: r.arrivalDate,
           source: DATA_SOURCES.LIVE_EXTERNAL,
           isSynthetic: false,
           isLive: true,
-          provider: this.providerName,
-          retrievedAt: new Date().toISOString(),
-        },
-      };
+        }));
 
-      this.cache.set(cacheKey, result);
-      this.lastSuccessfulFetch = new Date().toISOString();
-      this.lastFailure = null;
-      return result;
-    } catch (err) {
-      this.lastFailure = err.message;
-      console.warn(`[AgmarknetLiveProvider Warning] getCurrentPrices failed (${err.message}). Falling back to SeededDataProvider.`);
-      return this.getSeededFallback().getCurrentPrices(query);
-    }
+        const result = {
+          snapshots,
+          count: snapshots.length,
+          metadata: {
+            total: snapshots.length,
+            source: DATA_SOURCES.LIVE_EXTERNAL,
+            isSynthetic: false,
+            isLive: true,
+            provider: this.providerName,
+            retrievedAt: new Date().toISOString(),
+          },
+        };
+
+        this.cache.set(cacheKey, result);
+        this.lastSuccessfulFetch = new Date().toISOString();
+        this.lastFailure = null;
+        this.rateLimitUntil = null;
+        return result;
+      } catch (err) {
+        const is429 = err.response?.status === 429 || (err.message && err.message.includes('429'));
+        if (is429) {
+          this.handleRateLimit(err);
+        } else {
+          this.lastFailure = err.message;
+          console.warn(`[AgmarknetLiveProvider Warning] getCurrentPrices failed (${err.message}). Falling back to SeededDataProvider.`);
+        }
+        return this.getSeededFallback().getCurrentPrices(query);
+      } finally {
+        this.inFlightRequests.delete(cacheKey);
+      }
+    })();
+
+    this.inFlightRequests.set(cacheKey, requestPromise);
+    return requestPromise;
   }
 
   /**
