@@ -385,9 +385,21 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Live Open-Meteo Agro-Climate Stream
           </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-bold border border-slate-300">
-            {providerStatus?.market?.isLive ? '🟢 Live Agmarknet Stream' : '🟡 APMC Historical Seeded Layer (Zero-Downtime Standby)'}
-          </span>
+          {snapshotsData[0]?.source === 'LIVE_EXTERNAL' ? (
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              🟢 Live Agmarknet Data (data.gov.in)
+            </span>
+          ) : providerStatus?.market?.status === 'DEGRADED_RATE_LIMITED' ? (
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold border border-amber-300 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+              🟡 Live Source Rate-Limited — Showing Fallback
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-bold border border-slate-300">
+              🟡 Seeded Fallback Data (APMC Baseline Layer)
+            </span>
+          )}
           <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold border border-purple-300">
             🟣 Phase 2–4 Predictive Intelligence Ready
           </span>
@@ -429,14 +441,30 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-emerald-600" /> Current Mandi Price Snapshots ({commodity})
+                    <Building2 className="w-4 h-4 text-emerald-600" />{' '}
+                    {snapshotsData[0]?.source === 'LIVE_EXTERNAL'
+                      ? 'Current Live Mandi Price Snapshots'
+                      : 'Fallback Baseline Observations'}{' '}
+                    ({commodity})
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Latest observed modal, minimum, and maximum prices with 7-day price momentum across regional APMCs
+                    {snapshotsData[0]?.source === 'LIVE_EXTERNAL'
+                      ? 'Latest observed modal, minimum, and maximum prices with real-time auction feeds across regional APMCs'
+                      : 'Historical APMC benchmark modal, minimum, and maximum prices with 7-day price momentum'}
                   </p>
                 </div>
-                <span className="text-xs font-bold text-slate-500">{snapshotsData.length} Mandis Reporting</span>
+                <span className="text-xs font-bold text-slate-500">
+                  {snapshotsData.length} Mandis Reporting ({snapshotsData[0]?.source === 'LIVE_EXTERNAL' ? 'Live External Data' : 'Fallback Baseline Data'})
+                </span>
               </div>
+
+              {/* Notice when serving fallback due to rate limit */}
+              {snapshotsData[0]?.source !== 'LIVE_EXTERNAL' && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 font-medium">
+                  <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>Government live mandi source is temporarily rate-limited. Showing verified seeded APMC baseline data.</span>
+                </div>
+              )}
 
               {snapshotsData.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-2xl">
@@ -456,29 +484,47 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                             {snap.district}, {snap.state}
                           </span>
                         </div>
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 ${
-                            snap.trend === 'RISING'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : snap.trend === 'FALLING'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {snap.trend === 'RISING' && <TrendingUp className="w-3 h-3 text-emerald-600" />}
-                          {snap.trend === 'FALLING' && <TrendingDown className="w-3 h-3 text-rose-600" />}
-                          {snap.trend}
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 ${
+                              snap.trend === 'RISING'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : snap.trend === 'FALLING'
+                                ? 'bg-rose-100 text-rose-800'
+                                : snap.trend === 'LIVE_AUCTION'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {snap.trend === 'RISING' && <TrendingUp className="w-3 h-3 text-emerald-600" />}
+                            {snap.trend === 'FALLING' && <TrendingDown className="w-3 h-3 text-rose-600" />}
+                            {snap.trend === 'LIVE_AUCTION' && <Radio className="w-2.5 h-2.5 text-emerald-600 animate-pulse" />}
+                            {snap.trend}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                              snap.source === 'LIVE_EXTERNAL'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            }`}
+                          >
+                            {snap.source === 'LIVE_EXTERNAL' ? 'LIVE DATA' : 'SEEDED FALLBACK'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="pt-2 border-t border-slate-200/70 flex items-baseline justify-between">
                         <div>
-                          <span className="text-[10px] text-slate-500 font-bold block uppercase">Modal Price</span>
+                          <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                            {snap.source === 'LIVE_EXTERNAL' ? 'Live Modal Price' : 'Fallback Baseline Observation'}
+                          </span>
                           <span className="text-xl font-black text-slate-900">₹{snap.currentModalPrice}</span>
                           <span className="text-[10px] text-slate-500 font-medium"> / Quintal</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-slate-500 font-bold block uppercase">Per Kg Rate</span>
+                          <span className="text-[10px] text-slate-500 font-bold block uppercase">
+                            {snap.source === 'LIVE_EXTERNAL' ? 'Per Kg Live Rate' : 'Per Kg Baseline'}
+                          </span>
                           <span className="text-sm font-black text-emerald-700">₹{snap.currentModalPricePerKg}/kg</span>
                         </div>
                       </div>
@@ -494,18 +540,37 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                           <span className="text-slate-400 block text-[10px]">7-Day Velocity</span>
                           <span
                             className={`font-extrabold ${
-                              snap.changePercent >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                              snap.changePercent === null
+                                ? 'text-slate-500'
+                                : snap.changePercent >= 0
+                                ? 'text-emerald-700'
+                                : 'text-rose-700'
                             }`}
                           >
-                            {snap.changePercent >= 0 ? '+' : ''}
-                            {snap.changePercent}% ({snap.change7d >= 0 ? '+' : ''}₹{snap.change7d}/q)
+                            {snap.changePercent === null
+                              ? 'Live Snapshot'
+                              : `${snap.changePercent >= 0 ? '+' : ''}${snap.changePercent}% (${snap.change7d >= 0 ? '+' : ''}₹${snap.change7d}/q)`}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                        <span>Source: <b>{snap.source}</b></span>
-                        <span>{new Date(snap.arrivalDate).toLocaleDateString('en-IN')}</span>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100">
+                        <span>
+                          Source:{' '}
+                          <b className={snap.source === 'LIVE_EXTERNAL' ? 'text-emerald-700' : 'text-amber-700'}>
+                            {snap.source === 'LIVE_EXTERNAL' ? 'Live Agmarknet (data.gov.in)' : 'Seeded Fallback (APMC Baseline)'}
+                          </b>
+                        </span>
+                        <span>
+                          Observed:{' '}
+                          <b className="text-slate-700">
+                            {new Date(snap.arrivalDate).toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </b>
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1002,7 +1067,11 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                     </span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        providerStatus.market?.isLive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-800'
+                        providerStatus.market?.status === 'ACTIVE_LIVE'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : providerStatus.market?.status === 'DEGRADED_RATE_LIMITED'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : 'bg-slate-200 text-slate-800'
                       }`}
                     >
                       {providerStatus.market?.status || 'READY'}
@@ -1014,17 +1083,25 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                       <span className="font-bold text-slate-800">{providerStatus.market?.provider}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Source Classification:</span>
-                      <span className="font-bold text-emerald-700">{providerStatus.market?.sourceType}</span>
+                      <span className="text-slate-500">Live API Configured:</span>
+                      <span className="font-bold text-slate-800">{providerStatus.market?.providerConfigured ? 'Yes (data.gov.in key active)' : 'No (Standby)'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Live External Stream:</span>
-                      <span className="font-bold text-slate-700">{providerStatus.market?.isLive ? 'Active' : 'Standby / Seeded'}</span>
+                      <span className="text-slate-500">Current Serving Source:</span>
+                      <span className={`font-bold ${providerStatus.market?.currentDataSource === 'LIVE_EXTERNAL' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {providerStatus.market?.currentDataSource === 'LIVE_EXTERNAL' ? 'Live Agmarknet Stream' : 'Seeded Database Fallback'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Operational Mode:</span>
                       <span className="font-bold text-slate-700">{providerStatus.market?.details}</span>
                     </div>
+                    {providerStatus.market?.rateLimitCooldownUntil && (
+                      <div className="flex justify-between text-amber-700 font-bold pt-1 border-t border-slate-200">
+                        <span>Cooldown Active Until:</span>
+                        <span>{new Date(providerStatus.market.rateLimitCooldownUntil).toLocaleTimeString()}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
