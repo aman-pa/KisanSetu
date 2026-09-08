@@ -4,6 +4,7 @@ import MarketDataCard from '../components/MarketDataCard';
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
 import FarmerActionCard from '../components/FarmerActionCard';
+import MandiOptimizerCard from '../components/MandiOptimizerCard';
 import {
   Sparkles,
   TrendingUp,
@@ -15,21 +16,29 @@ import {
   Activity,
   ShieldCheck,
   Zap,
+  Truck,
 } from 'lucide-react';
 
 const COMMODITIES = ['Tomato', 'Potato', 'Onion', 'Wheat', 'Rice', 'Apple'];
 
 const MarketIntelligencePage = () => {
   const [selectedCrop, setSelectedCrop] = useState('Tomato');
-  const [activeStage, setActiveStage] = useState('all'); // 'all' | 'data' | 'forecast' | 'price' | 'action'
+  const [activeStage, setActiveStage] = useState('all'); // 'all' | 'data' | 'forecast' | 'price' | 'action' | 'optimizer'
 
   const stages = [
     {
       id: 'all',
       title: 'Full Pipeline Flow',
-      subtitle: 'Complete 4-Stage Intelligence Engine',
+      subtitle: 'Complete 5-Stage Intelligence Engine',
       icon: Layers,
       color: 'bg-slate-900 text-white',
+    },
+    {
+      id: 'optimizer',
+      title: '5. Mandi Optimizer',
+      subtitle: 'Net Realization & Transport Freight',
+      icon: Compass,
+      color: 'bg-emerald-700 text-white',
     },
     {
       id: 'data',
@@ -103,8 +112,8 @@ const MarketIntelligencePage = () => {
             </div>
           </div>
 
-          {/* 4-Stage Visual Stepper Flow */}
-          <div className="pt-4 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {/* 5-Stage Visual Stepper Flow */}
+          <div className="pt-4 border-t border-white/10 grid grid-cols-2 sm:grid-cols-5 gap-2">
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-300 font-bold text-xs flex-shrink-0">
                 1
@@ -144,6 +153,16 @@ const MarketIntelligencePage = () => {
                 <span className="text-[10px] text-slate-400 block truncate">Personalized Decisions</span>
               </div>
             </div>
+
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-emerald-400/20 flex items-center justify-center text-amber-300 font-bold text-xs flex-shrink-0">
+                5
+              </div>
+              <div className="overflow-hidden">
+                <span className="text-[11px] font-extrabold text-white block truncate">Mandi Optimizer</span>
+                <span className="text-[10px] text-slate-400 block truncate">Net Realization & Freight</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -168,6 +187,21 @@ const MarketIntelligencePage = () => {
             );
           })}
         </div>
+
+        {/* Stage 5: Net Realization & Mandi Optimizer */}
+        {(activeStage === 'all' || activeStage === 'optimizer') && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">
+                Stage 5: Net Realization & Mandi Optimizer
+              </span>
+              <span className="text-xs text-slate-500 font-medium">
+                True take-home economic optimization after vehicle-tiered freight, toll allowances & circuity routing
+              </span>
+            </div>
+            <MandiOptimizerCard defaultCommodity={selectedCrop} />
+          </div>
+        )}
 
         {/* Stage 4: Personalized Farmer Decision Support (Top Action Layer) */}
         {(activeStage === 'all' || activeStage === 'action') && (
