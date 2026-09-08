@@ -34,6 +34,7 @@ const marketDataRoutes = require('./routes/marketDataRoutes');
 const forecastRoutes = require('./routes/forecastRoutes');
 const priceIntelligenceRoutes = require('./routes/priceIntelligenceRoutes');
 const farmerActionRoutes = require('./routes/farmerActionRoutes');
+const mandiOptimizerRoutes = require('./routes/mandiOptimizerRoutes');
 
 // API Mounts
 app.use('/api/auth', authRoutes);
@@ -49,6 +50,8 @@ app.use('/api/market-data', marketDataRoutes);
 app.use('/api/forecast', forecastRoutes);
 app.use('/api/price-intelligence', priceIntelligenceRoutes);
 app.use('/api/farmer-action', farmerActionRoutes);
+app.use('/api/mandi-optimizer', mandiOptimizerRoutes);
+app.use('/api/market-intelligence/optimizer', mandiOptimizerRoutes);
 
 // Health Check API
 app.get('/api/health', (req, res) => {
