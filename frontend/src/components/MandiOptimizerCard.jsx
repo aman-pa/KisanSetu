@@ -35,7 +35,7 @@ const PRESET_LOCATIONS = [
 ];
 
 const REASON_LABELS = {
-  HIGHEST_NET_REALIZATION: { label: 'Highest Net Profit', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  HIGHEST_NET_REALIZATION: { label: 'Highest Expected Realization', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
   PRICE_PREMIUM_OVERCOMES_DISTANCE: { label: 'Price Premium > Freight', color: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   LOCAL_PROXIMITY_ADVANTAGE: { label: 'Local Mandi (Min Freight)', color: 'bg-amber-100 text-amber-800 border-amber-300' },
   LOWER_LOGISTICS_COST: { label: 'Low Transport Overhead', color: 'bg-blue-100 text-blue-800 border-blue-300' },
@@ -370,7 +370,7 @@ const MandiOptimizerCard = ({ defaultCommodity = 'Tomato', defaultLocationIndex 
                         +₹{recommended.netAdvantageOverLocal.toLocaleString('en-IN')}
                       </span>
                       <span className="text-xs font-extrabold block">
-                        +₹{recommended.netAdvantagePerKg.toFixed(2)}/kg extra profit
+                        +₹{recommended.netAdvantagePerKg.toFixed(2)}/kg expected advantage
                       </span>
                     </div>
                   )}

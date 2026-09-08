@@ -132,28 +132,37 @@ class MandiOptimizerService {
       }));
     }
 
-    // If no candidate mandis found for commodity in active provider snapshots,
-    // construct fallback candidates across major regional APMC hubs
+    // If no candidate mandis found in current snapshots, query historical records from seeded provider
     if (candidateMandis.length === 0) {
-      const defaultHubs = [
-        { market: 'Azadpur APMC Mandi', district: 'North Delhi', state: 'Delhi', pricePerKg: 32.0 },
-        { market: 'Ghazipur Mandi', district: 'East Delhi', state: 'Delhi', pricePerKg: 31.5 },
-        { market: 'Karnal Mandi', district: 'Karnal', state: 'Haryana', pricePerKg: 29.0 },
-        { market: 'Panipat Mandi', district: 'Panipat', state: 'Haryana', pricePerKg: 29.8 },
-        { market: 'Ambala City Mandi', district: 'Ambala', state: 'Haryana', pricePerKg: 31.2 },
-        { market: 'Agra Mandi', district: 'Agra', state: 'Uttar Pradesh', pricePerKg: 27.5 },
-      ];
+      try {
+        const { seededProvider } = require('../dataProvider');
+        const histResult = await seededProvider.getHistoricalPrices({ commodity: params.commodity, limit: 100 });
+        const records = histResult?.records || [];
+        
+        // Group by market to get latest verified record per mandi
+        const marketMap = new Map();
+        records.forEach((r) => {
+          if (!marketMap.has(r.market)) {
+            marketMap.set(r.market, r);
+          }
+        });
 
-      candidateMandis = defaultHubs.map((hub) => ({
-        ...hub,
-        pricePerQuintal: hub.pricePerKg * 100,
-        observationDate: new Date().toISOString().split('T')[0],
-        sourceType: 'SEEDED_DEMO',
-        isFallback: true,
-        trend: 'STABLE',
-        variety: 'Standard',
-        supplyStatus: 'BALANCED',
-      }));
+        candidateMandis = Array.from(marketMap.values()).map((r) => ({
+          market: r.market,
+          district: r.district,
+          state: r.state,
+          pricePerKg: r.modalPricePerKg || (r.modalPrice ? r.modalPrice / 100 : 0),
+          pricePerQuintal: r.modalPrice || 0,
+          observationDate: r.arrivalDate ? new Date(r.arrivalDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          sourceType: 'SEEDED_DEMO',
+          isFallback: true,
+          trend: 'STABLE',
+          variety: r.variety || 'Standard',
+          supplyStatus: 'BALANCED',
+        }));
+      } catch (fallbackErr) {
+        console.warn(`[MandiOptimizerService] Fallback historical query error: ${fallbackErr.message}`);
+      }
     }
 
     // 5. Compute Distances, Logistics Costs & Economics for each Candidate Mandi
