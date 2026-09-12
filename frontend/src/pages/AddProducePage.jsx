@@ -56,7 +56,7 @@ const AddProducePage = () => {
 
       const { data } = await API.post('/products', payload);
       if (data.success) {
-        navigate('/farmer/dashboard');
+        navigate('/farmer/produce');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create produce listing.');

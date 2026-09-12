@@ -32,48 +32,136 @@ import {
 const LandingPage = () => {
   const { user } = useAuth();
 
-  const getFarmerCta = () => {
+  const getPrimaryHeroCta = () => {
     if (!user) {
       return {
-        to: '/register?role=FARMER',
-        label: 'Sell Your Harvest',
+        to: '/marketplace',
+        label: 'Shop Fresh Produce',
+        icon: ShoppingBag,
       };
     }
     switch (user.role) {
       case 'FARMER':
         return {
           to: '/farmer/dashboard',
-          label: 'Farmer Dashboard & Listings',
+          label: 'Farmer Dashboard',
+          icon: Sprout,
         };
       case 'FPO':
         return {
           to: '/fpo/dashboard',
-          label: 'FPO Produce Aggregation',
+          label: 'FPO Co-op Hub',
+          icon: Building2,
         };
       case 'BULK_BUYER':
         return {
           to: '/buyer/procurement',
-          label: 'Procurement Dashboard',
+          label: 'Procurement Engine',
+          icon: Building2,
         };
       case 'LOGISTICS':
         return {
           to: '/logistics/dashboard',
           label: 'Logistics Dashboard',
+          icon: Truck,
         };
       case 'ADMIN':
         return {
           to: '/admin/dashboard',
           label: 'Admin Command Center',
+          icon: ShieldCheck,
         };
+      case 'CONSUMER':
+      case 'BUYER':
       default:
         return {
           to: '/marketplace',
-          label: 'Explore Marketplace',
+          label: 'Shop Fresh Produce',
+          icon: ShoppingBag,
         };
     }
   };
 
-  const farmerCta = getFarmerCta();
+  const getSecondaryHeroCta = () => {
+    if (!user) {
+      return {
+        to: '/register?role=FARMER',
+        label: 'Sell Your Harvest',
+        icon: Sprout,
+      };
+    }
+    switch (user.role) {
+      case 'FARMER':
+        return {
+          to: '/farmer/add-produce',
+          label: 'Add Produce Listing',
+          icon: Sprout,
+        };
+      case 'FPO':
+        return {
+          to: '/farmer/add-produce',
+          label: 'Add Bulk Listing',
+          icon: Sprout,
+        };
+      case 'BULK_BUYER':
+        return {
+          to: '/market-intelligence',
+          label: 'Market Intelligence',
+          icon: TrendingUp,
+        };
+      case 'LOGISTICS':
+        return {
+          to: '/trace/KS-BATCH-994821',
+          label: 'Batch QR Trace',
+          icon: ShieldCheck,
+        };
+      case 'ADMIN':
+        return {
+          to: '/market-intelligence',
+          label: 'Market Intelligence',
+          icon: TrendingUp,
+        };
+      case 'CONSUMER':
+      case 'BUYER':
+      default:
+        return {
+          to: '/market-intelligence',
+          label: 'Market Intelligence',
+          icon: TrendingUp,
+        };
+    }
+  };
+
+  const getHouseholdCta = () => {
+    if (!user) return { to: '/marketplace', label: 'Browse Fresh Produce' };
+    if (user.role === 'FARMER') return { to: '/farmer/produce', label: 'Manage My Produce Listings' };
+    if (user.role === 'FPO') return { to: '/fpo/dashboard', label: 'FPO Aggregation Hub' };
+    if (user.role === 'BULK_BUYER') return { to: '/buyer/procurement', label: 'Procurement Dashboard' };
+    return { to: '/marketplace', label: 'Browse Fresh Produce' };
+  };
+
+  const getFarmerSegmentCta = () => {
+    if (!user) return { to: '/register?role=FARMER', label: 'Register to Sell Harvest' };
+    if (user.role === 'FARMER') return { to: '/farmer/dashboard', label: 'Farmer Dashboard & Listings' };
+    if (user.role === 'FPO') return { to: '/fpo/dashboard', label: 'FPO Co-op Hub' };
+    return { to: '/market-intelligence', label: 'Explore Mandi Optimizer' };
+  };
+
+  const getBusinessSegmentCta = () => {
+    if (!user) return { to: '/register?role=BULK_BUYER', label: 'Register for Bulk Procurement' };
+    if (user.role === 'BULK_BUYER') return { to: '/buyer/procurement', label: 'Bulk Procurement Engine' };
+    if (user.role === 'FPO') return { to: '/fpo/dashboard', label: 'FPO Bulk Aggregation' };
+    return { to: '/buyer/procurement', label: 'Explore Procurement Engine' };
+  };
+
+  const primaryHeroCta = getPrimaryHeroCta();
+  const secondaryHeroCta = getSecondaryHeroCta();
+  const householdCta = getHouseholdCta();
+  const farmerSegmentCta = getFarmerSegmentCta();
+  const businessSegmentCta = getBusinessSegmentCta();
+
+  const PrimaryHeroIcon = primaryHeroCta.icon;
+  const SecondaryHeroIcon = secondaryHeroCta.icon;
 
   return (
     <MainLayout>
@@ -104,20 +192,20 @@ const LandingPage = () => {
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-1">
                 <Link
-                  to="/marketplace"
+                  to={primaryHeroCta.to}
                   className="w-full sm:w-auto px-8 py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-lg shadow-emerald-900/15 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
                 >
-                  <ShoppingBag className="w-5 h-5 text-emerald-200" />
-                  <span>Shop Fresh Produce</span>
+                  <PrimaryHeroIcon className="w-5 h-5 text-emerald-200" />
+                  <span>{primaryHeroCta.label}</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
 
                 <Link
-                  to={farmerCta.to}
+                  to={secondaryHeroCta.to}
                   className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white border-2 border-emerald-700/30 text-emerald-900 font-bold text-sm hover:bg-emerald-50 hover:border-emerald-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm"
                 >
-                  <Sprout className="w-5 h-5 text-emerald-600" />
-                  <span>{farmerCta.label}</span>
+                  <SecondaryHeroIcon className="w-5 h-5 text-emerald-600" />
+                  <span>{secondaryHeroCta.label}</span>
                 </Link>
               </div>
 
@@ -133,8 +221,8 @@ const LandingPage = () => {
                 <Link to="/marketplace" className="px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 transition-colors shadow-sm">
                   🌾 Grains & Pulses
                 </Link>
-                <Link to="/buyer/procurement" className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors font-bold shadow-sm">
-                  📦 Bulk Procurement
+                <Link to="/market-intelligence" className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors font-bold shadow-sm">
+                  📊 Market Intelligence
                 </Link>
               </div>
 
@@ -213,10 +301,10 @@ const LandingPage = () => {
                 </li>
               </ul>
               <Link
-                to="/marketplace"
+                to={householdCta.to}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline pt-2"
               >
-                Browse Fresh Produce <ArrowRight className="w-3.5 h-3.5" />
+                {householdCta.label} <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
@@ -247,10 +335,10 @@ const LandingPage = () => {
                 </li>
               </ul>
               <Link
-                to={farmerCta.to}
+                to={farmerSegmentCta.to}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-800 hover:underline pt-2"
               >
-                {farmerCta.label} <ArrowRight className="w-3.5 h-3.5" />
+                {farmerSegmentCta.label} <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
@@ -281,10 +369,10 @@ const LandingPage = () => {
                 </li>
               </ul>
               <Link
-                to="/buyer/procurement"
+                to={businessSegmentCta.to}
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-800 hover:underline pt-2"
               >
-                Explore Procurement Engine <ArrowRight className="w-3.5 h-3.5" />
+                {businessSegmentCta.label} <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
@@ -473,16 +561,16 @@ const LandingPage = () => {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
             <Link
-              to="/marketplace"
+              to={primaryHeroCta.to}
               className="px-8 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-emerald-900 font-bold text-sm shadow-xl transition-all flex items-center justify-center gap-2"
             >
-              <ShoppingBag className="w-4 h-4 text-emerald-700" /> Start Shopping Fresh Produce
+              <PrimaryHeroIcon className="w-4 h-4 text-emerald-700" /> {primaryHeroCta.label}
             </Link>
             <Link
-              to={farmerCta.to}
+              to={secondaryHeroCta.to}
               className="px-8 py-3.5 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/60 text-white font-bold text-sm border border-white/25 backdrop-blur-md transition-all flex items-center justify-center gap-2"
             >
-              <Sprout className="w-4 h-4 text-emerald-300" /> {farmerCta.label}
+              <SecondaryHeroIcon className="w-4 h-4 text-emerald-300" /> {secondaryHeroCta.label}
             </Link>
           </div>
         </div>

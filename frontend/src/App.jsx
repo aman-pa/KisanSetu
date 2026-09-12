@@ -12,6 +12,7 @@ import ConsumerMarketplace from './pages/ConsumerMarketplace';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import CartCheckoutPage from './pages/CartCheckoutPage';
 import FarmerDashboard from './pages/FarmerDashboard';
+import MyProducePage from './pages/MyProducePage';
 import AddProducePage from './pages/AddProducePage';
 import FPODashboard from './pages/FPODashboard';
 import BulkBuyerDashboard from './pages/BulkBuyerDashboard';
@@ -65,7 +66,7 @@ function App() {
             path="/farmer/produce"
             element={
               <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
-                <FarmerDashboard />
+                <MyProducePage />
               </ProtectedRoute>
             }
           />

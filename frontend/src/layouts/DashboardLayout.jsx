@@ -49,8 +49,8 @@ const DashboardLayout = ({ children }) => {
       case 'BULK_BUYER':
         return [
           { label: 'Procurement Engine', path: '/buyer/procurement', icon: Building2 },
-          { label: 'Smart Matches', path: '/buyer/procurement', icon: Award },
-          { label: 'Order Tracking', path: '/marketplace', icon: Package },
+          { label: 'Market Intelligence', path: '/market-intelligence', icon: BarChart3 },
+          { label: 'Smart Matches & Orders', path: '/buyer/procurement', icon: Award },
         ];
       case 'LOGISTICS':
         return [

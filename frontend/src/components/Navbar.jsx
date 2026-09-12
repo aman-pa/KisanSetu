@@ -27,6 +27,8 @@ import {
   Truck,
   Sparkles,
   TrendingUp,
+  Package,
+  PackagePlus,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -43,36 +45,234 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const navLinks = [
-    {
-      label: 'Home',
-      path: '/',
-      icon: Home,
-      isActive: (pathname) => pathname === '/',
-    },
-    {
-      label: 'Marketplace',
-      path: '/marketplace',
-      icon: Search,
-      isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
-    },
-    {
-      label: 'Market Intelligence',
-      path: '/market-intelligence',
-      icon: TrendingUp,
-      isActive: (pathname) =>
-        pathname === '/market-intelligence' ||
-        pathname.startsWith('/farmer/market-intelligence') ||
-        pathname.startsWith('/farmer/demand-forecast') ||
-        pathname.startsWith('/farmer/price-recommendation'),
-    },
-    {
-      label: 'Batch QR Trace',
-      path: '/trace/KS-BATCH-994821',
-      icon: ShieldCheck,
-      isActive: (pathname) => pathname.startsWith('/trace'),
-    },
-  ];
+  const getNavLinks = () => {
+    if (!user) {
+      return [
+        {
+          label: 'Home',
+          path: '/',
+          icon: Home,
+          isActive: (pathname) => pathname === '/',
+        },
+        {
+          label: 'Market Intelligence',
+          path: '/market-intelligence',
+          icon: TrendingUp,
+          isActive: (pathname) =>
+            pathname === '/market-intelligence' ||
+            pathname.startsWith('/farmer/market-intelligence') ||
+            pathname.startsWith('/farmer/demand-forecast') ||
+            pathname.startsWith('/farmer/price-recommendation'),
+        },
+        {
+          label: 'Batch QR Trace',
+          path: '/trace/KS-BATCH-994821',
+          icon: ShieldCheck,
+          isActive: (pathname) => pathname.startsWith('/trace'),
+        },
+      ];
+    }
+
+    switch (role) {
+      case 'FARMER':
+        return [
+          {
+            label: 'Home',
+            path: '/',
+            icon: Home,
+            isActive: (pathname) => pathname === '/',
+          },
+          {
+            label: 'Dashboard',
+            path: '/farmer/dashboard',
+            icon: LayoutDashboard,
+            isActive: (pathname) => pathname === '/farmer/dashboard',
+          },
+          {
+            label: 'My Produce',
+            path: '/farmer/produce',
+            icon: Package,
+            isActive: (pathname) => pathname === '/farmer/produce',
+          },
+          {
+            label: 'Add Produce',
+            path: '/farmer/add-produce',
+            icon: PackagePlus,
+            isActive: (pathname) => pathname === '/farmer/add-produce',
+          },
+          {
+            label: 'Market Intelligence',
+            path: '/market-intelligence',
+            icon: TrendingUp,
+            isActive: (pathname) =>
+              pathname === '/market-intelligence' ||
+              pathname.startsWith('/farmer/market-intelligence') ||
+              pathname.startsWith('/farmer/demand-forecast') ||
+              pathname.startsWith('/farmer/price-recommendation'),
+          },
+        ];
+
+      case 'FPO':
+        return [
+          {
+            label: 'Home',
+            path: '/',
+            icon: Home,
+            isActive: (pathname) => pathname === '/',
+          },
+          {
+            label: 'FPO Hub',
+            path: '/fpo/dashboard',
+            icon: LayoutDashboard,
+            isActive: (pathname) => pathname === '/fpo/dashboard',
+          },
+          {
+            label: 'Add Bulk Listing',
+            path: '/farmer/add-produce',
+            icon: PackagePlus,
+            isActive: (pathname) => pathname === '/farmer/add-produce',
+          },
+          {
+            label: 'Market Intelligence',
+            path: '/market-intelligence',
+            icon: TrendingUp,
+            isActive: (pathname) =>
+              pathname === '/market-intelligence' ||
+              pathname.startsWith('/farmer/market-intelligence') ||
+              pathname.startsWith('/farmer/demand-forecast') ||
+              pathname.startsWith('/farmer/price-recommendation'),
+          },
+          {
+            label: 'Batch QR Trace',
+            path: '/trace/KS-BATCH-994821',
+            icon: ShieldCheck,
+            isActive: (pathname) => pathname.startsWith('/trace'),
+          },
+        ];
+
+      case 'BULK_BUYER':
+        return [
+          {
+            label: 'Home',
+            path: '/',
+            icon: Home,
+            isActive: (pathname) => pathname === '/',
+          },
+          {
+            label: 'Procurement Engine',
+            path: '/buyer/procurement',
+            icon: Building2,
+            isActive: (pathname) => pathname === '/buyer/procurement',
+          },
+          {
+            label: 'Market Intelligence',
+            path: '/market-intelligence',
+            icon: TrendingUp,
+            isActive: (pathname) =>
+              pathname === '/market-intelligence' ||
+              pathname.startsWith('/farmer/market-intelligence') ||
+              pathname.startsWith('/farmer/demand-forecast') ||
+              pathname.startsWith('/farmer/price-recommendation'),
+          },
+          {
+            label: 'Batch QR Trace',
+            path: '/trace/KS-BATCH-994821',
+            icon: ShieldCheck,
+            isActive: (pathname) => pathname.startsWith('/trace'),
+          },
+        ];
+
+      case 'LOGISTICS':
+        return [
+          {
+            label: 'Home',
+            path: '/',
+            icon: Home,
+            isActive: (pathname) => pathname === '/',
+          },
+          {
+            label: 'Logistics Hub',
+            path: '/logistics/dashboard',
+            icon: Truck,
+            isActive: (pathname) => pathname === '/logistics/dashboard',
+          },
+          {
+            label: 'Batch QR Trace',
+            path: '/trace/KS-BATCH-994821',
+            icon: ShieldCheck,
+            isActive: (pathname) => pathname.startsWith('/trace'),
+          },
+        ];
+
+      case 'ADMIN':
+        return [
+          {
+            label: 'Home',
+            path: '/',
+            icon: Home,
+            isActive: (pathname) => pathname === '/',
+          },
+          {
+            label: 'Admin Command',
+            path: '/admin/dashboard',
+            icon: LayoutDashboard,
+            isActive: (pathname) => pathname === '/admin/dashboard',
+          },
+          {
+            label: 'Market Intelligence',
+            path: '/market-intelligence',
+            icon: TrendingUp,
+            isActive: (pathname) =>
+              pathname === '/market-intelligence' ||
+              pathname.startsWith('/farmer/market-intelligence') ||
+              pathname.startsWith('/farmer/demand-forecast') ||
+              pathname.startsWith('/farmer/price-recommendation'),
+          },
+          {
+            label: 'Batch QR Trace',
+            path: '/trace/KS-BATCH-994821',
+            icon: ShieldCheck,
+            isActive: (pathname) => pathname.startsWith('/trace'),
+          },
+        ];
+
+      case 'BUYER':
+      case 'CONSUMER':
+      default:
+        return [
+          {
+            label: 'Home',
+            path: '/',
+            icon: Home,
+            isActive: (pathname) => pathname === '/',
+          },
+          {
+            label: 'Marketplace',
+            path: '/marketplace',
+            icon: Search,
+            isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+          },
+          {
+            label: 'Market Intelligence',
+            path: '/market-intelligence',
+            icon: TrendingUp,
+            isActive: (pathname) =>
+              pathname === '/market-intelligence' ||
+              pathname.startsWith('/farmer/market-intelligence') ||
+              pathname.startsWith('/farmer/demand-forecast') ||
+              pathname.startsWith('/farmer/price-recommendation'),
+          },
+          {
+            label: 'Batch QR Trace',
+            path: '/trace/KS-BATCH-994821',
+            icon: ShieldCheck,
+            isActive: (pathname) => pathname.startsWith('/trace'),
+          },
+        ];
+    }
+  };
+
+  const navLinks = getNavLinks();
 
   // Editable Form State
   const [name, setName] = useState('');
@@ -308,8 +508,8 @@ const Navbar = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3 sm:gap-4">
-              {/* Authenticated User Cart Icon (Available to all logged-in roles) */}
-              {Boolean(user) && (
+              {/* Authenticated Buyer Cart Icon (Available only for Purchaser / Buyer / Consumer roles) */}
+              {Boolean(user) && ['CONSUMER', 'BUYER', 'BULK_BUYER'].includes(role) && (
                 <Link
                   to="/cart"
                   className="relative p-2 rounded-xl text-slate-600 hover:text-agri-primary hover:bg-slate-100 transition-all"

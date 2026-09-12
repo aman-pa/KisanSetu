@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Truck,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import DemandForecastCard from '../components/DemandForecastCard';
@@ -121,8 +122,13 @@ const FarmerDashboard = () => {
               <span className="text-xs font-bold">Active Listings</span>
               <Package className="w-4 h-4 text-agri-accent" />
             </div>
-            <p className="text-2xl font-black text-slate-900">{listings.length || 3}</p>
-            <span className="text-[10px] font-bold text-slate-500">Marketplace Listed</span>
+            <p className="text-2xl font-black text-slate-900">{listings.length}</p>
+            <Link
+              to="/farmer/produce"
+              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+              View My Produce <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
 
           <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
@@ -232,66 +238,34 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
-        {/* Comprehensive Table 1: My Produce Listings */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-              <Package className="w-4 h-4 text-agri-primary" /> My Active Produce Listings
-            </h3>
-            <span className="text-xs text-slate-500 font-bold">{listings.length} Listings Total</span>
+        {/* Farm Produce Inventory Summary Overview */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold flex-shrink-0">
+              <Package className="w-6 h-6 text-emerald-700" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-slate-900">Active Crop Harvest Lots</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                  {listings.length} Lots Active
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {listings.length > 0
+                  ? `Current lots: ${listings.map((l) => l.cropName).slice(0, 4).join(', ')}${listings.length > 4 ? '...' : ''}. Manage stock, prices, and QR certificates in My Produce.`
+                  : 'No active crop listings yet. Add your harvest lots to connect with buyers.'}
+              </p>
+            </div>
           </div>
 
-          {loading ? (
-            <p className="text-xs text-slate-400">Loading listings...</p>
-          ) : listings.length === 0 ? (
-            <p className="text-xs text-slate-400">No active produce listings found.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                    <th className="pb-3">Crop Name</th>
-                    <th className="pb-3">Batch ID</th>
-                    <th className="pb-3">Grade</th>
-                    <th className="pb-3">Price/kg</th>
-                    <th className="pb-3">Available Qty</th>
-                    <th className="pb-3">AI Quality</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {listings.map((item) => (
-                    <tr key={item._id} className="hover:bg-slate-50 font-medium text-slate-700">
-                      <td className="py-3 font-extrabold text-slate-900">{item.cropName}</td>
-                      <td className="py-3 font-mono text-[11px] text-slate-500">{item.batchId}</td>
-                      <td className="py-3 font-bold text-emerald-700">{item.grade.replace('GRADE_', 'Grade ')}</td>
-                      <td className="py-3 font-black text-slate-900">₹{item.pricePerKg}</td>
-                      <td className="py-3">{item.availableQuantityKg.toLocaleString()} kg</td>
-                      <td className="py-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-                          {item.aiQualityEstimateScore}% Score
-                        </span>
-                      </td>
-                      <td className="py-3">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <Link
-                          to={`/trace/${item.batchId}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-agri-primary hover:underline"
-                        >
-                          <QrCode className="w-3.5 h-3.5" /> View QR Trace
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Link
+            to="/farmer/produce"
+            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <span>Manage My Produce Listings</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
         {/* Comprehensive Table 2: Recent Orders & Fulfillment Requests */}
