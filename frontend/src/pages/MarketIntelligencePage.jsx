@@ -162,7 +162,7 @@ const MarketIntelligencePage = () => {
           {/* =========================================================================
               RIGHT COLUMN: SELECTED TOOL DETAILS (~68% width on Desktop)
              ========================================================================= */}
-          <div id="selected-tool-details" className="lg:col-span-8 min-w-0">
+          <div id="selected-tool-details" className="lg:col-span-8 min-w-0 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto pr-1.5">
             <div className="animate-in fade-in duration-300">
               {activeModule === 'optimizer' && <MandiOptimizerCard />}
               {activeModule === 'weather' && <WeatherForecastCard />}
