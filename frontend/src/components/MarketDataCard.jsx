@@ -432,7 +432,7 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                   No active mandi snapshots found for {commodity}.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {snapshotsData.map((snap, idx) => {
                     const modalPerQuintal =
                       snap.currentModalPrice ??
@@ -445,31 +445,27 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                     const minPrice = snap.minPrice ?? 0;
                     const maxPrice = snap.maxPrice ?? 0;
                     const marketName = formatMarketName(snap.market);
+                    const locationText = [snap.district, snap.state].filter(Boolean).join(', ');
 
                     return (
                       <div
                         key={idx}
-                        className="p-5 rounded-2xl bg-slate-50/90 border border-slate-200/80 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all space-y-3.5 shadow-2xs flex flex-col justify-between"
+                        className="p-5 rounded-3xl bg-white border border-slate-200/80 hover:border-emerald-400 hover:shadow-md transition-all flex flex-col justify-between gap-4 shadow-2xs"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-black text-slate-900 leading-snug break-words">
-                              {marketName}
-                            </h4>
-                            <span className="text-[11px] text-slate-500 font-semibold block truncate mt-1 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                              {snap.district ? `${snap.district}, ` : ''}{snap.state}
-                            </span>
-                          </div>
+                        {/* 1. Header Badges: State Pill & Live Trend Badge */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60 whitespace-nowrap flex-shrink-0">
+                            {snap.state || 'APMC Mandi'}
+                          </span>
                           <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap shadow-2xs ${
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 shadow-2xs ${
                               snap.trend === 'RISING'
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : snap.trend === 'FALLING'
                                 ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                 : snap.trend === 'LIVE_AUCTION'
                                 ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                : 'bg-slate-200/70 text-slate-700 border border-slate-300'
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}
                           >
                             {snap.trend === 'RISING' && <TrendingUp className="w-3 h-3 text-emerald-600" />}
@@ -479,21 +475,37 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                           </span>
                         </div>
 
-                        <div className="pt-3 border-t border-slate-200/70 flex items-baseline justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
-                              Modal Price
+                        {/* 2. Full-Width Market Name & Full Location */}
+                        <div className="space-y-1">
+                          <h4 className="text-base font-black text-slate-900 leading-snug">
+                            {marketName}
+                          </h4>
+                          <div className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 pt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                            <span className="truncate">{locationText || 'Regional Market'}</span>
+                          </div>
+                        </div>
+
+                        {/* 3. Systematic Pricing Box */}
+                        <div className="pt-3.5 border-t border-slate-100 grid grid-cols-2 gap-3 items-end">
+                          {/* Left Box: Per KG Rate */}
+                          <div className="bg-emerald-50/60 p-2.5 rounded-2xl border border-emerald-100/80">
+                            <span className="text-[10px] text-emerald-800 uppercase font-black tracking-wider block">
+                              Modal Rate
                             </span>
-                            <div className="flex items-baseline gap-1 mt-0.5">
-                              <span className="text-xl font-black text-emerald-700">₹{modalPerKg}</span>
-                              <span className="text-xs text-slate-500 font-bold">/ kg</span>
+                            <div className="text-xl font-black text-emerald-800 whitespace-nowrap leading-tight mt-0.5">
+                              ₹{modalPerKg}
+                              <span className="text-xs font-bold text-emerald-600 ml-0.5">/kg</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-xs font-black text-slate-800 block">
-                              ₹{Number(modalPerQuintal).toLocaleString('en-IN')} / q
+
+                          {/* Right Box: Per Quintal & Range */}
+                          <div className="text-right flex flex-col justify-end">
+                            <span className="text-xs font-black text-slate-800 whitespace-nowrap">
+                              ₹{Number(modalPerQuintal).toLocaleString('en-IN')}{' '}
+                              <span className="text-[11px] text-slate-500 font-semibold">/ q</span>
                             </span>
-                            <span className="block text-[10px] text-slate-400 font-medium mt-0.5">
+                            <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap mt-0.5 block">
                               ₹{Number(minPrice).toLocaleString('en-IN')} – ₹{Number(maxPrice).toLocaleString('en-IN')}
                             </span>
                           </div>
