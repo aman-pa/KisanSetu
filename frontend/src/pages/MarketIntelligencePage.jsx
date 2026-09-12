@@ -1,269 +1,211 @@
-import React, { useState } from 'react';
-import DashboardLayout from '../layouts/DashboardLayout';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import MainLayout from '../layouts/MainLayout';
+import MandiOptimizerCard from '../components/MandiOptimizerCard';
 import MarketDataCard from '../components/MarketDataCard';
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
-import FarmerActionCard from '../components/FarmerActionCard';
-import MandiOptimizerCard from '../components/MandiOptimizerCard';
 import {
-  Sparkles,
-  TrendingUp,
-  Database,
   Compass,
+  CloudSun,
+  TrendingUp,
+  DollarSign,
   ArrowRight,
-  Layers,
-  Building2,
-  Activity,
   ShieldCheck,
-  Zap,
-  Truck,
+  CheckCircle2,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 
-const COMMODITIES = ['Tomato', 'Potato', 'Onion', 'Wheat', 'Rice', 'Apple'];
+const MODULES = [
+  {
+    id: 'optimizer',
+    title: 'Mandi Optimizer',
+    question: 'Where should I sell?',
+    shortDesc: 'Find the best market for your produce based on price, distance and estimated net realization.',
+    icon: Compass,
+    iconBg: 'bg-emerald-100 text-emerald-800',
+    activeColor: 'border-emerald-600 ring-2 ring-emerald-600/20 bg-emerald-50/60',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  },
+  {
+    id: 'weather',
+    title: 'Weather Forecast',
+    question: 'What will the weather be?',
+    shortDesc: 'Understand upcoming weather conditions for your crop and selling plans.',
+    icon: CloudSun,
+    iconBg: 'bg-teal-100 text-teal-800',
+    activeColor: 'border-teal-600 ring-2 ring-teal-600/20 bg-teal-50/60',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+  },
+  {
+    id: 'forecast',
+    title: 'Demand Forecast',
+    question: 'How will demand change?',
+    shortDesc: 'Understand how market demand may change over the coming days.',
+    icon: TrendingUp,
+    iconBg: 'bg-indigo-100 text-indigo-800',
+    activeColor: 'border-indigo-600 ring-2 ring-indigo-600/20 bg-indigo-50/60',
+    badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  },
+  {
+    id: 'price',
+    title: 'Price Recommendation',
+    question: 'What price should I consider?',
+    shortDesc: 'Get an AI-backed price range to help you decide when and at what price to sell.',
+    icon: DollarSign,
+    iconBg: 'bg-amber-100 text-amber-800',
+    activeColor: 'border-amber-600 ring-2 ring-amber-600/20 bg-amber-50/60',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+  },
+];
 
 const MarketIntelligencePage = () => {
-  const [selectedCrop, setSelectedCrop] = useState('Tomato');
-  const [activeStage, setActiveStage] = useState('all'); // 'all' | 'data' | 'forecast' | 'price' | 'action' | 'optimizer'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialParam = searchParams.get('tool') || searchParams.get('tab') || 'optimizer';
+  
+  const validInitial = MODULES.some((m) => m.id === initialParam) ? initialParam : 'optimizer';
+  const [activeModule, setActiveModule] = useState(validInitial);
 
-  const stages = [
-    {
-      id: 'all',
-      title: 'Full Pipeline Flow',
-      subtitle: 'Complete 5-Stage Intelligence Engine',
-      icon: Layers,
-      color: 'bg-slate-900 text-white',
-    },
-    {
-      id: 'optimizer',
-      title: '5. Mandi Optimizer',
-      subtitle: 'Net Realization & Transport Freight',
-      icon: Compass,
-      color: 'bg-emerald-700 text-white',
-    },
-    {
-      id: 'data',
-      title: '1. Market Data',
-      subtitle: 'Observed Spot Prices & Arrivals',
-      icon: Database,
-      color: 'bg-emerald-600 text-white',
-    },
-    {
-      id: 'forecast',
-      title: '2. Demand Forecast',
-      subtitle: 'Absorption & Pressure Proxy',
-      icon: TrendingUp,
-      color: 'bg-teal-600 text-white',
-    },
-    {
-      id: 'price',
-      title: '3. Price Intelligence',
-      subtitle: 'Selling Timing & Multi-Mandi',
-      icon: Building2,
-      color: 'bg-indigo-600 text-white',
-    },
-    {
-      id: 'action',
-      title: '4. Farmer Action',
-      subtitle: 'Personalized Decision Support',
-      icon: Zap,
-      color: 'bg-amber-600 text-white',
-    },
-  ];
+  useEffect(() => {
+    const currentTool = searchParams.get('tool') || searchParams.get('tab');
+    if (currentTool && MODULES.some((m) => m.id === currentTool) && currentTool !== activeModule) {
+      setActiveModule(currentTool);
+    }
+  }, [searchParams]);
+
+  const handleSelectModule = (moduleId) => {
+    setActiveModule(moduleId);
+    setSearchParams({ tool: moduleId });
+
+    // On smaller mobile screens, smooth scroll to the right panel content
+    if (window.innerWidth < 1024) {
+      const element = document.getElementById('selected-tool-details');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const activeModuleMeta = MODULES.find((m) => m.id === activeModule) || MODULES[0];
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        {/* Top Header Hero */}
-        <div className="bg-gradient-to-r from-slate-950 via-emerald-950 to-slate-950 p-6 sm:p-8 rounded-3xl text-white shadow-agri-md space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                KisanSetu End-to-End Market Intelligence Engine
+    <MainLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* =========================================================================
+              LEFT COLUMN: MARKET INTELLIGENCE TOOL SELECTOR (~33% width on Desktop)
+             ========================================================================= */}
+          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+            {/* Header section */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-agri-sm space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                <span>AI Decision Engine</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white">
-                Agricultural Market Intelligence & Decision Support 🌾
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                Market Intelligence
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl font-medium">
-                Seamless flow from ground-truth mandi prices to AI demand forecasting, price timing, and personalized farmer actions.
+              <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed">
+                Make smarter decisions about your produce with AI-powered market, weather, demand and price insights.
               </p>
             </div>
 
-            {/* Global Crop Quick-Filter */}
-            <div className="bg-white/10 p-3 rounded-2xl border border-white/10 backdrop-blur-md space-y-1 self-start md:self-auto">
-              <span className="text-[10px] font-bold text-slate-300 block uppercase tracking-wider">
-                Select Active Crop:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {COMMODITIES.map((crop) => (
+            {/* Four Option Cards */}
+            <div className="space-y-3">
+              {MODULES.map((module) => {
+                const Icon = module.icon;
+                const isSelected = activeModule === module.id;
+
+                return (
                   <button
-                    key={crop}
-                    onClick={() => setSelectedCrop(crop)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
-                      selectedCrop === crop
-                        ? 'bg-amber-400 text-slate-950 shadow-sm'
-                        : 'bg-white/10 text-white hover:bg-white/20'
+                    key={module.id}
+                    type="button"
+                    onClick={() => handleSelectModule(module.id)}
+                    className={`w-full text-left p-5 rounded-3xl border transition-all duration-200 flex flex-col justify-between space-y-3 cursor-pointer ${
+                      isSelected
+                        ? `${module.activeColor} shadow-md`
+                        : 'bg-white border-slate-200/80 shadow-agri-sm hover:border-emerald-300 hover:shadow-md'
                     }`}
                   >
-                    {crop}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-2xl ${module.iconBg} flex items-center justify-center font-bold flex-shrink-0 shadow-xs`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                            {module.title}
+                          </div>
+                          <h2 className="text-base font-black text-slate-900 leading-snug">
+                            {module.question}
+                          </h2>
+                        </div>
+                      </div>
+
+                      {isSelected ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${module.badgeColor}`}>
+                          <CheckCircle2 className="w-3 h-3" /> Active
+                        </span>
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-slate-400 mt-1" />
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-500 font-normal leading-relaxed pl-13">
+                      {module.shortDesc}
+                    </p>
                   </button>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+
+            {/* Provenance Note in Left Column */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] text-slate-500 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>Real-time APMC Mandi, Open-Meteo & Logistics telemetry</span>
             </div>
           </div>
 
-          {/* 5-Stage Visual Stepper Flow */}
-          <div className="pt-4 border-t border-white/10 grid grid-cols-2 sm:grid-cols-5 gap-2">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-300 font-bold text-xs flex-shrink-0">
-                1
+          {/* =========================================================================
+              RIGHT COLUMN: SELECTED TOOL DETAILS (~67% width on Desktop)
+             ========================================================================= */}
+          <div id="selected-tool-details" className="lg:col-span-8 space-y-6">
+            {/* Header for the Active Tool */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-agri-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Selected Tool
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold border border-emerald-200">
+                    Live Insights
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  {activeModuleMeta.title}
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 font-medium">
+                  {activeModuleMeta.shortDesc}
+                </p>
               </div>
-              <div className="overflow-hidden">
-                <span className="text-[11px] font-extrabold text-white block truncate">Market Data</span>
-                <span className="text-[10px] text-slate-400 block truncate">Observed Spot & Arrivals</span>
+
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-2xl border border-emerald-100 self-start sm:self-auto">
+                <span>{activeModuleMeta.question}</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-300 font-bold text-xs flex-shrink-0">
-                2
-              </div>
-              <div className="overflow-hidden">
-                <span className="text-[11px] font-extrabold text-white block truncate">Demand Forecast</span>
-                <span className="text-[10px] text-slate-400 block truncate">Market Absorption Proxy</span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-xs flex-shrink-0">
-                3
-              </div>
-              <div className="overflow-hidden">
-                <span className="text-[11px] font-extrabold text-white block truncate">Price Intelligence</span>
-                <span className="text-[10px] text-slate-400 block truncate">Timing & Multi-Mandi</span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300 font-bold text-xs flex-shrink-0">
-                4
-              </div>
-              <div className="overflow-hidden">
-                <span className="text-[11px] font-extrabold text-white block truncate">Farmer Action</span>
-                <span className="text-[10px] text-slate-400 block truncate">Personalized Decisions</span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-emerald-400/20 flex items-center justify-center text-amber-300 font-bold text-xs flex-shrink-0">
-                5
-              </div>
-              <div className="overflow-hidden">
-                <span className="text-[11px] font-extrabold text-white block truncate">Mandi Optimizer</span>
-                <span className="text-[10px] text-slate-400 block truncate">Net Realization & Freight</span>
-              </div>
+            {/* Detailed Component Content */}
+            <div className="animate-in fade-in duration-300">
+              {activeModule === 'optimizer' && <MandiOptimizerCard />}
+              {activeModule === 'weather' && <MarketDataCard />}
+              {activeModule === 'forecast' && <DemandForecastCard />}
+              {activeModule === 'price' && <PriceIntelligenceCard />}
             </div>
           </div>
         </div>
-
-        {/* Stage Filter Buttons */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          {stages.map((st) => {
-            const Icon = st.icon;
-            const isCurrent = activeStage === st.id;
-            return (
-              <button
-                key={st.id}
-                onClick={() => setActiveStage(st.id)}
-                className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition-all ${
-                  isCurrent
-                    ? 'bg-gradient-to-r from-agri-dark to-agri-primary text-white shadow-agri-sm'
-                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {st.title}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Stage 5: Net Realization & Mandi Optimizer */}
-        {(activeStage === 'all' || activeStage === 'optimizer') && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">
-                Stage 5: Net Realization & Mandi Optimizer
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                True take-home economic optimization after vehicle-tiered freight, toll allowances & circuity routing
-              </span>
-            </div>
-            <MandiOptimizerCard defaultCommodity={selectedCrop} />
-          </div>
-        )}
-
-        {/* Stage 4: Personalized Farmer Decision Support (Top Action Layer) */}
-        {(activeStage === 'all' || activeStage === 'action') && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">
-                Stage 4: Farmer Action Intelligence
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                Personalized lot valuation, risk assessment & explainable selling recommendations
-              </span>
-            </div>
-            <FarmerActionCard defaultCommodity={selectedCrop} defaultMandi="Karnal" />
-          </div>
-        )}
-
-        {/* Stage 1: Agricultural Market Data Layer */}
-        {(activeStage === 'all' || activeStage === 'data') && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300">
-                Stage 1: Agricultural Market Data Layer
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                Observed spot prices, historical price spread bands & daily mandi arrival volumes
-              </span>
-            </div>
-            <MarketDataCard defaultCommodity={selectedCrop} defaultMarket="" />
-          </div>
-        )}
-
-        {/* Stage 3: Price Intelligence & Multi-Mandi Comparison */}
-        {(activeStage === 'all' || activeStage === 'price') && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-indigo-100 text-indigo-900 border border-indigo-300">
-                Stage 3: Price Intelligence & Multi-Mandi Ranking
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                Heuristic price scoring, sell vs wait signal, and cross-mandi price arbitrage
-              </span>
-            </div>
-            <PriceIntelligenceCard defaultCommodity={selectedCrop} defaultMandi="Karnal" />
-          </div>
-        )}
-
-        {/* Stage 2: Real Data-Driven AI Demand Forecasting Pipeline */}
-        {(activeStage === 'all' || activeStage === 'forecast') && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-teal-100 text-teal-900 border border-teal-300">
-                Stage 2: Demand Forecasting Pipeline
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                7/15/30-Day Market Absorption & Pressure Proxy time-series forecast
-              </span>
-            </div>
-            <DemandForecastCard defaultCommodity={selectedCrop} defaultDistrict="Delhi NCR" />
-          </div>
-        )}
       </div>
-    </DashboardLayout>
+    </MainLayout>
   );
 };
 
