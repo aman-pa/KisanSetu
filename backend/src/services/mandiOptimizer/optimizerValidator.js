@@ -3,7 +3,44 @@
  * Strict input validation and canonical parameter normalization for Mandi Optimizer.
  */
 
-const SUPPORTED_COMMODITIES = ['Tomato', 'Potato', 'Onion', 'Wheat', 'Rice', 'Apple'];
+const SUPPORTED_COMMODITIES = [
+  'Tomato',
+  'Potato',
+  'Onion',
+  'Wheat',
+  'Rice',
+  'Apple',
+  'Mustard',
+  'Maize',
+  'Soybean',
+  'Cotton',
+  'Sugarcane',
+  'Banana',
+  'Mango',
+  'Green Chilli',
+  'Garlic',
+  'Ginger',
+  'Turmeric',
+  'Cauliflower',
+  'Cabbage',
+  'Brinjal',
+  'Spinach',
+  'Okra',
+  'Carrot',
+  'Capsicum',
+  'Peas',
+  'Cucumber',
+  'Bitter Gourd',
+  'Bottle Gourd',
+  'Coriander',
+  'Mint',
+  'Groundnut',
+  'Moong',
+  'Urad',
+  'Chana',
+  'Arhar',
+  'Masoor',
+];
 
 /**
  * Normalizes and validates the farmer context payload.
@@ -20,7 +57,10 @@ function validateOptimizerRequest(raw = {}) {
     errors.push("Missing required field 'commodity' (or 'crop').");
   } else {
     // Canonical Title-Case
-    commodity = commodity.charAt(0).toUpperCase() + commodity.slice(1).toLowerCase();
+    commodity = commodity
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
     const matched = SUPPORTED_COMMODITIES.find((c) => c.toLowerCase() === commodity.toLowerCase());
     if (!matched) {
       errors.push(`Unsupported commodity '${commodity}'. Supported commodities: ${SUPPORTED_COMMODITIES.join(', ')}.`);
