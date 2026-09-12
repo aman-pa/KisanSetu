@@ -8,11 +8,11 @@ let mongoServer = null;
 
 const connectDB = async () => {
   try {
-    // Attempt local MongoDB service first with 1.5s timeout
+    // Attempt local MongoDB service first with 5s timeout
     console.log('[Database] Checking local MongoDB connection...');
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/kisansetu', {
-      serverSelectionTimeoutMS: 1500,
-      connectTimeoutMS: 1500,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
     });
     console.log(`[MongoDB] Connected to local MongoDB service.`);
     await autoSeedIfEmpty();

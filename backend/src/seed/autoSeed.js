@@ -181,11 +181,14 @@ const autoSeedIfEmpty = async () => {
     console.log('[AutoSeed] Empty database detected. Populated initial SIH seed dataset...');
 
     // 1. Seed System Config
-    await SystemConfig.create({
-      key: 'CONSUMER_MAX_PURCHASE_LIMIT_KG',
-      value: 10,
-      description: 'Maximum produce quantity allowed per consumer purchase order',
-    });
+    const existingConfig = await SystemConfig.findOne({ key: 'CONSUMER_MAX_PURCHASE_LIMIT_KG' });
+    if (!existingConfig) {
+      await SystemConfig.create({
+        key: 'CONSUMER_MAX_PURCHASE_LIMIT_KG',
+        value: 10,
+        description: 'Maximum produce quantity allowed per consumer purchase order',
+      });
+    }
 
     // 2. Create Users
     const admin = await User.create({
@@ -343,11 +346,16 @@ const autoSeedIfEmpty = async () => {
     ];
 
     for (const item of listingsData) {
-      const listing = await ProduceListing.create(item);
+      let listing = await ProduceListing.findOne({ batchId: item.batchId });
+      if (!listing) {
+        listing = await ProduceListing.create(item);
+      }
 
-      const qrPayload = await QRCode.toDataURL(
-        JSON.stringify({ batchId: item.batchId, crop: item.cropName, verifyUrl: `http://localhost:5173/trace/${item.batchId}` })
-      );
+      const existingBatch = await BatchTraceability.findOne({ batchId: item.batchId });
+      if (!existingBatch) {
+        const qrPayload = await QRCode.toDataURL(
+          JSON.stringify({ batchId: item.batchId, crop: item.cropName, verifyUrl: `http://localhost:5173/trace/${item.batchId}` })
+        );
 
       await BatchTraceability.create({
         batchId: item.batchId,
@@ -374,6 +382,7 @@ const autoSeedIfEmpty = async () => {
           },
         ],
       });
+      }
     }
 
     console.log('[AutoSeed] Successfully populated all 6 roles, listings, and demo data!');

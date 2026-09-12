@@ -77,12 +77,23 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`=======================================================`);
       console.log(`  🌾 KisanSetu AI Backend Server Running on Port ${PORT}`);
       console.log(`  Target Mode: ${process.env.NODE_ENV || 'development'}`);
       console.log(`  API Health Endpoint: http://localhost:${PORT}/api/health`);
       console.log(`=======================================================`);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`=======================================================`);
+        console.log(`  🌾 KisanSetu AI Backend is ALREADY running on Port ${PORT}`);
+        console.log(`  API Health Endpoint: http://localhost:${PORT}/api/health`);
+        console.log(`=======================================================`);
+      } else {
+        console.error('Server runtime error:', err);
+      }
     });
   } catch (err) {
     console.error('Failed to start server:', err);
