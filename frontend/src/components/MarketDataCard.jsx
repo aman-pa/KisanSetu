@@ -243,135 +243,183 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
   }));
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-agri-sm overflow-hidden space-y-6">
-      {/* 1. Header Banner */}
-      <div className="p-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-2">
-            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            Phase 1 & 5: Live Market & Meteorological Intelligence
+    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-7">
+      {/* 1. Header (Matching User Mock) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
+            <CloudSun className="w-6 h-6 text-teal-800" />
           </div>
-          <h2 className="text-xl font-black text-white flex items-center gap-2">
-            Agricultural Market Intelligence & Real-Time Data 🌾
-          </h2>
-          <p className="text-xs text-slate-300">
-            Mandi modal prices, physical intake volumes, regional absorption indicators, and live agro-climatic advisories
-          </p>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              Weather Forecast
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 font-normal">
+              Check upcoming weather conditions that may affect your crop and selling plans.
+            </p>
+          </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 bg-white/10 p-1 rounded-2xl backdrop-blur-sm self-start md:self-auto overflow-x-auto max-w-full">
-          <button
-            onClick={() => setActiveTab('snapshots')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
-              activeTab === 'snapshots' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Mandi Snapshots
-          </button>
-          <button
-            onClick={() => setActiveTab('prices')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
-              activeTab === 'prices' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Price Trends
-          </button>
-          <button
-            onClick={() => setActiveTab('arrivals')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
-              activeTab === 'arrivals' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Arrival Volumes
-          </button>
-          <button
-            onClick={() => setActiveTab('supply')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
-              activeTab === 'supply' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Supply Indicators
-          </button>
-          <button
-            onClick={() => setActiveTab('weather')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-              activeTab === 'weather' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-            Live Weather 🌦️
-          </button>
-          <button
-            onClick={() => setActiveTab('provider')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
-              activeTab === 'provider' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Provider Status
-          </button>
+        <div className="self-start sm:self-auto">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            Active Tool
+          </span>
         </div>
       </div>
 
-      {/* 2. Interactive Filters */}
-      <div className="px-6 pt-2">
-        <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">Select Commodity / Crop</label>
-            <select
-              value={commodity}
-              onChange={(e) => setCommodity(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              {COMMODITY_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+      {/* 2. Form Inputs */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Produce Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <Sun className="w-4 h-4 text-amber-500" />
+              Select Your Produce
+            </label>
+            <div className="relative">
+              <select
+                value={commodity}
+                onChange={(e) => setCommodity(e.target.value)}
+                className="w-full bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors cursor-pointer appearance-none"
+              >
+                {COMMODITY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">Mandi / Terminal Market Filter</label>
-            <select
-              value={market}
-              onChange={(e) => setMarket(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              {MANDI_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">Historical Time Horizon</label>
-            <select
-              value={limitDays}
-              onChange={(e) => setLimitDays(Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-900 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              {LIMIT_OPTIONS.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <button
-              onClick={fetchMarketData}
-              disabled={loading}
-              className="w-full py-2 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Market Layer
-            </button>
+          {/* Mandi / Region Location Selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-rose-500" />
+              Target Mandi / Route Location
+            </label>
+            <div className="relative">
+              <select
+                value={market}
+                onChange={(e) => setMarket(e.target.value)}
+                className="w-full bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors cursor-pointer appearance-none"
+              >
+                {MANDI_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         </div>
+
+        {/* Action Button (Full-width Deep Green) */}
+        <button
+          type="button"
+          onClick={fetchMarketData}
+          disabled={loading}
+          className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-900 text-white font-black text-sm rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Checking Live Weather Feeds...</span>
+            </>
+          ) : (
+            <>
+              <CloudSun className="w-4 h-4" />
+              <span>Check Weather & Route Transit</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 3. "How It Works?" Guide Banner */}
+      <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center gap-2 text-emerald-950 font-extrabold text-sm">
+          <TrendingUp className="w-4 h-4 text-emerald-700" />
+          <span>How It Works?</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          {/* Step 1 */}
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
+              1
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-slate-900">Select produce & route</h4>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Choose crop and your transport destination
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
+              2
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-slate-900">Check rain & temperature</h4>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Live Open-Meteo 7-day temperature and precipitation
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
+              3
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-slate-900">Protect crop in transit</h4>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Prevent spoilage and plan optimal harvest departure
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-Tabs for In-Depth Data */}
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-100 pb-2">
+        <button
+          onClick={() => setActiveTab('weather')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'weather' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          🌦️ Live Weather & Agro-Advisories
+        </button>
+        <button
+          onClick={() => setActiveTab('snapshots')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'snapshots' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          📊 Mandi Spot Prices
+        </button>
+        <button
+          onClick={() => setActiveTab('prices')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'prices' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          📈 Price Trends
+        </button>
+        <button
+          onClick={() => setActiveTab('arrivals')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'arrivals' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          📦 Arrival Volumes
+        </button>
       </div>
 
       {/* 3. Transparent Multi-Source Provenance Banner */}
