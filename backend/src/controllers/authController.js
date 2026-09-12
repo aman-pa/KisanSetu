@@ -654,10 +654,11 @@ const forgotPassword = async (req, res) => {
     return res.json({
       success: true,
       message: isEthereal
-        ? `Password reset instructions dispatched via test inbox. Please check your email inbox.`
-        : `Password reset instructions sent to ${cleanEmail}! Please check your email inbox.`,
+        ? `Password reset verification code dispatched to ${cleanEmail}. (Test Mode OTP: ${resetOtp})`
+        : `Password reset verification code sent to ${cleanEmail}! Please check your email inbox.`,
       email: cleanEmail,
       provider: emailResult.provider,
+      ...(isEthereal || process.env.NODE_ENV !== 'production' ? { testOtp: resetOtp, previewUrl: emailResult.previewUrl } : {}),
     });
   } catch (error) {
     console.error('Forgot password error:', error);
@@ -665,18 +666,14 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// @desc Step 2 for Reset Password: Verify Reset OTP and Update Password
+// @desc Step 2 & 3 for Reset Password: Verify Reset OTP & Update Password
 // @route POST /api/auth/verify-otp-reset-password
 const verifyOtpResetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
 
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Please provide email, OTP code, and new password' });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Please provide registered email and 6-digit OTP code' });
     }
 
     const cleanEmail = email.toLowerCase().trim();
@@ -698,6 +695,19 @@ const verifyOtpResetPassword = async (req, res) => {
     const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Step 2 verification only (no newPassword passed yet)
+    if (!newPassword) {
+      return res.json({
+        success: true,
+        message: 'OTP verified successfully! Please enter your new password.',
+      });
+    }
+
+    // Step 3: Validate and update password
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
     }
 
     // Update password
