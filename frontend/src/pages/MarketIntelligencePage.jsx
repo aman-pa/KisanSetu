@@ -104,7 +104,7 @@ const MarketIntelligencePage = () => {
               LEFT COLUMN: EXACT DESIGN AS USER SCREENSHOT (~32% width on Desktop)
              ========================================================================= */}
           <div className="lg:col-span-4 min-w-0">
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6 lg:sticky lg:top-24 self-start">
               {/* Heading section */}
               <div className="space-y-1.5">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">

@@ -60,6 +60,18 @@ const LIMIT_OPTIONS = [
   { label: 'Last 60 Days', value: 60 },
 ];
 
+const formatMarketName = (name) => {
+  if (!name) return 'Regional Mandi';
+  let clean = name.trim();
+  // Ensure space before opening parenthesis
+  clean = clean.replace(/([^\s])\(/g, '$1 (');
+  // Remove spaces right inside parentheses
+  clean = clean.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+  // Collapse consecutive spaces
+  clean = clean.replace(/\s+/g, ' ');
+  return clean;
+};
+
 const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => {
   const [commodity, setCommodity] = useState(defaultCommodity);
   const [market, setMarket] = useState(defaultMarket);
@@ -420,47 +432,75 @@ const MarketDataCard = ({ defaultCommodity = 'Tomato', defaultMarket = '' }) => 
                   No active mandi snapshots found for {commodity}.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {snapshotsData.map((snap, idx) => (
-                    <div
-                      key={idx}
-                      className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all space-y-3 shadow-2xs"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="text-sm font-black text-slate-900 leading-snug">{snap.market}</h4>
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            {snap.district}, {snap.state}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {snapshotsData.map((snap, idx) => {
+                    const modalPerQuintal =
+                      snap.currentModalPrice ??
+                      snap.modalPrice ??
+                      (snap.minPrice && snap.maxPrice ? Math.round((snap.minPrice + snap.maxPrice) / 2) : 0);
+                    const modalPerKg =
+                      snap.currentModalPricePerKg ??
+                      snap.modalPricePerKg ??
+                      (modalPerQuintal ? (modalPerQuintal / 100).toFixed(2) : '0.00');
+                    const minPrice = snap.minPrice ?? 0;
+                    const maxPrice = snap.maxPrice ?? 0;
+                    const marketName = formatMarketName(snap.market);
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-5 rounded-2xl bg-slate-50/90 border border-slate-200/80 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all space-y-3.5 shadow-2xs flex flex-col justify-between"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-black text-slate-900 leading-snug break-words">
+                              {marketName}
+                            </h4>
+                            <span className="text-[11px] text-slate-500 font-semibold block truncate mt-1 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                              {snap.district ? `${snap.district}, ` : ''}{snap.state}
+                            </span>
+                          </div>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap shadow-2xs ${
+                              snap.trend === 'RISING'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : snap.trend === 'FALLING'
+                                ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                : snap.trend === 'LIVE_AUCTION'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-slate-200/70 text-slate-700 border border-slate-300'
+                            }`}
+                          >
+                            {snap.trend === 'RISING' && <TrendingUp className="w-3 h-3 text-emerald-600" />}
+                            {snap.trend === 'FALLING' && <TrendingDown className="w-3 h-3 text-rose-600" />}
+                            {snap.trend === 'LIVE_AUCTION' && <Activity className="w-3 h-3 text-amber-600" />}
+                            {snap.trend ? snap.trend.replace(/_/g, ' ') : 'STABLE'}
                           </span>
                         </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 ${
-                            snap.trend === 'RISING'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : snap.trend === 'FALLING'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {snap.trend === 'RISING' && <TrendingUp className="w-3 h-3 text-emerald-600" />}
-                          {snap.trend === 'FALLING' && <TrendingDown className="w-3 h-3 text-rose-600" />}
-                          {snap.trend || 'STABLE'}
-                        </span>
-                      </div>
 
-                      <div className="pt-2 border-t border-slate-200/60 flex items-baseline justify-between">
-                        <div>
-                          <span className="text-[10px] text-slate-400 uppercase font-bold block">Modal Price</span>
-                          <span className="text-xl font-black text-emerald-700">₹{snap.modalPricePerKg}</span>
-                          <span className="text-xs text-slate-500 font-normal"> / kg</span>
-                        </div>
-                        <div className="text-right text-[11px] text-slate-500">
-                          <span>₹{snap.modalPrice} / quintal</span>
-                          <span className="block text-[10px] text-slate-400">Range: ₹{snap.minPrice} – ₹{snap.maxPrice}</span>
+                        <div className="pt-3 border-t border-slate-200/70 flex items-baseline justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                              Modal Price
+                            </span>
+                            <div className="flex items-baseline gap-1 mt-0.5">
+                              <span className="text-xl font-black text-emerald-700">₹{modalPerKg}</span>
+                              <span className="text-xs text-slate-500 font-bold">/ kg</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-black text-slate-800 block">
+                              ₹{Number(modalPerQuintal).toLocaleString('en-IN')} / q
+                            </span>
+                            <span className="block text-[10px] text-slate-400 font-medium mt-0.5">
+                              ₹{Number(minPrice).toLocaleString('en-IN')} – ₹{Number(maxPrice).toLocaleString('en-IN')}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
