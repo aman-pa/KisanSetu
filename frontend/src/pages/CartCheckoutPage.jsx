@@ -216,9 +216,16 @@ const CartCheckoutPage = () => {
                       <span>Produce Total ({totalQuantityKg} kg)</span>
                       <span className="font-bold text-slate-800">₹{totalProduceCost.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Cold-Chain Logistics</span>
-                      <span className="font-bold text-slate-800">₹{logisticsCost.toLocaleString()}</span>
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between items-center">
+                        <span>Estimated Cold-Chain Logistics</span>
+                        <span className="font-bold text-slate-800">₹{logisticsCost.toLocaleString()}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        {user?.role === 'CONSUMER'
+                          ? 'Standard retail baseline estimate (₹60)'
+                          : 'Commercial freight baseline estimate (5% + ₹500)'}
+                      </p>
                     </div>
                     <div className="flex justify-between">
                       <span>Platform Fee (2%)</span>
