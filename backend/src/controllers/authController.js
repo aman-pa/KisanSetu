@@ -193,6 +193,9 @@ const verifyRegistrationOTPAndCreateUser = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Send confirmation email
+    sendRegistrationConfirmationEmail(user).catch(err => console.error("[Reg Email Error]", err.message));
+
     return res.status(201).json({
       success: true,
       message: 'Account verified & created successfully!',
@@ -294,6 +297,9 @@ const registerUser = async (req, res) => {
     }
 
     const token = generateToken(user._id);
+
+    // Send confirmation email
+    sendRegistrationConfirmationEmail(user).catch(err => console.error("[Reg Email Error]", err.message));
 
     return res.status(201).json({
       success: true,
@@ -571,6 +577,9 @@ const changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
+    // Send password changed notification email
+    sendPasswordChangedNotificationEmail(user).catch(err => console.error("[Pass Email Error]", err.message));
+
     return res.json({
       success: true,
       message: 'Password updated successfully!',
@@ -719,6 +728,9 @@ const verifyOtpResetPassword = async (req, res) => {
     // Clean up OTP record
     await Otp.deleteMany({ email: cleanEmail, purpose: 'PASSWORD_RESET' });
 
+    // Send password changed notification email
+    sendPasswordChangedNotificationEmail(user).catch(err => console.error("[Pass Email Error]", err.message));
+
     return res.json({
       success: true,
       message: 'Password updated successfully! You can now log in with your new password.',
@@ -753,6 +765,9 @@ const directEmailResetPassword = async (req, res) => {
     user.resetPasswordExpire = undefined;
     await user.save();
 
+    // Send password changed notification email
+    sendPasswordChangedNotificationEmail(user).catch(err => console.error("[Pass Email Error]", err.message));
+
     const jwtToken = generateToken(user._id);
 
     return res.redirect(`http://localhost:5173/login?directResetSuccess=true&token=${jwtToken}&role=${user.role}`);
@@ -763,7 +778,7 @@ const directEmailResetPassword = async (req, res) => {
 
 
 // Helper: Send Registration Confirmation Email
-const sendRegistrationConfirmationEmail = async (user) => {
+async function sendRegistrationConfirmationEmail(user) {
   try {
     const htmlText = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
@@ -806,7 +821,7 @@ const sendRegistrationConfirmationEmail = async (user) => {
 };
 
 // Helper: Send Password Changed Notification Email
-const sendPasswordChangedNotificationEmail = async (user) => {
+async function sendPasswordChangedNotificationEmail(user) {
   try {
     const htmlText = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
