@@ -233,12 +233,12 @@ const LoginPage = () => {
 
             <div className="space-y-5 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-extrabold border border-emerald-500/30">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> SIH Evaluation Personas
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Platform Role Portals
               </div>
               
               <div>
-                <h3 className="text-lg font-black text-white">Quick-Fill Evaluation Personas</h3>
-                <p className="text-xs text-slate-300 mt-0.5">Click any persona below to auto-fill credentials for testing:</p>
+                <h3 className="text-lg font-black text-white">Pre-Configured Role Logins</h3>
+                <p className="text-xs text-slate-300 mt-0.5">Select any ecosystem role below to auto-fill credentials:</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-1">

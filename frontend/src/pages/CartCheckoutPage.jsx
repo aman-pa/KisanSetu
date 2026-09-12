@@ -262,7 +262,7 @@ const CartCheckoutPage = () => {
                 <div className="p-4 bg-[#F8F9FA] rounded-2xl space-y-2 text-center">
                   <p className="text-xs text-slate-500">Simulated Payment Amount</p>
                   <p className="text-3xl font-black text-agri-primary">₹{grandTotal.toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400">SIH Demo Simulation Mode • Escrow Secured</p>
+                  <p className="text-[10px] text-slate-400">Digital Escrow Protection • Instant Producer Settlement</p>
                 </div>
 
                 <div className="space-y-2">
