@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import MandiOptimizerCard from '../components/MandiOptimizerCard';
-import MarketDataCard from '../components/MarketDataCard';
+import WeatherForecastCard from '../components/WeatherForecastCard';
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
 import {
@@ -151,7 +151,7 @@ const MarketIntelligencePage = () => {
           <div id="selected-tool-details" className="lg:col-span-8">
             <div className="animate-in fade-in duration-300">
               {activeModule === 'optimizer' && <MandiOptimizerCard />}
-              {activeModule === 'weather' && <MarketDataCard />}
+              {activeModule === 'weather' && <WeatherForecastCard />}
               {activeModule === 'forecast' && <DemandForecastCard />}
               {activeModule === 'price' && <PriceIntelligenceCard />}
             </div>
