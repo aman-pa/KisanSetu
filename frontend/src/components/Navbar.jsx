@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import API from '../services/api';
 import {
   Sprout,
+  Home,
+  Menu,
   ShoppingCart,
   LogOut,
   LayoutDashboard,
@@ -31,9 +33,46 @@ const Navbar = () => {
   const { user, setUser, logout, role } = useAuth();
   const { cartItems } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('PERSONAL'); // 'PERSONAL' | 'BUSINESS' | 'SECURITY' | 'ORDERS'
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const navLinks = [
+    {
+      label: 'Home',
+      path: '/',
+      icon: Home,
+      isActive: (pathname) => pathname === '/',
+    },
+    {
+      label: 'Marketplace',
+      path: '/marketplace',
+      icon: Search,
+      isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+    },
+    {
+      label: 'Market Intelligence',
+      path: '/market-intelligence',
+      icon: TrendingUp,
+      isActive: (pathname) =>
+        pathname === '/market-intelligence' ||
+        pathname.startsWith('/farmer/market-intelligence') ||
+        pathname.startsWith('/farmer/demand-forecast') ||
+        pathname.startsWith('/farmer/price-recommendation'),
+    },
+    {
+      label: 'Batch QR Trace',
+      path: '/trace/KS-BATCH-994821',
+      icon: ShieldCheck,
+      isActive: (pathname) => pathname.startsWith('/trace'),
+    },
+  ];
 
   // Editable Form State
   const [name, setName] = useState('');
@@ -220,8 +259,13 @@ const Navbar = () => {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-emerald-900/10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
+            {/* Logo / Brand Link to Home */}
+            <Link
+              to="/"
+              aria-label="KisanSetu Home"
+              title="KisanSetu Home - Return to Landing Page"
+              className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-agri-primary/20 rounded-xl"
+            >
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-agri-dark via-agri-primary to-agri-accent flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
                 <Sprout className="w-6 h-6" />
               </div>
@@ -235,21 +279,35 @@ const Navbar = () => {
               </div>
             </Link>
 
-            {/* Navigation Links */}
-            <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-              <Link to="/marketplace" className="hover:text-agri-primary transition-colors flex items-center gap-1.5 font-bold">
-                <Search className="w-4 h-4 text-agri-accent" /> Marketplace
-              </Link>
-              <Link to="/market-intelligence" className="hover:text-agri-primary transition-colors flex items-center gap-1.5 font-bold">
-                <TrendingUp className="w-4 h-4 text-emerald-600" /> Market Intelligence
-              </Link>
-              <Link to="/trace/KS-BATCH-994821" className="hover:text-agri-primary transition-colors flex items-center gap-1.5 font-bold">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" /> Batch QR Trace
-              </Link>
+            {/* Desktop Navigation Links */}
+            <nav className="hidden md:flex items-center gap-2 text-sm font-medium" aria-label="Global Navigation">
+              {navLinks.map((item) => {
+                const Icon = item.icon;
+                const active = item.isActive(location.pathname);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    aria-current={active ? 'page' : undefined}
+                    className={`relative px-3.5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 ${
+                      active
+                        ? 'bg-emerald-50 text-agri-dark font-extrabold border border-emerald-200/80 shadow-xs'
+                        : 'text-slate-600 hover:text-agri-primary hover:bg-slate-50 font-semibold'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${active ? 'text-emerald-700 stroke-[2.5]' : 'text-slate-500'}`} />
+                    <span>{item.label}</span>
+                    {active && (
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-600 ml-0.5" aria-hidden="true" />
+                    )}
+                    {active && <span className="sr-only">(Current Page)</span>}
+                  </Link>
+                );
+              })}
             </nav>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {/* Consumer Cart Icon */}
               {(!user || user.role === 'CONSUMER') && (
                 <Link
@@ -287,24 +345,68 @@ const Navbar = () => {
                   <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-agri-primary" />
                 </button>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <Link
                     to="/login"
-                    className="px-4 py-2 text-xs font-bold text-agri-dark hover:text-agri-primary transition-colors"
+                    className="px-3 sm:px-4 py-2 text-xs font-bold text-agri-dark hover:text-agri-primary transition-colors"
                   >
                     Sign In
                   </Link>
                   <Link
                     to="/register"
-                    className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent rounded-xl shadow-agri-sm hover:shadow-agri-md transition-all"
+                    className="px-3 sm:px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent rounded-xl shadow-agri-sm hover:shadow-agri-md transition-all"
                   >
                     Register Free
                   </Link>
                 </div>
               )}
+
+              {/* Mobile Menu Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-xl text-slate-600 hover:text-agri-primary hover:bg-slate-100 transition-all focus:outline-none"
+                aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={mobileMenuOpen}
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-emerald-900/10 px-4 pt-2 pb-4 shadow-md space-y-1 animate-in fade-in slide-in-from-top-2">
+            {navLinks.map((item) => {
+              const Icon = item.icon;
+              const active = item.isActive(location.pathname);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-xs transition-all ${
+                    active
+                      ? 'bg-emerald-50 text-agri-dark font-extrabold border border-emerald-200 shadow-xs'
+                      : 'text-slate-600 hover:text-agri-primary hover:bg-slate-50 font-semibold'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`w-4 h-4 ${active ? 'text-emerald-700 stroke-[2.5]' : 'text-slate-500'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {active && (
+                    <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                      Active
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </header>
 
       {/* Enterprise Profile & Account Management Modal */}
