@@ -99,12 +99,12 @@ const MarketIntelligencePage = () => {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* =========================================================================
               LEFT COLUMN: EXACT DESIGN AS USER SCREENSHOT (~32% width on Desktop)
              ========================================================================= */}
           <div className="lg:col-span-4 min-w-0">
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6 lg:sticky lg:top-24 self-start">
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
               {/* Heading section */}
               <div className="space-y-1.5">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
@@ -162,7 +162,7 @@ const MarketIntelligencePage = () => {
           {/* =========================================================================
               RIGHT COLUMN: SELECTED TOOL DETAILS (~68% width on Desktop)
              ========================================================================= */}
-          <div id="selected-tool-details" className="lg:col-span-8 min-w-0 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto pr-1.5">
+          <div id="selected-tool-details" className="lg:col-span-8 min-w-0">
             <div className="animate-in fade-in duration-300">
               {activeModule === 'optimizer' && <MandiOptimizerCard />}
               {activeModule === 'weather' && <WeatherForecastCard />}
