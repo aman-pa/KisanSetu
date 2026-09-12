@@ -761,6 +761,91 @@ const directEmailResetPassword = async (req, res) => {
   }
 };
 
+
+// Helper: Send Registration Confirmation Email
+const sendRegistrationConfirmationEmail = async (user) => {
+  try {
+    const htmlText = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+        <div style="background-color: #0A2412; padding: 24px; border-radius: 12px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900;">🌾 KisanSetu AI</h1>
+          <p style="margin: 6px 0 0; color: #4ade80; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">Registration Confirmed</p>
+        </div>
+
+        <div style="padding: 24px 0;">
+          <h2 style="color: #0f172a; font-size: 18px; font-weight: 800; margin-top: 0;">Welcome to KisanSetu AI, ${user.name}! 🎉</h2>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6;">Your KisanSetu AI account has been successfully registered and verified!</p>
+
+          <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 18px; border-radius: 12px; margin: 20px 0;">
+            <p style="margin: 4px 0; font-size: 13px; color: #334155;"><b>Name:</b> ${user.name}</p>
+            <p style="margin: 4px 0; font-size: 13px; color: #334155;"><b>Registered Email:</b> ${user.email}</p>
+            <p style="margin: 4px 0; font-size: 13px; color: #334155;"><b>Role Portal:</b> ${user.role}</p>
+            <p style="margin: 4px 0; font-size: 13px; color: #334155;"><b>Account Status:</b> Active & Verified</p>
+          </div>
+
+          <p style="color: #475569; font-size: 13px; line-height: 1.6;">You can now log in to your KisanSetu AI workspace to explore direct farm produce trading, APMC market intelligence, and verified procurement.</p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="http://localhost:5173/login" style="background-color: #166534; color: #ffffff; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; display: inline-block;">
+              Sign In to Your Workspace →
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await sendEmail({
+      to: user.email,
+      subject: '[KisanSetu AI] Welcome! Your Account Registration Was Successful',
+      htmlText,
+      plainText: `Welcome to KisanSetu AI, ${user.name}! Your account as ${user.role} (${user.email}) has been successfully created.`,
+    });
+  } catch (err) {
+    console.error('[Registration Email Error]', err.message);
+  }
+};
+
+// Helper: Send Password Changed Notification Email
+const sendPasswordChangedNotificationEmail = async (user) => {
+  try {
+    const htmlText = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+        <div style="background-color: #0A2412; padding: 24px; border-radius: 12px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900;">🌾 KisanSetu AI</h1>
+          <p style="margin: 6px 0 0; color: #4ade80; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">Security Alert</p>
+        </div>
+
+        <div style="padding: 24px 0;">
+          <h2 style="color: #0f172a; font-size: 18px; font-weight: 800; margin-top: 0;">Password Successfully Changed 🔒</h2>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6;">Hello <b>${user.name}</b>,</p>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6;">This email confirms that the password for your KisanSetu AI account (<b>${user.email}</b>) was successfully updated.</p>
+
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; border-radius: 12px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 800;">✓ Your password change is now complete and active.</p>
+          </div>
+
+          <p style="color: #64748b; font-size: 12px; line-height: 1.5;">If you did not make this change, please contact support immediately or reset your password.</p>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="http://localhost:5173/login" style="background-color: #166534; color: #ffffff; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 14px; display: inline-block;">
+              Sign In with New Password →
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await sendEmail({
+      to: user.email,
+      subject: '[KisanSetu AI] Security Notice: Your Account Password Was Successfully Changed',
+      htmlText,
+      plainText: `Hello ${user.name}, your KisanSetu AI account password for ${user.email} was successfully updated.`,
+    });
+  } catch (err) {
+    console.error('[Password Changed Email Error]', err.message);
+  }
+};
+
 module.exports = {
   sendRegistrationOTP,
   verifyRegistrationOTPAndCreateUser,
