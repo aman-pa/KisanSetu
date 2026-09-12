@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -24,6 +25,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <Routes>
+          {/* Public Discovery Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -32,22 +34,105 @@ function App() {
           <Route path="/market-intelligence" element={<MarketIntelligencePage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/cart" element={<CartCheckoutPage />} />
-
-          {/* Role Dashboards */}
-          <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
-          <Route path="/farmer/market-intelligence" element={<MarketIntelligencePage />} />
-          <Route path="/farmer/add-produce" element={<AddProducePage />} />
-          <Route path="/farmer/produce" element={<FarmerDashboard />} />
-          <Route path="/farmer/demand-forecast" element={<MarketIntelligencePage />} />
-          <Route path="/farmer/price-recommendation" element={<MarketIntelligencePage />} />
-          <Route path="/farmer/quality" element={<FarmerDashboard />} />
-
-          <Route path="/fpo/dashboard" element={<FPODashboard />} />
-          <Route path="/buyer/procurement" element={<BulkBuyerDashboard />} />
-          <Route path="/logistics/dashboard" element={<LogisticsDashboard />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-
           <Route path="/trace/:batchId" element={<BatchTraceabilityPage />} />
+
+          {/* Role-Protected Farmer & FPO Routes */}
+          <Route
+            path="/farmer/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <FarmerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/market-intelligence"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <MarketIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/add-produce"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <AddProducePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/produce"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <FarmerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/demand-forecast"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <MarketIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/price-recommendation"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <MarketIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/quality"
+            element={
+              <ProtectedRoute allowedRoles={['FARMER', 'FPO']}>
+                <FarmerDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Protected FPO Routes */}
+          <Route
+            path="/fpo/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPODashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Protected Buyer Routes */}
+          <Route
+            path="/buyer/procurement"
+            element={
+              <ProtectedRoute allowedRoles={['BULK_BUYER', 'ADMIN']}>
+                <BulkBuyerDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Protected Logistics Routes */}
+          <Route
+            path="/logistics/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['LOGISTICS', 'ADMIN']}>
+                <LogisticsDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Protected Admin Routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </CartProvider>
     </AuthProvider>

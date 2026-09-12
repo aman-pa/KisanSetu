@@ -233,12 +233,12 @@ const LoginPage = () => {
 
             <div className="space-y-5 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-extrabold border border-emerald-500/30">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> SIH Evaluation Logins
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> SIH Evaluation Personas
               </div>
               
               <div>
-                <h3 className="text-lg font-black text-white">Select a Pre-configured Role</h3>
-                <p className="text-xs text-slate-300 mt-0.5">Click any account below for instant evaluation:</p>
+                <h3 className="text-lg font-black text-white">Quick-Fill Evaluation Personas</h3>
+                <p className="text-xs text-slate-300 mt-0.5">Click any persona below to auto-fill credentials for testing:</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-1">
@@ -298,8 +298,8 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-white/10 text-[11px] text-slate-400 text-center relative z-10">
-              Demo accounts password: <span className="font-mono text-emerald-300 font-bold">Role@123</span>
+            <div className="pt-6 border-t border-white/10 text-[11px] text-slate-300 text-center relative z-10 flex items-center justify-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Pre-seeded evaluation credentials auto-populate on click
             </div>
           </div>
         </div>
@@ -352,7 +352,7 @@ const LoginPage = () => {
                     value={resetEmailInput}
                     onChange={(e) => setResetEmailInput(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                    placeholder="amanpandey10a3@gmail.com"
+                    placeholder="user@example.com"
                   />
                 </div>
 

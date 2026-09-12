@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
+import { useAuth } from '../context/AuthContext';
 import {
   Sprout,
   ArrowRight,
@@ -18,6 +19,51 @@ import {
 } from 'lucide-react';
 
 const LandingPage = () => {
+  const { user } = useAuth();
+
+  const getFarmerCta = () => {
+    if (!user) {
+      return {
+        to: '/register?role=FARMER',
+        label: 'Start Selling as Farmer',
+      };
+    }
+    switch (user.role) {
+      case 'FARMER':
+        return {
+          to: '/farmer/dashboard',
+          label: 'Farmer Dashboard & Selling',
+        };
+      case 'FPO':
+        return {
+          to: '/fpo/dashboard',
+          label: 'FPO Produce Aggregation',
+        };
+      case 'BULK_BUYER':
+        return {
+          to: '/buyer/procurement',
+          label: 'Procurement Dashboard',
+        };
+      case 'LOGISTICS':
+        return {
+          to: '/logistics/dashboard',
+          label: 'Logistics Dashboard',
+        };
+      case 'ADMIN':
+        return {
+          to: '/admin/dashboard',
+          label: 'Admin Command Center',
+        };
+      default:
+        return {
+          to: '/marketplace',
+          label: 'Browse Farm Marketplace',
+        };
+    }
+  };
+
+  const farmerCta = getFarmerCta();
+
   return (
     <MainLayout>
       {/* 1. HERO SECTION */}
@@ -38,16 +84,16 @@ const LandingPage = () => {
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 max-w-2xl font-normal leading-relaxed">
-                KisanSetu AI eliminates multiple middleman markup layers, increasing farmer earnings by up to 34% while reducing consumer produce costs through AI demand forecasting & route optimization.
+                KisanSetu AI provides farmers with verified APMC market intelligence, demand forecasting, and direct buyer connections to optimize farm-gate net realization.
               </p>
 
               {/* CTAs */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
                 <Link
-                  to="/register?role=FARMER"
+                  to={farmerCta.to}
                   className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-agri-accent to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-900/40 hover:scale-105 transition-all flex items-center justify-center gap-2"
                 >
-                  <Sprout className="w-5 h-5" /> Start Selling as Farmer
+                  <Sprout className="w-5 h-5" /> {farmerCta.label}
                 </Link>
                 <Link
                   to="/marketplace"
@@ -57,19 +103,19 @@ const LandingPage = () => {
                 </Link>
               </div>
 
-              {/* Quick stats pills */}
+              {/* Core Feature Pillars */}
               <div className="pt-8 grid grid-cols-3 gap-4 border-t border-white/10 text-center lg:text-left">
                 <div>
-                  <p className="text-2xl font-black text-agri-light">+34%</p>
-                  <p className="text-[11px] text-slate-400">Farmer Net Revenue</p>
+                  <p className="text-xl sm:text-2xl font-black text-agri-light">Mandi AI</p>
+                  <p className="text-[11px] text-slate-400">Net Realization Optimizer</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-agri-gold">0%</p>
-                  <p className="text-[11px] text-slate-400">Middleman Exploitation</p>
+                  <p className="text-xl sm:text-2xl font-black text-agri-gold">Direct</p>
+                  <p className="text-[11px] text-slate-400">Farm-to-Buyer Connections</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-black text-emerald-400">100%</p>
-                  <p className="text-[11px] text-slate-400">QR Batch Traceability</p>
+                  <p className="text-xl sm:text-2xl font-black text-emerald-400">QR Trace</p>
+                  <p className="text-[11px] text-slate-400">Batch Lot Provenance</p>
                 </div>
               </div>
             </div>
@@ -92,12 +138,12 @@ const LandingPage = () => {
                         <Award className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold">Grade A Verified Harvest</p>
-                        <p className="text-[11px] text-slate-500">Batch ID: KS-BATCH-994821</p>
+                        <p className="text-xs font-bold">Verified Crop Harvest</p>
+                        <p className="text-[11px] text-slate-500">Sample Batch • Public Demo</p>
                       </div>
                     </div>
                     <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-600 text-white">
-                      AI Score: 94%
+                      Grade A (Sample Lot)
                     </span>
                   </div>
                 </div>
@@ -168,8 +214,8 @@ const LandingPage = () => {
                   <span className="font-bold text-emerald-700">Direct Pricing</span>
                 </li>
                 <li className="flex items-center justify-between bg-white p-3.5 rounded-xl shadow-sm border border-emerald-100 font-medium">
-                  <span className="flex items-center gap-2"><Brain className="w-4 h-4 text-agri-accent" /> AI Demand & Route Optimization</span>
-                  <span className="font-bold text-emerald-700">34% Savings</span>
+                  <span className="flex items-center gap-2"><Brain className="w-4 h-4 text-agri-accent" /> Mandi Net Realization Model</span>
+                  <span className="font-bold text-emerald-700">Estimated Logistics</span>
                 </li>
                 <li className="flex items-center justify-between bg-white p-3.5 rounded-xl shadow-sm border border-emerald-100 font-medium">
                   <span className="flex items-center gap-2"><Truck className="w-4 h-4 text-emerald-600" /> Cold-Chain Direct Delivery</span>
@@ -177,7 +223,7 @@ const LandingPage = () => {
                 </li>
               </ul>
               <div className="pt-2 text-xs font-bold text-emerald-900 text-center bg-emerald-200/60 p-3.5 rounded-xl">
-                Result: Farmer earns ₹28/kg (+133%) & Consumer buys at ₹32/kg (-29%)!
+                Illustrative Scenario: Direct farm-gate listing with transparent estimated transport costs and batch QR tracing.
               </div>
             </div>
           </div>
@@ -251,10 +297,10 @@ const LandingPage = () => {
           <p className="text-sm text-slate-300">Experience KisanSetu AI's role-based platform built for SIH 2026.</p>
           <div className="flex justify-center gap-4 pt-2">
             <Link
-              to="/register"
+              to={farmerCta.to}
               className="px-8 py-3.5 rounded-xl bg-agri-gold hover:bg-amber-500 text-slate-950 font-bold text-xs shadow-lg transition-all"
             >
-              Get Started Free
+              {farmerCta.label}
             </Link>
             <Link
               to="/marketplace"

@@ -79,20 +79,33 @@ const DashboardLayout = ({ children }) => {
           <aside className="lg:col-span-3">
             <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-6 sticky top-24">
               {/* Profile Header */}
-              <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
-                <img
-                  src={user?.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
-                  alt={user?.name}
-                  className="w-12 h-12 rounded-2xl object-cover border-2 border-agri-primary/20 shadow-sm"
-                />
-                <div className="overflow-hidden">
-                  <h3 className="text-sm font-bold text-slate-800 leading-tight truncate">{user?.name}</h3>
-                  <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                  <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    {role}
-                  </span>
+              {user ? (
+                <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
+                  <img
+                    src={user?.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+                    alt={user?.name}
+                    className="w-12 h-12 rounded-2xl object-cover border-2 border-agri-primary/20 shadow-sm"
+                  />
+                  <div className="overflow-hidden">
+                    <h3 className="text-sm font-bold text-slate-800 leading-tight truncate">{user?.name}</h3>
+                    <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+                    <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      {role}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/60 text-center space-y-2 pb-5 border-b border-slate-100">
+                  <p className="text-xs font-bold text-emerald-950">Public Discovery Mode</p>
+                  <p className="text-[11px] text-slate-600">Sign in to unlock personalized farm decision support & mandi optimization.</p>
+                  <Link
+                    to="/login"
+                    className="inline-block px-4 py-1.5 rounded-xl bg-agri-primary text-white text-xs font-bold shadow-sm hover:bg-agri-dark transition-all"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
 
               {/* Navigation Items */}
               <nav className="space-y-1.5">
@@ -117,17 +130,34 @@ const DashboardLayout = ({ children }) => {
               </nav>
 
               {/* Quick Actions */}
-              <div className="pt-4 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    logout();
-                    navigate('/login');
-                  }}
-                  className="w-full text-left px-4 py-2.5 rounded-2xl text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" /> Sign Out
-                </button>
-              </div>
+              {user ? (
+                <div className="pt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate('/login');
+                    }}
+                    className="w-full text-left px-4 py-2.5 rounded-2xl text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+                  <Link
+                    to="/login"
+                    className="w-full text-center px-4 py-2 rounded-xl bg-agri-primary text-white text-xs font-bold shadow-sm"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="w-full text-center px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
+                  >
+                    Register Free
+                  </Link>
+                </div>
+              )}
             </div>
           </aside>
 

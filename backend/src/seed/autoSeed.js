@@ -49,6 +49,132 @@ const autoSeedIfEmpty = async () => {
         await TrustScore.create({ user: farmerAman._id, overallScore: 98 });
         console.log('[AutoSeed] Added Farmer user account for amanpandey10a3@gmail.com');
       }
+
+      // Ensure all standard produce listings and batch traceability exist idempotently
+      const farmerRamesh = await User.findOne({ email: 'farmer.ramesh@kisansetu.in' });
+      const farmerSuresh = await User.findOne({ email: 'farmer.suresh@kisansetu.in' });
+      const fpoPunjab = await User.findOne({ email: 'fpo.punjab@kisansetu.in' });
+      const currentAman = await User.findOne({ email: 'amanpandey10a3@gmail.com' });
+
+      const defaultFarmer = farmerRamesh || currentAman;
+      const defaultFarmer2 = farmerSuresh || currentAman;
+      const defaultFpo = fpoPunjab || currentAman;
+
+      if (defaultFarmer) {
+        const standardListings = [
+          {
+            farmer: defaultFarmer._id,
+            cropName: 'Tomato',
+            category: 'VEGETABLES',
+            quantityKg: 2000,
+            availableQuantityKg: 2000,
+            pricePerKg: 28,
+            grade: 'GRADE_A',
+            harvestDate: new Date(Date.now() + 5 * 86400000),
+            images: ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80'],
+            location: { district: 'Karnal', state: 'Haryana', lat: 29.6857, lng: 76.9905 },
+            batchId: 'KS-BATCH-994821',
+            aiQualityEstimateScore: 94,
+            aiPriceRecommendation: { min: 27, max: 29, reasoning: 'High demand in Delhi NCR mandi forecast.' },
+          },
+          {
+            farmer: defaultFarmer2 ? defaultFarmer2._id : defaultFarmer._id,
+            cropName: 'Tomato',
+            category: 'VEGETABLES',
+            quantityKg: 1500,
+            availableQuantityKg: 1500,
+            pricePerKg: 27,
+            grade: 'GRADE_A',
+            harvestDate: new Date(Date.now() + 4 * 86400000),
+            images: ['https://images.unsplash.com/photo-1546470427-0d4db154ceb7?auto=format&fit=crop&w=600&q=80'],
+            location: { district: 'Panipat', state: 'Haryana', lat: 29.3909, lng: 76.9635 },
+            batchId: 'KS-BATCH-994822',
+            aiQualityEstimateScore: 89,
+            aiPriceRecommendation: { min: 26, max: 28, reasoning: 'Optimal harvest freshness index.' },
+          },
+          {
+            farmer: defaultFpo ? defaultFpo._id : defaultFarmer._id,
+            cropName: 'Tomato',
+            category: 'VEGETABLES',
+            quantityKg: 2500,
+            availableQuantityKg: 2500,
+            pricePerKg: 26,
+            grade: 'GRADE_A',
+            harvestDate: new Date(Date.now() + 3 * 86400000),
+            images: ['https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80'],
+            location: { district: 'Ambala', state: 'Punjab', lat: 30.3782, lng: 76.7767 },
+            batchId: 'KS-BATCH-994823',
+            aiQualityEstimateScore: 92,
+            aiPriceRecommendation: { min: 25, max: 28, reasoning: 'Bulk volume pricing efficiency.' },
+          },
+          {
+            farmer: defaultFarmer._id,
+            cropName: 'Potato',
+            category: 'VEGETABLES',
+            quantityKg: 5000,
+            availableQuantityKg: 5000,
+            pricePerKg: 18,
+            grade: 'GRADE_A',
+            harvestDate: new Date(Date.now() + 10 * 86400000),
+            images: ['https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80'],
+            location: { district: 'Karnal', state: 'Haryana', lat: 29.6857, lng: 76.9905 },
+            batchId: 'KS-BATCH-994824',
+            aiQualityEstimateScore: 95,
+            aiPriceRecommendation: { min: 17, max: 19, reasoning: 'Steady winter storage demand.' },
+          },
+          {
+            farmer: defaultFarmer2 ? defaultFarmer2._id : defaultFarmer._id,
+            cropName: 'Onion',
+            category: 'VEGETABLES',
+            quantityKg: 3500,
+            availableQuantityKg: 3500,
+            pricePerKg: 34,
+            grade: 'GRADE_A',
+            harvestDate: new Date(Date.now() + 7 * 86400000),
+            images: ['https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&w=600&q=80'],
+            location: { district: 'Panipat', state: 'Haryana', lat: 29.3909, lng: 76.9635 },
+            batchId: 'KS-BATCH-994825',
+            aiQualityEstimateScore: 91,
+            aiPriceRecommendation: { min: 33, max: 36, reasoning: 'Regional supply shortage spike.' },
+          },
+        ];
+
+        for (const item of standardListings) {
+          const existing = await ProduceListing.findOne({ batchId: item.batchId });
+          if (!existing) {
+            const listing = await ProduceListing.create(item);
+            const qrPayload = await QRCode.toDataURL(
+              JSON.stringify({ batchId: item.batchId, crop: item.cropName, verifyUrl: `http://localhost:5173/trace/${item.batchId}` })
+            );
+
+            await BatchTraceability.create({
+              batchId: item.batchId,
+              produceListing: listing._id,
+              farmer: item.farmer,
+              cropName: item.cropName,
+              quantityKg: item.quantityKg,
+              harvestDate: item.harvestDate,
+              qrDataUrl: qrPayload,
+              timeline: [
+                {
+                  stage: 'LISTED',
+                  timestamp: new Date(),
+                  actor: 'Farmer Partner',
+                  location: `${item.location.district}, ${item.location.state}`,
+                  notes: `Produce listed on KisanSetu AI. Grade: ${item.grade}.`,
+                },
+                {
+                  stage: 'AI_ASSESSED',
+                  timestamp: new Date(),
+                  actor: 'KisanSetu AI Vision Engine',
+                  location: 'Cloud Machine Learning Engine',
+                  notes: `Visual quality score confirmed: ${item.aiQualityEstimateScore}/100.`,
+                },
+              ],
+            });
+          }
+        }
+      }
       return;
     }
 

@@ -15,6 +15,9 @@ import {
   ShieldCheck,
   Sparkles,
   AlertTriangle,
+  PlusCircle,
+  Layers,
+  TrendingUp,
 } from 'lucide-react';
 
 const ConsumerMarketplace = () => {
@@ -89,7 +92,7 @@ const ConsumerMarketplace = () => {
                 Fresh Produce Directly From Indian Farmers
               </h1>
               <p className="text-xs text-emerald-200/90 font-medium max-w-xl">
-                Zero middleman markup • Multi-stage AI quality verified • Full batch QR traceability
+                Direct Farm-to-Buyer Marketplace • Verified Quality Grades • Batch QR Traceability
               </p>
               {user?.role === 'CONSUMER' && (
                 <div className="inline-block mt-2 bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-semibold">
@@ -98,6 +101,45 @@ const ConsumerMarketplace = () => {
               )}
             </div>
           </div>
+
+          {/* Farmer / FPO Quick Actions Bar */}
+          {(user?.role === 'FARMER' || user?.role === 'FPO') && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-600/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-sm">
+                  <Sprout className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-emerald-950 dark:text-emerald-100 uppercase tracking-wider">
+                    Farmer & FPO Management Panel
+                  </h4>
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                    List new harvest batches, manage stock, or compare mandi net realization before selling.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <Link
+                  to="/farmer/add-produce"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+                >
+                  <PlusCircle className="w-4 h-4" /> Add Produce Listing
+                </Link>
+                <Link
+                  to="/farmer/produce"
+                  className="px-4 py-2 rounded-xl bg-white dark:bg-emerald-900 border border-emerald-200 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-all flex items-center gap-1.5"
+                >
+                  <Layers className="w-4 h-4" /> My Produce Listings
+                </Link>
+                <Link
+                  to="/market-intelligence"
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+                >
+                  <TrendingUp className="w-4 h-4" /> Mandi Optimizer
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Toast Notification Alert */}
           {toastMessage && (
@@ -225,7 +267,7 @@ const ConsumerMarketplace = () => {
                       </div>
 
                       <div className="absolute top-3 right-3 bg-emerald-600 text-white px-2.5 py-1 rounded-xl text-[11px] font-extrabold shadow-sm">
-                        AI Score: {item.aiQualityEstimateScore}%
+                        Quality Score: {item.aiQualityEstimateScore}% (Sample)
                       </div>
                     </div>
 
