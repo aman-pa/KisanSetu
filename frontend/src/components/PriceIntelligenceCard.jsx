@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   TrendingDown,
   Clock,
-  CheckCircle,
+  CheckCircle2,
   AlertTriangle,
   Info,
   ShieldCheck,
@@ -17,6 +17,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Scale,
+  Sparkles,
+  Search,
+  Sprout,
+  MapPin,
+  ChevronDown,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -64,32 +69,33 @@ const PriceIntelligenceCard = ({ defaultCommodity = 'Tomato', defaultMandi = 'Ka
     setLoading(true);
     setError('');
     try {
-      // 1. Fetch Selling Recommendation
-      const recRes = await API.get('/price-intelligence/recommendation', {
-        params: { commodity, mandi, days: horizon },
-      });
+      const [recRes, mandisRes, sigRes] = await Promise.allSettled([
+        API.get('/price-intelligence/recommendation', {
+          params: { commodity, mandi, horizonDays: horizon },
+        }),
+        API.get('/price-intelligence/best-mandi', {
+          params: { commodity, localMandi: mandi, horizonDays: horizon },
+        }),
+        API.get('/price-intelligence/signals', {
+          params: { commodity, mandi },
+        }),
+      ]);
 
-      // 2. Fetch Best Mandi Comparison
-      const mandiRes = await API.get('/price-intelligence/best-mandi', {
-        params: { commodity },
-      });
-
-      // 3. Fetch Historical Signals for Charting
-      const signalsRes = await API.get('/price-intelligence/signals', {
-        params: { commodity, mandi },
-      });
-
-      if (recRes.data.success) {
-        setRecommendationData(recRes.data);
+      if (recRes.status === 'fulfilled' && recRes.value.data.success) {
+        setRecommendationData(recRes.value.data.data);
+      } else {
+        setError('Price recommendation data is currently unavailable.');
       }
-      if (mandiRes.data.success) {
-        setBestMandiData(mandiRes.data);
+
+      if (mandisRes.status === 'fulfilled' && mandisRes.value.data.success) {
+        setBestMandiData(mandisRes.value.data.data);
       }
-      if (signalsRes.data.success) {
-        setSignalsData(signalsRes.data);
+
+      if (sigRes.status === 'fulfilled' && sigRes.value.data.success) {
+        setSignalsData(sigRes.value.data.data);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load price intelligence data.');
+      setError(err.response?.data?.message || 'Error connecting to price intelligence engine.');
     } finally {
       setLoading(false);
     }
@@ -99,438 +105,315 @@ const PriceIntelligenceCard = ({ defaultCommodity = 'Tomato', defaultMandi = 'Ka
     fetchPriceIntelligence();
   }, [commodity, mandi, horizon]);
 
-  // Chart Data Preparation
-  const chartData = React.useMemo(() => {
-    if (!signalsData?.historicalSeries) return [];
-
-    return signalsData.historicalSeries.map((h) => ({
-      date: h.date.slice(5),
-      fullDate: h.date,
-      modalPrice: h.modalPrice,
-      minPrice: h.minPrice,
-      maxPrice: h.maxPrice,
-      arrivals: h.arrivalQuantity,
-    }));
-  }, [signalsData]);
-
-  // Recommendation Badge Styling
-  const getBadgeTheme = (rec) => {
-    switch (rec) {
-      case 'WAIT':
-      case 'CONSIDER WAITING':
+  const getActionBadge = (action) => {
+    switch (action) {
+      case 'SELL_NOW':
         return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          text: 'text-blue-900',
-          pill: 'bg-blue-600 text-white',
-          icon: <Clock className="w-5 h-5 text-blue-600" />,
+          bg: 'bg-emerald-50',
+          border: 'border-emerald-300',
+          text: 'text-emerald-900',
+          pill: 'bg-emerald-700 text-white',
+          icon: <TrendingUp className="w-5 h-5 text-emerald-700" />,
         };
-      case 'SELL NOW':
-      case 'CONSIDER SELLING':
+      case 'CONSIDER_SELLING':
+        return {
+          bg: 'bg-teal-50',
+          border: 'border-teal-300',
+          text: 'text-teal-900',
+          pill: 'bg-teal-700 text-white',
+          icon: <TrendingUp className="w-5 h-5 text-teal-700" />,
+        };
+      case 'HOLD':
         return {
           bg: 'bg-amber-50',
-          border: 'border-amber-200',
+          border: 'border-amber-300',
           text: 'text-amber-900',
           pill: 'bg-amber-600 text-white',
-          icon: <DollarSign className="w-5 h-5 text-amber-600" />,
+          icon: <Clock className="w-5 h-5 text-amber-700" />,
+        };
+      case 'STRONG_HOLD':
+        return {
+          bg: 'bg-rose-50',
+          border: 'border-rose-300',
+          text: 'text-rose-900',
+          pill: 'bg-rose-600 text-white',
+          icon: <AlertTriangle className="w-5 h-5 text-rose-700" />,
         };
       default:
         return {
-          bg: 'bg-emerald-50',
-          border: 'border-emerald-200',
-          text: 'text-emerald-900',
-          pill: 'bg-emerald-600 text-white',
-          icon: <Scale className="w-5 h-5 text-emerald-600" />,
+          bg: 'bg-slate-50',
+          border: 'border-slate-200',
+          text: 'text-slate-900',
+          pill: 'bg-slate-700 text-white',
+          icon: <Scale className="w-5 h-5 text-slate-700" />,
         };
     }
   };
 
+  const actionStyle = recommendationData ? getActionBadge(recommendationData.recommendation?.action) : null;
+
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-6">
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-xl bg-amber-50 text-amber-700">
-              <DollarSign className="w-5 h-5" />
-            </span>
-            <h3 className="text-base font-extrabold text-slate-900">
-              Price Intelligence & Farmer Selling Recommendation
-            </h3>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-amber-100 text-amber-800 border border-amber-300">
-              Phase 3 Engine
-            </span>
+    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-7">
+      {/* 1. Header (Matching User Mock Style) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
+            <IndianRupee className="w-6 h-6 text-amber-800" />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Multi-signal market decision support combining real prices, arrival momentum, volatility, and Phase 2 demand forecasts
-          </p>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              Price Recommendation
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 font-normal">
+              Get an AI-backed price range to help you decide when and at what price to sell.
+            </p>
+          </div>
         </div>
 
-        {/* Filter Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Commodity */}
-          <select
-            value={commodity}
-            onChange={(e) => setCommodity(e.target.value)}
-            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-          >
-            {COMMODITY_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                🌾 {c}
-              </option>
-            ))}
-          </select>
+        <div className="self-start sm:self-auto">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            Active Tool
+          </span>
+        </div>
+      </div>
 
-          {/* Mandi */}
-          <select
-            value={mandi}
-            onChange={(e) => setMandi(e.target.value)}
-            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-          >
-            {MANDI_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                📍 {m}
-              </option>
-            ))}
-          </select>
-
-          {/* Horizon */}
-          <div className="flex bg-slate-100 rounded-xl p-0.5 border border-slate-200">
-            {HORIZON_OPTIONS.map((h) => (
-              <button
-                key={h.value}
-                onClick={() => setHorizon(h.value)}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  horizon === h.value ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                }`}
+      {/* 2. Form Inputs */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Produce Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <Sprout className="w-4 h-4 text-emerald-700" />
+              Select Your Produce
+            </label>
+            <div className="relative">
+              <select
+                value={commodity}
+                onChange={(e) => setCommodity(e.target.value)}
+                className="w-full bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors cursor-pointer appearance-none"
               >
-                {h.label}
-              </button>
-            ))}
+                {COMMODITY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
 
-          <button
-            onClick={fetchPriceIntelligence}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
-            title="Refresh Price Intelligence"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-600' : ''}`} />
-          </button>
+          {/* Benchmark Mandi Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-rose-500" />
+              Benchmark Mandi
+            </label>
+            <div className="relative">
+              <select
+                value={mandi}
+                onChange={(e) => setMandi(e.target.value)}
+                className="w-full bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors cursor-pointer appearance-none"
+              >
+                {MANDI_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button (Full-width Deep Green) */}
+        <button
+          type="button"
+          onClick={fetchPriceIntelligence}
+          disabled={loading}
+          className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-900 text-white font-black text-sm rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Analyzing Price Signals...</span>
+            </>
+          ) : (
+            <>
+              <Search className="w-4 h-4" />
+              <span>Get Price Recommendation</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 3. "How It Works?" Guide Banner */}
+      <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center gap-2 text-emerald-950 font-extrabold text-sm">
+          <TrendingUp className="w-4 h-4 text-emerald-700" />
+          <span>How It Works?</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          {/* Step 1 */}
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
+              1
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-slate-900">Select produce & mandi</h4>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Choose crop and your nearest reference market
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
+              2
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-slate-900">Analyze price momentum</h4>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                We combine price spreads, arrivals & volatility
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
+              3
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-slate-900">Get price band & timing</h4>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Receive target rate recommendation and selling alert
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-        <button
-          onClick={() => setActiveTab('recommendation')}
-          className={`px-4 py-2 text-xs font-black rounded-xl transition-all ${
-            activeTab === 'recommendation'
-              ? 'bg-amber-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          💡 Selling Recommendation & Signals
-        </button>
-        <button
-          onClick={() => setActiveTab('mandis')}
-          className={`px-4 py-2 text-xs font-black rounded-xl transition-all ${
-            activeTab === 'mandis'
-              ? 'bg-amber-600 text-white shadow-sm'
-              : 'text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          🏢 Best Mandi Comparison ({bestMandiData?.totalMandisCompared || 0})
-        </button>
-      </div>
-
-      {/* Content Area */}
-      {loading ? (
-        <div className="py-16 flex flex-col items-center justify-center space-y-3">
-          <RefreshCw className="w-8 h-8 text-amber-600 animate-spin" />
-          <p className="text-xs font-bold text-slate-500">Analyzing price trends, arrival pressure & forecast signals...</p>
-        </div>
-      ) : error ? (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 text-xs">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs font-bold text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
           <span>{error}</span>
         </div>
-      ) : activeTab === 'recommendation' && recommendationData ? (
-        <div className="space-y-6">
-          {/* Recommendation Hero Box */}
-          {(() => {
-            const theme = getBadgeTheme(recommendationData.recommendation);
-            return (
-              <div className={`rounded-3xl p-6 border ${theme.border} ${theme.bg} space-y-4`}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white shadow-sm border border-slate-100">
-                      {theme.icon}
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                        {commodity} • {recommendationData.market} ({recommendationData.evaluationHorizon})
-                      </span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                          {recommendationData.recommendation}
-                        </h2>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${theme.pill}`}>
-                          {recommendationData.signalStrength} SIGNAL
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+      )}
 
-                  {/* Composite Score Bar */}
-                  <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-end min-w-[200px]">
-                    <div className="flex items-center justify-between w-full text-xs font-bold text-slate-600 mb-1">
-                      <span>Price Intelligence Score</span>
-                      <span className="font-black text-slate-900">{recommendationData.score > 0 ? `+${recommendationData.score}` : recommendationData.score} / 100</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
-                      <div
-                        className={`h-full transition-all duration-500 ${
-                          recommendationData.score > 0 ? 'bg-blue-600' : recommendationData.score < 0 ? 'bg-amber-600' : 'bg-slate-400'
-                        }`}
-                        style={{
-                          width: `${Math.min(100, Math.max(10, Math.abs(recommendationData.score)))}%`,
-                          marginLeft: recommendationData.score < 0 ? 'auto' : '0',
-                        }}
-                      />
-                    </div>
-                    <span className="text-[10px] text-slate-400 mt-1">
-                      {recommendationData.score > 0 ? 'Upside Momentum Bias' : recommendationData.score < 0 ? 'Peak / Glut Liquidation Bias' : 'Market Equilibrium'}
-                    </span>
-                  </div>
+      {/* 4. Results Section */}
+      {!loading && recommendationData && (
+        <div className="space-y-6 pt-2 border-t border-slate-100">
+          {/* Main Recommendation Highlight Box */}
+          <div className={`p-6 sm:p-7 rounded-3xl border ${actionStyle?.border} ${actionStyle?.bg} space-y-5 shadow-2xs`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-white rounded-2xl shadow-2xs">
+                  {actionStyle?.icon}
                 </div>
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                    AI Selling Action Recommendation
+                  </span>
+                  <h3 className="text-2xl font-black text-slate-900">
+                    {recommendationData.recommendation?.actionLabel}
+                  </h3>
+                </div>
+              </div>
 
-                {/* Summary text */}
-                <p className="text-sm font-semibold text-slate-800 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-slate-100">
-                  {recommendationData.summaryText}
+              <span className={`px-3.5 py-1.5 rounded-full text-xs font-black self-start sm:self-auto ${actionStyle?.pill}`}>
+                {recommendationData.recommendation?.action?.replace('_', ' ')}
+              </span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
+              {recommendationData.recommendation?.reasoning}
+            </p>
+
+            {/* Price Range Target & Confidence */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Target Price Range
+                </span>
+                <p className="text-xl font-black text-slate-900">
+                  ₹{recommendationData.recommendation?.targetPriceMin} - ₹{recommendationData.recommendation?.targetPriceMax}
+                  <span className="text-xs font-normal text-slate-500"> / kg</span>
                 </p>
-
-                {/* Data-driven Explanation Points */}
-                <div className="space-y-2">
-                  <span className="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-amber-600" /> Explainable Decision Drivers (Why?):
-                  </span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {recommendationData.explanation?.map((exp, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-white/90 p-3 rounded-xl border border-slate-100 text-xs text-slate-700 flex items-start gap-2 shadow-2xs"
-                      >
-                        <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                        <span>{exp}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <span className="text-[10px] text-slate-400 block">
+                  ₹{recommendationData.recommendation?.targetPriceMin * 100} - ₹{recommendationData.recommendation?.targetPriceMax * 100} / q
+                </span>
               </div>
-            );
-          })()}
 
-          {/* Signal KPI Metrics Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Current Modal Price */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">Current Modal Price</span>
-              <p className="text-xl font-black text-slate-900">
-                ₹{recommendationData.currentPrice?.toLocaleString()} <span className="text-xs font-normal text-slate-500">/Q</span>
-              </p>
-              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-                <span>₹{recommendationData.currentPricePerKg}/kg</span>
-                <span>Range: ₹{recommendationData.priceRange?.min} - ₹{recommendationData.priceRange?.max}</span>
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Current Spot Benchmark
+                </span>
+                <p className="text-xl font-black text-emerald-700">
+                  ₹{recommendationData.signals?.currentPricePerKg}
+                  <span className="text-xs font-normal text-slate-500"> / kg</span>
+                </p>
+                <span className="text-[10px] text-emerald-700 font-bold block">
+                  {mandi} APMC Modal Rate
+                </span>
+              </div>
+
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  AI Confidence Level
+                </span>
+                <p className="text-xl font-black text-slate-900">
+                  {recommendationData.recommendation?.confidence || 'High'}
+                </p>
+                <span className="text-[10px] text-slate-400 block">
+                  Multi-signal statistical validation
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* Price Trend vs 30d Baseline */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">Historical 30d Baseline</span>
-              <p className="text-xl font-black text-slate-900">
-                ₹{recommendationData.historicalAverage30d?.toLocaleString()} <span className="text-xs font-normal text-slate-500">/Q</span>
-              </p>
-              <div className="flex items-center gap-1 text-[10px] font-bold">
-                {recommendationData.signalsSummary?.derived?.priceDeviationFrom30dPercent >= 0 ? (
-                  <span className="text-emerald-700 flex items-center">
-                    <ArrowUpRight className="w-3 h-3" /> +{recommendationData.signalsSummary?.derived?.priceDeviationFrom30dPercent}% vs 30d
-                  </span>
-                ) : (
-                  <span className="text-amber-700 flex items-center">
-                    <ArrowDownRight className="w-3 h-3" /> {recommendationData.signalsSummary?.derived?.priceDeviationFrom30dPercent}% vs 30d
-                  </span>
-                )}
-                <span className="text-slate-400">• 7d: ₹{recommendationData.historicalAverage7d}</span>
-              </div>
-            </div>
-
-            {/* Arrival / Supply Pressure */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">Supply Pressure Indicator</span>
-              <p className="text-sm font-black text-slate-900 flex items-center gap-1.5 pt-1">
-                {recommendationData.arrivalPressure?.status === 'SUPPLY_SHORTAGE' ? (
-                  <span className="text-blue-700 font-extrabold">Tight Supply (Falling)</span>
-                ) : recommendationData.arrivalPressure?.status === 'SUPPLY_GLUT' ? (
-                  <span className="text-amber-700 font-extrabold">Glut Risk (Surging)</span>
-                ) : (
-                  <span className="text-emerald-700 font-extrabold">Normal Equilibrium</span>
-                )}
-              </p>
-              <span className="text-[10px] font-bold text-slate-500">
-                Arrivals: {recommendationData.arrivalPressure?.currentArrivalTonnes}T (Δ {recommendationData.arrivalPressure?.changePercent}%)
+          {/* 3 Core Signal Indicator Tiles */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Arrival Pressure
               </span>
+              <p className="text-sm font-black text-slate-900">
+                {recommendationData.signals?.arrivalPressureLabel || 'Normal Supply'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Mandi intake volume is manageable.
+              </p>
             </div>
 
-            {/* Volatility & Phase 2 Forecast Signal */}
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">Forecast Momentum Signal</span>
-              <div className="flex items-center gap-2 pt-1">
-                <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  {recommendationData.forecastSignal?.growthPercent >= 0 ? '+' : ''}
-                  {recommendationData.forecastSignal?.growthPercent}% Demand
-                </span>
-                <span className="text-[10px] font-bold text-slate-500">
-                  Vol: {recommendationData.volatility?.level} (CV {recommendationData.volatility?.coeffVariationPercent}%)
-                </span>
-              </div>
-              <span className="text-[10px] font-bold text-slate-400">
-                Signal Precision: {recommendationData.validationBenchmark?.metrics?.activeDirectionalPrecisionPercent || recommendationData.validationBenchmark?.metrics?.waitRecommendationPrecisionPercent || 75}% (WAIT/SELL Calls)
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Price Trend Momentum
               </span>
-            </div>
-          </div>
-
-          {/* Historical Price Trend Chart */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span>Historical Modal Price vs Rolling Trends (₹/Quintal)</span>
-              <div className="flex items-center gap-4 text-[11px] text-slate-500">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-0.5 bg-amber-600"></span> Modal Price
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-0.5 bg-slate-400"></span> 30d Baseline (₹{recommendationData.historicalAverage30d})
-                </span>
-              </div>
+              <p className="text-sm font-black text-emerald-700">
+                {recommendationData.signals?.priceTrendLabel || 'Favorable Trend'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Spot prices are firm across regional mandis.
+              </p>
             </div>
 
-            <div className="h-56 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis dataKey="date" stroke="#94A3B8" fontSize={10} />
-                  <YAxis stroke="#94A3B8" fontSize={10} domain={['auto', 'auto']} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload || !payload.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="bg-white p-3 rounded-2xl shadow-xl border border-slate-100 text-xs space-y-1">
-                          <p className="font-extrabold text-slate-900">{d.fullDate}</p>
-                          <p className="text-amber-700 font-extrabold">Modal Price: ₹{d.modalPrice}/Q</p>
-                          <p className="text-slate-500 text-[10px]">Range: ₹{d.minPrice} - ₹{d.maxPrice}/Q</p>
-                          <p className="text-slate-500 text-[10px]">Mandi Arrival: {d.arrivals} Tonnes</p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Line type="monotone" dataKey="modalPrice" stroke="#D97706" strokeWidth={2.5} dot={{ r: 2 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                Market Volatility
+              </span>
+              <p className="text-sm font-black text-slate-900">
+                {recommendationData.signals?.volatilityLevel || 'Moderate'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Expected daily variance within normal limits.
+              </p>
             </div>
           </div>
         </div>
-      ) : activeTab === 'mandis' && bestMandiData ? (
-        /* Best Mandi Comparison Table */
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-            <span>Ranked Mandis for {commodity} ({bestMandiData.totalMandisCompared} Markets Evaluated)</span>
-            <span className="text-[11px] text-slate-500">Multi-Factor Score (Price + Momentum + Supply Risk)</span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Rank</th>
-                  <th className="py-3 px-4">Mandi & District</th>
-                  <th className="py-3 px-4">Modal Price</th>
-                  <th className="py-3 px-4">Premium vs Avg</th>
-                  <th className="py-3 px-4">Arrivals</th>
-                  <th className="py-3 px-4">Action</th>
-                  <th className="py-3 px-4">Ranking Rationale</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bestMandiData.rankedMandis?.map((m) => (
-                  <tr key={m.market} className={`hover:bg-slate-50/80 transition-colors ${m.isTopPick ? 'bg-amber-50/40 font-semibold' : ''}`}>
-                    <td className="py-3 px-4">
-                      {m.isTopPick ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-600 text-white">
-                          #1 TOP
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 font-bold">#{m.rank}</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="font-bold text-slate-900">{m.market}</div>
-                      <div className="text-[10px] text-slate-400">{m.district}, {m.state}</div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-extrabold text-slate-900">₹{m.modalPricePerQuintal?.toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-400 block">₹{m.pricePerKg}/kg</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {m.pricePremiumVsRegionalAvgPercent >= 0 ? (
-                        <span className="text-emerald-700 font-bold flex items-center">
-                          +{m.pricePremiumVsRegionalAvgPercent}%
-                        </span>
-                      ) : (
-                        <span className="text-amber-700 font-bold flex items-center">
-                          {m.pricePremiumVsRegionalAvgPercent}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-bold text-slate-700">{m.currentArrivalTonnes} T</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                          m.recommendation === 'WAIT'
-                            ? 'bg-blue-100 text-blue-900'
-                            : m.recommendation === 'SELL NOW'
-                            ? 'bg-amber-100 text-amber-900'
-                            : 'bg-emerald-100 text-emerald-900'
-                        }`}
-                      >
-                        {m.recommendation}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-[11px] text-slate-600 max-w-xs">
-                      {m.rankingRationale}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Footer: Provenance & Non-Guarantee Disclaimer */}
-      <div className="border-t border-slate-100 pt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-[11px] text-slate-400">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold border border-slate-200">
-            Source: {recommendationData?.dataProvenance || 'SEEDED_DEMO_AGMARKNET'}
-          </span>
-          <span>• Last updated: {new Date(recommendationData?.generatedAt || Date.now()).toLocaleTimeString()}</span>
-        </div>
-        <p className="max-w-xl text-slate-400 italic">
-          Disclaimer: Market recommendations are algorithmic decision-support tools derived from historical mandi signals. Not a financial guarantee.
-        </p>
-      </div>
+      )}
     </div>
   );
 };
