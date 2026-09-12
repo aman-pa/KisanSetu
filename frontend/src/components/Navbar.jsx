@@ -308,8 +308,8 @@ const Navbar = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3 sm:gap-4">
-              {/* Consumer Cart Icon */}
-              {(!user || user.role === 'CONSUMER') && (
+              {/* Authenticated User Cart Icon (Available to all logged-in roles) */}
+              {Boolean(user) && (
                 <Link
                   to="/cart"
                   className="relative p-2 rounded-xl text-slate-600 hover:text-agri-primary hover:bg-slate-100 transition-all"
