@@ -5,23 +5,19 @@ import API from '../services/api';
 import {
   DollarSign,
   Package,
-  CheckCircle2,
-  Award,
-  TrendingUp,
   PackagePlus,
-  ShieldCheck,
-  Calendar,
-  QrCode,
   ShoppingBag,
   Truck,
-  Sparkles,
+  CheckCircle2,
+  Clock,
   ArrowRight,
+  TrendingUp,
+  Scale,
+  UserCheck,
+  Building2,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import DemandForecastCard from '../components/DemandForecastCard';
-import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
-import FarmerActionCard from '../components/FarmerActionCard';
-import MarketDataCard from '../components/MarketDataCard';
 
 const FarmerDashboard = () => {
   const [listings, setListings] = useState([]);
@@ -35,10 +31,10 @@ const FarmerDashboard = () => {
         API.get('/products/farmer/my-listings'),
         API.get('/orders'),
       ]);
-      if (listingsRes.data.success) setListings(listingsRes.data.listings);
-      if (ordersRes.data.success) setOrders(ordersRes.data.orders);
+      if (listingsRes.data?.success) setListings(listingsRes.data.listings || []);
+      if (ordersRes.data?.success) setOrders(ordersRes.data.orders || []);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching farmer data:', err);
     } finally {
       setLoading(false);
     }
@@ -61,329 +57,390 @@ const FarmerDashboard = () => {
     }
   };
 
-  const salesTrendData = [
-    { month: 'Apr', earnings: 28000 },
-    { month: 'May', earnings: 42000 },
-    { month: 'Jun', earnings: 35000 },
-    { month: 'Jul', earnings: 51000 },
-    { month: 'Aug', earnings: 64000 },
-    { month: 'Sep (Target)', earnings: 82000 },
+  // Sample sales history data for rich presentation if live database orders are empty
+  const defaultSalesHistory = [
+    {
+      _id: 'ord_demo_1',
+      orderNumber: 'ORD-8921',
+      date: '11 Sep 2026',
+      cropName: 'Organic Tomato (Grade A)',
+      quantityKg: 1200,
+      totalProduceCost: 33600,
+      buyerName: 'Ramesh Sharma',
+      buyerOrg: 'FreshMart Supermarket Chain',
+      buyerLocation: 'Delhi NCR',
+      status: 'DELIVERED',
+      paymentStatus: 'ESCROW RELEASED',
+    },
+    {
+      _id: 'ord_demo_2',
+      orderNumber: 'ORD-8854',
+      date: '09 Sep 2026',
+      cropName: 'Kufri Pukhraj Potato',
+      quantityKg: 2500,
+      totalProduceCost: 45000,
+      buyerName: 'Vikram Singh',
+      buyerOrg: 'AgriProcure FPO Cooperative',
+      buyerLocation: 'Karnal, Haryana',
+      status: 'IN_TRANSIT',
+      paymentStatus: 'ESCROW PROTECTED',
+    },
+    {
+      _id: 'ord_demo_3',
+      orderNumber: 'ORD-8710',
+      date: '05 Sep 2026',
+      cropName: 'Fresh Green Spinach',
+      quantityKg: 800,
+      totalProduceCost: 22400,
+      buyerName: 'Anita Gupta',
+      buyerOrg: 'GreenLeaf Organics Ltd',
+      buyerLocation: 'Gurgaon, Haryana',
+      status: 'DELIVERED',
+      paymentStatus: 'ESCROW RELEASED',
+    },
+    {
+      _id: 'ord_demo_4',
+      orderNumber: 'ORD-8640',
+      date: '28 Aug 2026',
+      cropName: 'Sharbati Wheat (Grade A)',
+      quantityKg: 1500,
+      totalProduceCost: 40500,
+      buyerName: 'Sanjay Verma',
+      buyerOrg: 'Reliance Retail Procurement',
+      buyerLocation: 'Chandigarh',
+      status: 'DELIVERED',
+      paymentStatus: 'ESCROW RELEASED',
+    },
   ];
 
-  const totalEarnings = orders.reduce((sum, o) => sum + (o.totalProduceCost || 0), 184000);
+  // Combined sales list: database orders merged with demo entries if orders are empty
+  const displayOrders = orders.length > 0 ? orders : defaultSalesHistory;
+
+  // Calculate Key Performance Metrics
+  const calculatedTotalEarnings = displayOrders.reduce((sum, o) => sum + (o.totalProduceCost || 0), 0);
+  const calculatedTotalKgSold = displayOrders.reduce((sum, o) => {
+    if (o.quantityKg) return sum + o.quantityKg;
+    if (o.items && Array.isArray(o.items)) {
+      return sum + o.items.reduce((itemSum, item) => itemSum + (item.quantityKg || 0), 0);
+    }
+    return sum;
+  }, 0);
+
+  const totalQuintalsSold = (calculatedTotalKgSold / 100).toFixed(1);
+  const pendingOrdersCount = displayOrders.filter(
+    (o) => o.status === 'PENDING' || o.status === 'ACCEPTED' || o.status === 'IN_TRANSIT'
+  ).length;
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-agri-sm">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Verified Producer Dashboard
+      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+        {/* Welcome Header */}
+        <div className="bg-gradient-to-r from-[#0A2412] via-[#12401E] to-[#1B5E2B] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="space-y-2 relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              Direct Farm Produce Dashboard
             </div>
-            <h1 className="text-2xl font-extrabold text-slate-900">Farmer Command Center 🌾</h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Manage crops, inspect AI market forecasts, and track direct escrow payments
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Farmer Sales Command Center 🌾
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-medium">
+              Track direct buyer purchases, check total crop earnings, manage active produce lots, and monitor escrow payment releases.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 relative z-10">
             <Link
               to="/farmer/add-produce"
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-bold text-xs shadow-agri-sm hover:shadow-agri-md transition-all flex items-center gap-2"
+              className="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-[#0A2412] font-black text-xs shadow-lg hover:shadow-emerald-500/25 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
             >
-              <PackagePlus className="w-4 h-4" /> Add Produce Listing
+              <PackagePlus className="w-4 h-4" />
+              Add Produce Listing
             </Link>
           </div>
         </div>
 
         {actionSuccess && (
-          <div className="p-4 bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-sm">
+          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-sm">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             <span>{actionSuccess}</span>
           </div>
         )}
 
-        {/* 4 Primary KPI Summary Stat Cards */}
+        {/* 4 Essential KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold">Total Earnings</span>
-              <DollarSign className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-black text-slate-900">₹{totalEarnings.toLocaleString()}</p>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-              Zero Commission Loss
-            </span>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold">Active Listings</span>
-              <Package className="w-4 h-4 text-agri-accent" />
-            </div>
-            <p className="text-2xl font-black text-slate-900">{listings.length}</p>
-            <Link
-              to="/farmer/produce"
-              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
-            >
-              View My Produce <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold">Farmer Trust Score</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-black text-emerald-700">94 / 100</p>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-              Top Tier Supplier
-            </span>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold">AI Quality Score</span>
-              <Award className="w-4 h-4 text-amber-500" />
-            </div>
-            <p className="text-2xl font-black text-amber-600">95% Avg</p>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-              Grade A Verified
-            </span>
-          </div>
-        </div>
-
-        {/* Secondary KPI Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-            <span className="text-[11px] text-slate-500 font-bold block">Pending Orders</span>
-            <span className="text-xl font-black text-slate-900">2 Orders</span>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-            <span className="text-[11px] text-slate-500 font-bold block">Fulfilled Lots</span>
-            <span className="text-xl font-black text-emerald-700">18 Lots</span>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-            <span className="text-[11px] text-slate-500 font-bold block">Upcoming Harvest</span>
-            <span className="text-xl font-black text-amber-600">In 5 Days</span>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-            <span className="text-[11px] text-slate-500 font-bold block">Escrow Protected</span>
-            <span className="text-xl font-black text-slate-900">₹45,000</span>
-          </div>
-        </div>
-
-        {/* AI Market Intelligence Banner */}
-        <div className="bg-gradient-to-r from-agri-dark via-emerald-950 to-slate-950 p-6 rounded-3xl text-white shadow-agri-md flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold">
-              <TrendingUp className="w-3.5 h-3.5 text-amber-400" /> High Regional Demand Alert
-            </div>
-            <h3 className="text-base font-extrabold text-white">Tomato demand in Delhi NCR is predicted to peak in 5 days!</h3>
-            <p className="text-xs text-slate-300 font-medium">Recommended price range for Grade A Tomato: <b>₹27 – ₹29 / kg</b> (+22% profit margin vs local mandi).</p>
-          </div>
-          <Link
-            to="/farmer/add-produce"
-            className="px-6 py-3 rounded-2xl bg-agri-gold hover:bg-amber-500 text-slate-950 font-black text-xs whitespace-nowrap shadow-md transition-all"
-          >
-            Create Produce Listing →
-          </Link>
-        </div>
-
-        {/* Phase 4: Farmer Action Intelligence & Personalized Decision Support */}
-        <FarmerActionCard defaultCommodity="Wheat" defaultMandi="Karnal" />
-
-        {/* Phase 1: Agricultural Market Data Layer — Spot Prices & Mandi Arrivals */}
-        <MarketDataCard defaultCommodity="Tomato" defaultMarket="" />
-
-        {/* Phase 3: AI Price Intelligence & Farmer Selling Recommendation Engine */}
-        <PriceIntelligenceCard defaultCommodity="Tomato" defaultMandi="Karnal" />
-
-        {/* Phase 2: Real Data-Driven AI Demand Forecasting Engine */}
-        <DemandForecastCard defaultCommodity="Tomato" defaultDistrict="Delhi NCR" />
-
-        {/* Sales & Revenue Analytics Chart */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-600" /> Monthly Farm Revenue & Direct Sales Growth
-            </h3>
-            <span className="text-xs font-bold text-emerald-700">+34% Direct Growth</span>
-          </div>
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesTrendData}>
-                <defs>
-                  <linearGradient id="colorEarning" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22C55E" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#22C55E" stopOpacity={0.0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" stroke="#64748B" fontSize={11} />
-                <YAxis stroke="#64748B" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    borderColor: '#e2e8f0',
-                    borderRadius: '12px',
-                    color: '#0f172a',
-                    fontSize: '12px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  }}
-                />
-                <Area type="monotone" dataKey="earnings" stroke="#22C55E" strokeWidth={3} fillOpacity={1} fill="url(#colorEarning)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Farm Produce Inventory Summary Overview */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold flex-shrink-0">
-              <Package className="w-6 h-6 text-emerald-700" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-extrabold text-slate-900">Active Crop Harvest Lots</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-                  {listings.length} Lots Active
-                </span>
+          {/* Card 1: Total Earnings */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Earnings</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                <DollarSign className="w-5 h-5" />
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {listings.length > 0
-                  ? `Current lots: ${listings.map((l) => l.cropName).slice(0, 4).join(', ')}${listings.length > 4 ? '...' : ''}. Manage stock, prices, and QR certificates in My Produce.`
-                  : 'No active crop listings yet. Add your harvest lots to connect with buyers.'}
+            </div>
+            <div className="pt-1">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900">₹{calculatedTotalEarnings.toLocaleString()}</p>
+              <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> 100% Direct Escrow Paid
               </p>
             </div>
           </div>
 
-          <Link
-            to="/farmer/produce"
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <span>Manage My Produce Listings</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {/* Comprehensive Table 2: Recent Orders & Fulfillment Requests */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-emerald-600" /> Incoming Customer Orders & Dispatch Actions
-            </h3>
-            <span className="text-xs text-slate-500 font-bold">{orders.length} Total Orders</span>
+          {/* Card 2: Total Produce Sold */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Quantity Sold</span>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                <Scale className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="pt-1">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900">{calculatedTotalKgSold.toLocaleString()} <span className="text-sm font-bold text-slate-500">kg</span></p>
+              <p className="text-[11px] font-bold text-blue-700 mt-1 flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5" /> Approx {totalQuintalsSold} Quintals
+              </p>
+            </div>
           </div>
 
-          {orders.length === 0 ? (
-            <div className="p-6 bg-slate-50 rounded-2xl text-center space-y-2">
-              <ShoppingBag className="w-8 h-8 text-slate-300 mx-auto" />
-              <p className="text-xs text-slate-500">No pending orders at this moment.</p>
+          {/* Card 3: Active Produce Listings */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Active Produce Listings</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+                <Package className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="pt-1">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900">{listings.length}</p>
+              <Link
+                to="/farmer/produce"
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 mt-1 inline-flex items-center gap-1 group"
+              >
+                Manage Listed Lots <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Card 4: Orders in Progress */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Orders In-Progress</span>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="pt-1">
+              <p className="text-2xl sm:text-3xl font-black text-slate-900">{pendingOrdersCount}</p>
+              <p className="text-[11px] font-bold text-purple-700 mt-1 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> Awaiting Fulfillment
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 1: Detailed Sales History ("What I Have Sold & To Whom") */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden space-y-0">
+          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <ShoppingBag className="w-4 h-4 text-emerald-700" />
+                </div>
+                <h2 className="text-base font-extrabold text-slate-900">Direct Sales & Buyer Orders</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                History of crop sales, buyer details, sold quantities, revenue earned, and order status.
+              </p>
+            </div>
+
+            <span className="text-xs font-bold text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
+              {displayOrders.length} Total Sales Records
+            </span>
+          </div>
+
+          {/* Sales History Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50/80">
+                  <th className="py-3.5 px-6">Order ID & Date</th>
+                  <th className="py-3.5 px-6">Crop Produce</th>
+                  <th className="py-3.5 px-6">Quantity Sold</th>
+                  <th className="py-3.5 px-6">Purchased By (Buyer)</th>
+                  <th className="py-3.5 px-6">Total Amount (₹)</th>
+                  <th className="py-3.5 px-6">Payment & Status</th>
+                  <th className="py-3.5 px-6 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {displayOrders.map((ord) => {
+                  const cropTitle = ord.cropName || (ord.items && ord.items[0]?.cropName) || 'Harvest Produce';
+                  const qtyKg = ord.quantityKg || (ord.items && ord.items[0]?.quantityKg) || 0;
+                  const buyerName = ord.buyerName || ord.buyer?.name || 'Verified Buyer';
+                  const buyerOrg = ord.buyerOrg || ord.buyer?.businessName || ord.deliveryAddress?.city || 'Direct Buyer';
+                  const orderDate = ord.date || (ord.createdAt ? new Date(ord.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent');
+
+                  return (
+                    <tr key={ord._id || ord.orderNumber} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Order ID & Date */}
+                      <td className="py-4 px-6 font-medium">
+                        <span className="font-extrabold text-slate-900 block">#{ord.orderNumber}</span>
+                        <span className="text-[11px] text-slate-500 font-medium">{orderDate}</span>
+                      </td>
+
+                      {/* Crop Produce */}
+                      <td className="py-4 px-6">
+                        <span className="font-bold text-slate-900 block">{cropTitle}</span>
+                        <span className="text-[11px] text-slate-500">Grade A Quality</span>
+                      </td>
+
+                      {/* Quantity Sold */}
+                      <td className="py-4 px-6 font-extrabold text-slate-800">
+                        {qtyKg.toLocaleString()} kg
+                        <span className="text-[10px] font-semibold text-slate-500 block">({(qtyKg / 100).toFixed(1)} Quintals)</span>
+                      </td>
+
+                      {/* Buyer Details */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-[10px]">
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 block">{buyerName}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 block flex items-center gap-1">
+                              <Building2 className="w-3 h-3 text-slate-400" /> {buyerOrg}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Total Amount */}
+                      <td className="py-4 px-6">
+                        <span className="font-black text-emerald-700 text-sm">₹{(ord.totalProduceCost || 0).toLocaleString()}</span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-6 space-y-1">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${
+                            ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : ord.status === 'IN_TRANSIT'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}
+                        >
+                          {ord.status}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-semibold block">
+                          {ord.paymentStatus || 'ESCROW PROTECTED'}
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-4 px-6 text-right">
+                        {ord.status === 'PENDING' && ord._id && !ord._id.startsWith('ord_demo') && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(ord._id, 'ACCEPTED')}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all"
+                          >
+                            Accept Order
+                          </button>
+                        )}
+                        {ord.status === 'ACCEPTED' && ord._id && !ord._id.startsWith('ord_demo') && (
+                          <button
+                            onClick={() => handleUpdateOrderStatus(ord._id, 'IN_TRANSIT')}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1"
+                          >
+                            <Truck className="w-3 h-3" /> Dispatch Lot
+                          </button>
+                        )}
+                        {(ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord._id?.startsWith('ord_demo')) && (
+                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Section 2: Active Crop Listings Inventory */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                  <Package className="w-4 h-4 text-amber-700" />
+                </div>
+                <h2 className="text-base font-extrabold text-slate-900">My Active Produce Listings</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Harvest lots currently listed on KisanSetu AI for buyers and FPOs.
+              </p>
+            </div>
+
+            <Link
+              to="/farmer/produce"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all inline-flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              Manage Produce Listings <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {listings.length === 0 ? (
+            <div className="p-8 bg-slate-50/60 rounded-2xl text-center space-y-3 border border-dashed border-slate-200">
+              <Package className="w-10 h-10 text-slate-300 mx-auto" />
+              <div className="space-y-1">
+                <p className="text-xs font-extrabold text-slate-700">No active produce listings yet</p>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Add your harvest crops to the KisanSetu market to enable direct procurement from verified buyers.
+                </p>
+              </div>
+              <Link
+                to="/farmer/add-produce"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm hover:bg-emerald-500 transition-all cursor-pointer"
+              >
+                <PackagePlus className="w-4 h-4" /> Create Produce Listing
+              </Link>
             </div>
           ) : (
-            <div className="space-y-4">
-              {orders.map((ord) => (
-                <div key={ord._id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {listings.map((item) => (
+                <div key={item._id} className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between space-y-3 hover:border-emerald-300 transition-all">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-black text-slate-900">Order #{ord.orderNumber}</span>
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        STATUS: {ord.status}
-                      </span>
-                      <span className="text-xs font-bold text-amber-700">
-                        {ord.paymentStatus}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-900">{item.cropName}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {item.qualityGrade || 'Grade A'}
                       </span>
                     </div>
-
-                    <p className="text-xs text-slate-600 font-medium">
-                      Buyer: <b>{ord.buyer?.name || 'Customer'}</b> • Deliver to: {ord.deliveryAddress?.city}, {ord.deliveryAddress?.state}
+                    <p className="text-xs text-slate-500 font-medium">
+                      Location: {item.location?.district || 'Karnal'}, {item.location?.state || 'Haryana'}
                     </p>
-
-                    <div className="text-xs text-slate-800 font-semibold pt-1">
-                      Items: {ord.items.map((i) => `${i.quantityKg} kg ${i.cropName}`).join(', ')}
-                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="text-right mr-2">
-                      <span className="text-xs text-slate-500 block">Total Produce Value</span>
-                      <span className="text-lg font-black text-agri-primary">₹{ord.totalProduceCost.toLocaleString()}</span>
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-3">
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-500 block">Available Quantity</span>
+                      <span className="text-xs font-extrabold text-slate-800">{item.quantityKg} kg</span>
                     </div>
 
-                    {ord.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleUpdateOrderStatus(ord._id, 'ACCEPTED')}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all"
-                      >
-                        Accept Order
-                      </button>
-                    )}
-
-                    {ord.status === 'ACCEPTED' && (
-                      <button
-                        onClick={() => handleUpdateOrderStatus(ord._id, 'IN_TRANSIT')}
-                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-sm transition-all flex items-center gap-1"
-                      >
-                        <Truck className="w-3.5 h-3.5" /> Dispatch Lot
-                      </button>
-                    )}
+                    <div className="text-right">
+                      <span className="text-[10px] font-semibold text-slate-500 block">Price / kg</span>
+                      <span className="text-xs font-black text-emerald-700">₹{item.pricePerKg} / kg</span>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-
-        {/* Harvest Schedule & Regional Price Matrix Widget */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Calendar className="w-4 h-4 text-amber-500" /> Upcoming Farm Harvest Schedule
-            </h3>
-            <div className="space-y-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-slate-900">Tomato (Grade A) - 2,000 kg</p>
-                  <p className="text-[11px] text-slate-500">Expected Harvest: In 5 Days (Sep 7)</p>
-                </div>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg">
-                  Est: ₹56,000
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-slate-900">Potato (Grade A) - 5,000 kg</p>
-                  <p className="text-[11px] text-slate-500">Expected Harvest: In 10 Days (Sep 12)</p>
-                </div>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg">
-                  Est: ₹90,000
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Award className="w-4 h-4 text-emerald-600" /> Quality Audit & Farmer Trust Metrics
-            </h3>
-            <div className="space-y-3 text-xs text-slate-700 font-medium">
-              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <span>Successful Delivery Rate</span>
-                <span className="font-extrabold text-emerald-700">98.4%</span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <span>Zero Quality Dispute Ratio</span>
-                <span className="font-extrabold text-emerald-700">100% Clean</span>
-              </div>
-              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <span>Average Buyer Rating</span>
-                <span className="font-extrabold text-amber-600">4.9 / 5.0 ★</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </DashboardLayout>
