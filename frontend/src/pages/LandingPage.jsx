@@ -139,7 +139,7 @@ const LandingPage = () => {
                       </div>
                       <div>
                         <p className="text-xs font-bold">Verified Crop Harvest</p>
-                        <p className="text-[11px] text-slate-500">Batch ID: KS-BATCH-994821</p>
+                        <p className="text-[11px] text-slate-500">Sample Batch • Public Demo</p>
                       </div>
                     </div>
                     <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-600 text-white">
