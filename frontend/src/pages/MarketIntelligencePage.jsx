@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import MandiOptimizerCard from '../components/MandiOptimizerCard';
 import WeatherForecastCard from '../components/WeatherForecastCard';
+import MarketDataCard from '../components/MarketDataCard';
 import DemandForecastCard from '../components/DemandForecastCard';
 import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
 import {
   Compass,
   CloudSun,
+  BarChart3,
   TrendingUp,
   IndianRupee,
   ChevronRight,
@@ -34,6 +36,16 @@ const MODULES = [
     icon: CloudSun,
     iconBg: 'bg-teal-100 text-teal-800',
     activeCard: 'bg-teal-50/70 border-teal-400 ring-1 ring-teal-400/50 shadow-xs',
+    inactiveCard: 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs hover:shadow-xs',
+  },
+  {
+    id: 'market-data',
+    title: 'Market Data',
+    question: 'What are current spot prices & arrivals?',
+    shortDesc: 'Real-time APMC mandi spot prices, intake volumes, and regional supply indicators.',
+    icon: BarChart3,
+    iconBg: 'bg-emerald-100 text-emerald-800',
+    activeCard: 'bg-emerald-50/70 border-emerald-400 ring-1 ring-emerald-400/50 shadow-xs',
     inactiveCard: 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs hover:shadow-xs',
   },
   {
@@ -105,7 +117,7 @@ const MarketIntelligencePage = () => {
               </p>
             </div>
 
-            {/* Four Option Cards */}
+            {/* Option Cards */}
             <div className="space-y-3">
               {MODULES.map((module) => {
                 const Icon = module.icon;
@@ -152,6 +164,7 @@ const MarketIntelligencePage = () => {
             <div className="animate-in fade-in duration-300">
               {activeModule === 'optimizer' && <MandiOptimizerCard />}
               {activeModule === 'weather' && <WeatherForecastCard />}
+              {activeModule === 'market-data' && <MarketDataCard />}
               {activeModule === 'forecast' && <DemandForecastCard />}
               {activeModule === 'price' && <PriceIntelligenceCard />}
             </div>
