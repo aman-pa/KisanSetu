@@ -20,6 +20,7 @@ import LogisticsDashboard from './pages/LogisticsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import BatchTraceabilityPage from './pages/BatchTraceabilityPage';
 import MarketIntelligencePage from './pages/MarketIntelligencePage';
+import ConsumerOrdersPage from './pages/ConsumerOrdersPage';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/cart" element={<CartCheckoutPage />} />
           <Route path="/trace/:batchId" element={<BatchTraceabilityPage />} />
+          <Route path="/consumer/orders" element={<ConsumerOrdersPage />} />
 
           {/* Role-Protected Farmer & FPO Routes */}
           <Route

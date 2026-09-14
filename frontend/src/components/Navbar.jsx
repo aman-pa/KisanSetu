@@ -26,6 +26,7 @@ import {
   CreditCard,
   Truck,
   Sparkles,
+  ShoppingBag,
   TrendingUp,
   Package,
   PackagePlus,
@@ -231,6 +232,12 @@ const Navbar = () => {
             path: '/marketplace',
             icon: Search,
             isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+          },
+          {
+            label: 'My Orders',
+            path: '/consumer/orders',
+            icon: ShoppingBag,
+            isActive: (pathname) => pathname === '/consumer/orders',
           },
           {
             label: 'Market Intelligence',

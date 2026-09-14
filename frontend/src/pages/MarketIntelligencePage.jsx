@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import MainLayout from '../layouts/MainLayout';
 import MandiOptimizerCard from '../components/MandiOptimizerCard';
 import WeatherForecastCard from '../components/WeatherForecastCard';
@@ -71,18 +72,27 @@ const MODULES = [
 ];
 
 const MarketIntelligencePage = () => {
+  const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialParam = searchParams.get('tool') || searchParams.get('tab') || 'optimizer';
 
-  const validInitial = MODULES.some((m) => m.id === initialParam) ? initialParam : 'optimizer';
+  // Filter modules for Consumer/Buyer role (remove optimizer & weather)
+  const isConsumer = role === 'CONSUMER' || role === 'BUYER';
+  const availableModules = isConsumer
+    ? MODULES.filter((m) => m.id !== 'optimizer' && m.id !== 'weather')
+    : MODULES;
+
+  const defaultTab = availableModules[0]?.id || 'market-data';
+  const initialParam = searchParams.get('tool') || searchParams.get('tab') || defaultTab;
+
+  const validInitial = availableModules.some((m) => m.id === initialParam) ? initialParam : defaultTab;
   const [activeModule, setActiveModule] = useState(validInitial);
 
   useEffect(() => {
     const currentTool = searchParams.get('tool') || searchParams.get('tab');
-    if (currentTool && MODULES.some((m) => m.id === currentTool) && currentTool !== activeModule) {
+    if (currentTool && availableModules.some((m) => m.id === currentTool) && currentTool !== activeModule) {
       setActiveModule(currentTool);
     }
-  }, [searchParams]);
+  }, [searchParams, availableModules]);
 
   const handleSelectModule = (moduleId) => {
     setActiveModule(moduleId);
@@ -120,7 +130,7 @@ const MarketIntelligencePage = () => {
 
               {/* Option Cards */}
               <div className="space-y-3">
-                {MODULES.map((module) => {
+                {availableModules.map((module) => {
                   const Icon = module.icon;
                   const isSelected = activeModule === module.id;
 

@@ -154,6 +154,7 @@ const getOrders = async (req, res) => {
     const orders = await Order.find(filter)
       .populate('buyer', 'name email phone')
       .populate('items.listing', 'cropName grade images batchId')
+      .populate('items.farmer', 'name phone email address profileDetails')
       .sort({ createdAt: -1 });
 
     return res.json({ success: true, count: orders.length, orders });
