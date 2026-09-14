@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   CloudSun,
   Sun,
@@ -13,6 +14,7 @@ import {
   Thermometer,
   Umbrella,
   Sparkles,
+  Info,
   MapPin,
   RefreshCw,
   CheckCircle2,
@@ -22,6 +24,9 @@ import {
   Sprout,
   ChevronDown,
   ShieldCheck,
+  Navigation,
+  Package,
+  X,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -35,16 +40,71 @@ import {
   Legend,
 } from 'recharts';
 
-const COMMODITY_OPTIONS = ['Tomato', 'Potato', 'Onion', 'Wheat', 'Rice', 'Apple'];
-const MANDI_OPTIONS = [
-  { label: 'Karnal Mandi (Haryana)', value: 'Karnal Mandi' },
-  { label: 'Azadpur APMC (Delhi)', value: 'Azadpur APMC Mandi' },
-  { label: 'Ghazipur Mandi (Delhi)', value: 'Ghazipur Mandi' },
-  { label: 'Agra Mandi (Uttar Pradesh)', value: 'Agra Mandi' },
-  { label: 'Lasalgaon Mandi (Nashik)', value: 'Lasalgaon Mandi' },
-  { label: 'Jalandhar Cantt Mandi (Punjab)', value: 'Jalandhar Cantt Mandi' },
-  { label: 'Ambala City Mandi (Haryana)', value: 'Ambala City Mandi' },
-  { label: 'Panipat Mandi (Haryana)', value: 'Panipat Mandi' },
+const ALL_COMMODITIES = [
+  'Tomato',
+  'Potato',
+  'Onion',
+  'Wheat',
+  'Rice',
+  'Apple',
+  'Mustard',
+  'Maize',
+  'Soybean',
+  'Cotton',
+  'Sugarcane',
+  'Banana',
+  'Mango',
+  'Green Chilli',
+  'Garlic',
+  'Ginger',
+  'Turmeric',
+  'Cauliflower',
+  'Cabbage',
+  'Brinjal',
+  'Spinach',
+  'Okra',
+  'Carrot',
+  'Capsicum',
+  'Peas',
+  'Cucumber',
+  'Bitter Gourd',
+  'Bottle Gourd',
+  'Coriander',
+  'Mint',
+  'Groundnut',
+  'Moong',
+  'Urad',
+  'Chana',
+  'Arhar',
+  'Masoor',
+];
+
+const PRESET_LOCATIONS = [
+  { name: 'Karnal, Haryana', district: 'Karnal', state: 'Haryana', lat: 29.6857, lng: 76.9905, mandi: 'Karnal Mandi' },
+  { name: 'Azadpur, Delhi', district: 'North Delhi', state: 'Delhi', lat: 28.7112, lng: 77.1788, mandi: 'Azadpur APMC Mandi' },
+  { name: 'Ghazipur, Delhi', district: 'East Delhi', state: 'Delhi', lat: 28.6258, lng: 77.3274, mandi: 'Ghazipur Mandi' },
+  { name: 'Panipat, Haryana', district: 'Panipat', state: 'Haryana', lat: 29.3909, lng: 76.9635, mandi: 'Panipat Mandi' },
+  { name: 'Ambala, Haryana', district: 'Ambala', state: 'Haryana', lat: 30.3782, lng: 76.7767, mandi: 'Ambala City Mandi' },
+  { name: 'Kurukshetra, Haryana', district: 'Kurukshetra', state: 'Haryana', lat: 29.9695, lng: 76.8783, mandi: 'Kurukshetra Mandi' },
+  { name: 'Sonipat, Haryana', district: 'Sonipat', state: 'Haryana', lat: 28.9931, lng: 77.0151, mandi: 'Sonipat Mandi' },
+  { name: 'Rohtak, Haryana', district: 'Rohtak', state: 'Haryana', lat: 28.8955, lng: 76.6066, mandi: 'Rohtak Mandi' },
+  { name: 'Gurugram, Haryana', district: 'Gurugram', state: 'Haryana', lat: 28.4595, lng: 77.0266, mandi: 'Gurugram Mandi' },
+  { name: 'Agra, Uttar Pradesh', district: 'Agra', state: 'Uttar Pradesh', lat: 27.1767, lng: 78.0081, mandi: 'Agra Mandi' },
+  { name: 'Mathura, Uttar Pradesh', district: 'Mathura', state: 'Uttar Pradesh', lat: 27.4924, lng: 77.6737, mandi: 'Mathura Mandi' },
+  { name: 'Aligarh, Uttar Pradesh', district: 'Aligarh', state: 'Uttar Pradesh', lat: 27.8974, lng: 78.0880, mandi: 'Aligarh Mandi' },
+  { name: 'Meerut, Uttar Pradesh', district: 'Meerut', state: 'Uttar Pradesh', lat: 28.9845, lng: 77.7064, mandi: 'Meerut Mandi' },
+  { name: 'Bareilly, Uttar Pradesh', district: 'Bareilly', state: 'Uttar Pradesh', lat: 28.3670, lng: 79.4304, mandi: 'Bareilly Mandi' },
+  { name: 'Lucknow, Uttar Pradesh', district: 'Lucknow', state: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462, mandi: 'Lucknow Mandi' },
+  { name: 'Kanpur, Uttar Pradesh', district: 'Kanpur', state: 'Uttar Pradesh', lat: 26.4499, lng: 80.3319, mandi: 'Kanpur Mandi' },
+  { name: 'Varanasi, Uttar Pradesh', district: 'Varanasi', state: 'Uttar Pradesh', lat: 25.3176, lng: 82.9739, mandi: 'Varanasi Mandi' },
+  { name: 'Jalandhar, Punjab', district: 'Jalandhar', state: 'Punjab', lat: 31.3260, lng: 75.5762, mandi: 'Jalandhar Cantt Mandi' },
+  { name: 'Ludhiana, Punjab', district: 'Ludhiana', state: 'Punjab', lat: 30.9010, lng: 75.8573, mandi: 'Ludhiana Mandi' },
+  { name: 'Amritsar, Punjab', district: 'Amritsar', state: 'Punjab', lat: 31.6340, lng: 74.8723, mandi: 'Amritsar Mandi' },
+  { name: 'Nashik, Maharashtra', district: 'Nashik', state: 'Maharashtra', lat: 19.9975, lng: 73.7898, mandi: 'Nashik Mandi' },
+  { name: 'Lasalgaon, Maharashtra', district: 'Nashik', state: 'Maharashtra', lat: 20.1444, lng: 74.2281, mandi: 'Lasalgaon Mandi' },
+  { name: 'Pune, Maharashtra', district: 'Pune', state: 'Maharashtra', lat: 18.5204, lng: 73.8567, mandi: 'Pune Mandi' },
+  { name: 'Jaipur, Rajasthan', district: 'Jaipur', state: 'Rajasthan', lat: 26.9124, lng: 75.7873, mandi: 'Jaipur Mandi' },
+  { name: 'Indore, Madhya Pradesh', district: 'Indore', state: 'Madhya Pradesh', lat: 22.7196, lng: 75.8577, mandi: 'Indore Mandi' },
 ];
 
 const WeatherIcon = ({ iconName, className = 'w-6 h-6' }) => {
@@ -69,18 +129,208 @@ const WeatherIcon = ({ iconName, className = 'w-6 h-6' }) => {
 };
 
 const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Karnal Mandi' }) => {
+  const { user } = useAuth();
+
+  // Produce State
   const [commodity, setCommodity] = useState(defaultCommodity);
-  const [market, setMarket] = useState(defaultMarket);
+  const [cropSearch, setCropSearch] = useState(defaultCommodity);
+  const [cropDropdownOpen, setCropDropdownOpen] = useState(false);
+  const [farmerListings, setFarmerListings] = useState([]);
+
+  // Location / Mandi State
+  const initialLoc = PRESET_LOCATIONS.find((l) => l.mandi?.toLowerCase() === defaultMarket.toLowerCase()) || PRESET_LOCATIONS[0];
+  const [selectedLocation, setSelectedLocation] = useState(initialLoc);
+  const [locationSearch, setLocationSearch] = useState(initialLoc.name);
+  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
+  const [isUsingGps, setIsUsingGps] = useState(false);
+  const [locationNotice, setLocationNotice] = useState('');
+
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const cropDropdownRef = useRef(null);
+  const locationDropdownRef = useRef(null);
+
+  // 1. Fetch Farmer's Active Produce Listings from My Produce
+  useEffect(() => {
+    const fetchFarmerProduce = async () => {
+      if (!user) return;
+      try {
+        const res = await API.get('/products/farmer/my-listings');
+        if (res.data?.success && Array.isArray(res.data.listings)) {
+          setFarmerListings(res.data.listings);
+        }
+      } catch (err) {
+        // Silently continue if unauthenticated or non-farmer role
+      }
+    };
+    fetchFarmerProduce();
+  }, [user]);
+
+  // 2. Outside Click Listener for Dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (cropDropdownRef.current && !cropDropdownRef.current.contains(e.target)) {
+        setCropDropdownOpen(false);
+      }
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target)) {
+        setLocationDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 3. Filtered Crops for Search
+  const filteredCrops = React.useMemo(() => {
+    const query = cropSearch.trim().toLowerCase();
+    if (!query) return ALL_COMMODITIES.slice(0, 10);
+
+    return ALL_COMMODITIES.filter((c) => c.toLowerCase().includes(query))
+      .sort((a, b) => {
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        if (aLower === query) return -1;
+        if (bLower === query) return 1;
+        if (aLower.startsWith(query) && !bLower.startsWith(query)) return -1;
+        if (!aLower.startsWith(query) && bLower.startsWith(query)) return 1;
+        return aLower.localeCompare(bLower);
+      })
+      .slice(0, 10);
+  }, [cropSearch]);
+
+  // 4. Filtered Locations for Search
+  const filteredLocations = React.useMemo(() => {
+    const query = locationSearch.trim().toLowerCase();
+    if (!query) return PRESET_LOCATIONS.slice(0, 8);
+
+    return PRESET_LOCATIONS.filter(
+      (loc) =>
+        loc.name.toLowerCase().includes(query) ||
+        loc.district.toLowerCase().includes(query) ||
+        loc.state.toLowerCase().includes(query) ||
+        (loc.mandi && loc.mandi.toLowerCase().includes(query))
+    )
+      .sort((a, b) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        if (aName === query) return -1;
+        if (bName === query) return 1;
+        if (aName.startsWith(query) && !bName.startsWith(query)) return -1;
+        if (!aName.startsWith(query) && bName.startsWith(query)) return 1;
+        return aName.localeCompare(bName);
+      })
+      .slice(0, 8);
+  }, [locationSearch]);
+
+  // 5. Select Produce Handlers
+  const handleSelectFarmerListing = (listing) => {
+    const crop = listing.cropName || 'Tomato';
+    setCommodity(crop);
+    setCropSearch(crop);
+    setCropDropdownOpen(false);
+  };
+
+  const handleSelectCommodity = (cropName) => {
+    setCommodity(cropName);
+    setCropSearch(cropName);
+    setCropDropdownOpen(false);
+  };
+
+  // 6. Select Location Handlers
+  const handleSelectLocation = (loc) => {
+    setSelectedLocation(loc);
+    setLocationSearch(loc.name);
+    setLocationNotice('');
+    setLocationDropdownOpen(false);
+  };
+
+  const handleLocationInputChange = (val) => {
+    setLocationSearch(val);
+    setLocationDropdownOpen(true);
+    const match = PRESET_LOCATIONS.find(
+      (l) =>
+        l.name.toLowerCase() === val.trim().toLowerCase() ||
+        l.district.toLowerCase() === val.trim().toLowerCase() ||
+        (l.mandi && l.mandi.toLowerCase() === val.trim().toLowerCase())
+    );
+    if (match) {
+      setSelectedLocation(match);
+    } else if (val.trim()) {
+      setSelectedLocation({
+        name: val,
+        district: val,
+        state: '',
+        mandi: val,
+      });
+    }
+  };
+
+  // 7. Geolocation GPS Action
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationNotice('Location access unavailable. You can search your area manually.');
+      return;
+    }
+    setIsUsingGps(true);
+    setLocationNotice('');
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        let closest = PRESET_LOCATIONS[0];
+        let minDistance = Infinity;
+
+        PRESET_LOCATIONS.forEach((loc) => {
+          if (loc.lat && loc.lng) {
+            const d = Math.sqrt(Math.pow(loc.lat - lat, 2) + Math.pow(loc.lng - lng, 2));
+            if (d < minDistance) {
+              minDistance = d;
+              closest = loc;
+            }
+          }
+        });
+
+        const detectedLoc = {
+          name: closest.name,
+          district: closest.district,
+          state: closest.state,
+          mandi: closest.mandi,
+          lat,
+          lng,
+          isDetected: true,
+        };
+
+        setSelectedLocation(detectedLoc);
+        setLocationSearch(closest.name);
+        setIsUsingGps(false);
+        setLocationNotice(`📍 Detected GPS Location: ${closest.name}`);
+      },
+      (err) => {
+        setIsUsingGps(false);
+        setLocationNotice('Location access unavailable. You can search your area manually.');
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
 
   const fetchWeather = async () => {
     setLoading(true);
     setError('');
     try {
+      const loc = selectedLocation || PRESET_LOCATIONS[0];
       const res = await API.get('/market-data/weather', {
-        params: { market: market || 'Karnal Mandi', commodity },
+        params: {
+          market: loc.mandi || loc.name || locationSearch || 'Karnal Mandi',
+          district: loc.district || loc.name || locationSearch || 'Karnal',
+          state: loc.state || '',
+          lat: loc.lat || undefined,
+          lon: loc.lng || loc.lon || undefined,
+          commodity,
+        },
       });
 
       if (res.data?.success && res.data.weather) {
@@ -98,7 +348,7 @@ const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Kar
 
   useEffect(() => {
     fetchWeather();
-  }, [market, commodity]);
+  }, [selectedLocation, commodity]);
 
   // Format weather forecast chart data safely
   const weatherChartData = React.useMemo(() => {
@@ -126,77 +376,234 @@ const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Kar
 
   return (
     <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-7">
-      {/* 1. Header (Matching User Mock) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
-            <CloudSun className="w-6 h-6 text-teal-800" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              Weather Forecast
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-normal">
-              Check upcoming weather conditions that may affect your crop and selling plans.
-            </p>
-          </div>
+      {/* 1. Header (Active Tool badge removed per UX spec) */}
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold shadow-2xs flex-shrink-0">
+          <CloudSun className="w-6 h-6 text-teal-800" />
         </div>
-
-        <div className="self-start sm:self-auto">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            Active Tool
-          </span>
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            Weather Forecast
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-normal">
+            Check upcoming weather conditions that may affect your crop and selling plans.
+          </p>
         </div>
       </div>
 
-      {/* 2. Form Inputs */}
+      {/* 2. Modernized Inputs (Searchable Produce & Location Autocomplete) */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Produce Dropdown */}
-          <div className="space-y-1.5">
+          {/* =========================================================================
+              PRODUCE INPUT: Searchable Autocomplete with "Your Produce" Prioritization
+             ========================================================================= */}
+          <div className="space-y-1.5 relative" ref={cropDropdownRef}>
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Sprout className="w-4 h-4 text-emerald-700" />
               Select Your Produce
             </label>
             <div className="relative">
-              <select
-                value={commodity}
-                onChange={(e) => setCommodity(e.target.value)}
-                className="w-full bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors cursor-pointer appearance-none"
-              >
-                {COMMODITY_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={cropSearch}
+                onChange={(e) => {
+                  setCropSearch(e.target.value);
+                  setCommodity(e.target.value);
+                  setCropDropdownOpen(true);
+                }}
+                onFocus={() => setCropDropdownOpen(true)}
+                placeholder="Search crop or produce..."
+                className="w-full bg-slate-50/70 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors"
+              />
+              {cropSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropSearch('');
+                    setCropDropdownOpen(true);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
+
+            {/* Produce Autocomplete Dropdown */}
+            {cropDropdownOpen && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden max-h-72 overflow-y-auto">
+                {/* SECTION A: FARMER'S OWN PRODUCE ("Your Produce") */}
+                {farmerListings && farmerListings.length > 0 && (
+                  <div className="border-b border-slate-100 p-2 bg-emerald-50/30">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 px-2 py-1 block">
+                      🌾 Your Produce
+                    </span>
+                    <div className="space-y-1 mt-1">
+                      {farmerListings.map((listing) => (
+                        <button
+                          key={listing._id || listing.batchId}
+                          type="button"
+                          onClick={() => handleSelectFarmerListing(listing)}
+                          className="w-full text-left p-2 rounded-xl hover:bg-emerald-100/60 transition-colors flex items-center justify-between cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-200/80 text-emerald-800 flex items-center justify-center flex-shrink-0">
+                              <Package className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-xs font-black text-slate-900 block truncate">
+                                {listing.cropName}
+                              </span>
+                              <span className="text-[10px] text-slate-500 block">
+                                {listing.quantityKg ? `${listing.quantityKg.toLocaleString('en-IN')} kg` : ''}
+                                {listing.grade ? ` • ${listing.grade.replace('_', ' ')}` : ''}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-emerald-200 flex-shrink-0">
+                            My Produce
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SECTION B: SEARCH ALL PRODUCE */}
+                <div className="p-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1 block">
+                    All Supported Crops
+                  </span>
+                  <div className="space-y-0.5 mt-1">
+                    {filteredCrops.length > 0 ? (
+                      filteredCrops.map((c) => {
+                        const isSelected = commodity.toLowerCase() === c.toLowerCase();
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => handleSelectCommodity(c)}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                                : 'text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <Sprout className="w-3.5 h-3.5 text-emerald-600" />
+                              {c}
+                            </span>
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 text-center text-xs text-slate-400">
+                        No crops matching "{cropSearch}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Mandi / Location Selector */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-rose-500" />
-              Target Mandi / Route Location
-            </label>
-            <div className="relative">
-              <select
-                value={market}
-                onChange={(e) => setMarket(e.target.value)}
-                className="w-full bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors cursor-pointer appearance-none"
+          {/* =========================================================================
+              LOCATION INPUT: Search City/District/Mandi with "Use My Location" GPS Action
+             ========================================================================= */}
+          <div className="space-y-1.5 relative" ref={locationDropdownRef}>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-rose-500" />
+                Target Mandi / Route Location
+              </label>
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={isUsingGps}
+                className="text-[11px] font-black text-emerald-800 hover:text-emerald-900 flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50"
               >
-                {MANDI_OPTIONS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Navigation className={`w-3 h-3 ${isUsingGps ? 'animate-spin text-emerald-600' : ''}`} />
+                {isUsingGps ? 'Locating...' : 'Use My Location'}
+              </button>
             </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={locationSearch}
+                onChange={(e) => handleLocationInputChange(e.target.value)}
+                onFocus={() => setLocationDropdownOpen(true)}
+                placeholder="Search city, district or mandi..."
+                className="w-full bg-slate-50/70 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-2xl pl-10 pr-10 py-3 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-colors"
+              />
+              {locationSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocationSearch('');
+                    setLocationDropdownOpen(true);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Location Autocomplete Dropdown */}
+            {locationDropdownOpen && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden max-h-72 overflow-y-auto p-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1 block">
+                  Suggested Mandis & Transit Routes
+                </span>
+                <div className="space-y-0.5 mt-1">
+                  {filteredLocations.length > 0 ? (
+                    filteredLocations.map((loc) => {
+                      const isSelected = selectedLocation.name === loc.name;
+                      return (
+                        <button
+                          key={loc.name}
+                          type="button"
+                          onClick={() => handleSelectLocation(loc)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                            <span className="truncate">{loc.name}</span>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="p-3 text-center text-xs text-slate-400">
+                      No locations matching "{locationSearch}"
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Location Notice */}
+        {locationNotice && (
+          <div className="text-xs text-emerald-900 font-bold flex items-center gap-2 bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200 animate-in fade-in">
+            <Info className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+            <span>{locationNotice}</span>
+          </div>
+        )}
 
         {/* Action Button (Full-width Deep Green) */}
         <button
@@ -217,55 +624,6 @@ const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Kar
             </>
           )}
         </button>
-      </div>
-
-      {/* 3. "How It Works?" Guide Banner */}
-      <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 space-y-4">
-        <div className="flex items-center gap-2 text-emerald-950 font-extrabold text-sm">
-          <TrendingUp className="w-4 h-4 text-emerald-700" />
-          <span>How It Works?</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-          {/* Step 1 */}
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
-              1
-            </div>
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-black text-slate-900">Select produce & route</h4>
-              <p className="text-[11px] text-slate-500 leading-snug">
-                Choose crop and transport destination
-              </p>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
-              2
-            </div>
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-black text-slate-900">Check rain & temperature</h4>
-              <p className="text-[11px] text-slate-500 leading-snug">
-                Live Open-Meteo 7-day temperature and rain
-              </p>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 rounded-full bg-emerald-200 text-emerald-900 font-black text-xs flex items-center justify-center flex-shrink-0">
-              3
-            </div>
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-black text-slate-900">Protect crop in transit</h4>
-              <p className="text-[11px] text-slate-500 leading-snug">
-                Prevent spoilage and plan harvest timing
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {error && (
@@ -423,7 +781,7 @@ const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Kar
           <div className="bg-slate-50/80 p-5 rounded-3xl border border-slate-100 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700">7-Day Temperature & Rain Probability Trend</span>
-              <span className="text-[10px] text-slate-400">Location: {weatherData.location?.district || market}</span>
+              <span className="text-[10px] text-slate-400">Location: {weatherData.location?.district || selectedLocation?.name || 'Selected Region'}</span>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
