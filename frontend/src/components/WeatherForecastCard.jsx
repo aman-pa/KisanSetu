@@ -398,10 +398,12 @@ const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Kar
               PRODUCE INPUT: Searchable Autocomplete with "Your Produce" Prioritization
              ========================================================================= */}
           <div className="space-y-1.5 relative" ref={cropDropdownRef}>
-            <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <Sprout className="w-4 h-4 text-emerald-700" />
-              Select Your Produce
-            </label>
+            <div className="flex items-center justify-between min-h-[22px]">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate">
+                <Sprout className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                <span className="truncate">Select Your Produce</span>
+              </label>
+            </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <Search className="w-4 h-4" />
@@ -515,16 +517,16 @@ const WeatherForecastCard = ({ defaultCommodity = 'Tomato', defaultMarket = 'Kar
               LOCATION INPUT: Search City/District/Mandi with "Use My Location" GPS Action
              ========================================================================= */}
           <div className="space-y-1.5 relative" ref={locationDropdownRef}>
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-rose-500" />
-                Target Mandi / Route Location
+            <div className="flex items-center justify-between min-h-[22px] gap-1">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
+                <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                <span className="truncate">Target Mandi / Location</span>
               </label>
               <button
                 type="button"
                 onClick={handleUseCurrentLocation}
                 disabled={isUsingGps}
-                className="text-[11px] font-black text-emerald-800 hover:text-emerald-900 flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50"
+                className="text-[11px] font-black text-emerald-800 hover:text-emerald-900 flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50 whitespace-nowrap flex-shrink-0 ml-1"
               >
                 <Navigation className={`w-3 h-3 ${isUsingGps ? 'animate-spin text-emerald-600' : ''}`} />
                 {isUsingGps ? 'Locating...' : 'Use My Location'}
