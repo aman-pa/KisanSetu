@@ -45,7 +45,7 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const getNavLinks = () => {
+    const getNavLinks = () => {
     if (!user) {
       return [
         {
@@ -63,12 +63,6 @@ const Navbar = () => {
             pathname.startsWith('/farmer/market-intelligence') ||
             pathname.startsWith('/farmer/demand-forecast') ||
             pathname.startsWith('/farmer/price-recommendation'),
-        },
-        {
-          label: 'Batch QR Trace',
-          path: '/trace/KS-BATCH-994821',
-          icon: ShieldCheck,
-          isActive: (pathname) => pathname.startsWith('/trace'),
         },
       ];
     }
@@ -142,12 +136,6 @@ const Navbar = () => {
               pathname.startsWith('/farmer/demand-forecast') ||
               pathname.startsWith('/farmer/price-recommendation'),
           },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
-          },
         ];
 
       case 'BULK_BUYER':
@@ -174,12 +162,6 @@ const Navbar = () => {
               pathname.startsWith('/farmer/demand-forecast') ||
               pathname.startsWith('/farmer/price-recommendation'),
           },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
-          },
         ];
 
       case 'LOGISTICS':
@@ -197,10 +179,14 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/logistics/dashboard',
           },
           {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
+            label: 'Market Intelligence',
+            path: '/market-intelligence',
+            icon: TrendingUp,
+            isActive: (pathname) =>
+              pathname === '/market-intelligence' ||
+              pathname.startsWith('/farmer/market-intelligence') ||
+              pathname.startsWith('/farmer/demand-forecast') ||
+              pathname.startsWith('/farmer/price-recommendation'),
           },
         ];
 
@@ -227,12 +213,6 @@ const Navbar = () => {
               pathname.startsWith('/farmer/market-intelligence') ||
               pathname.startsWith('/farmer/demand-forecast') ||
               pathname.startsWith('/farmer/price-recommendation'),
-          },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
           },
         ];
 
@@ -261,12 +241,6 @@ const Navbar = () => {
               pathname.startsWith('/farmer/market-intelligence') ||
               pathname.startsWith('/farmer/demand-forecast') ||
               pathname.startsWith('/farmer/price-recommendation'),
-          },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
           },
         ];
     }
