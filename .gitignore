@@ -19,3 +19,4 @@ data/
 *.lock
 diagnostic.data/
 storage.bson
+scratch/

@@ -96,6 +96,9 @@ const placeOrder = async (req, res) => {
       procurementRequestRef: procurementRequestId || null,
       batchWindowEndsAt,
       status: 'PENDING',
+      logisticsStatus: 'PENDING',
+      logisticsPartner: null,
+      vehicleAssigned: null,
     });
 
     // Notify Farmers of incoming Buy Request
@@ -167,13 +170,19 @@ const getOrders = async (req, res) => {
     } else if (req.user.role === 'FARMER') {
       filter = { 'items.farmer': req.user._id };
     } else if (req.user.role === 'LOGISTICS') {
-      filter = { $or: [{ logisticsPartner: req.user._id }, { status: { $in: ['PENDING', 'ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT'] } }] };
+      filter = {
+        $or: [
+          { logisticsPartner: req.user._id },
+          { status: { $in: ['PENDING', 'CONFIRMED', 'ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT'] } },
+        ],
+      };
     }
 
     const orders = await Order.find(filter)
       .populate('buyer', 'name email phone address')
-      .populate('items.listing', 'cropName grade images batchId')
+      .populate('items.listing', 'cropName grade images batchId location')
       .populate('items.farmer', 'name phone email address profileDetails')
+      .populate('logisticsPartner', 'name phone')
       .sort({ createdAt: -1 });
 
     return res.json({ success: true, count: orders.length, orders });
@@ -228,11 +237,82 @@ const payOrderEscrow = async (req, res) => {
 // @route PUT /api/orders/:id/status
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status, notes } = req.body;
+    const { status, notes, vehicleAssigned, vehicleNumber } = req.body;
     const order = await Order.findById(req.params.id).populate('buyer', 'name email phone');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const userIdStr = req.user._id.toString();
+    const userRole = req.user.role;
+
+    // Security & Authorization check
+    const isBuyer = order.buyer?.toString() === userIdStr;
+    const isFarmer = order.items && order.items.some((item) => item.farmer?.toString() === userIdStr);
+    const isAssignedLogistics = order.logisticsPartner && order.logisticsPartner.toString() === userIdStr;
+    const isLogistics = userRole === 'LOGISTICS';
+    const isAdmin = userRole === 'ADMIN';
+
+    if (isAdmin) {
+      // Admins have full access to update status
+    } else if (isFarmer) {
+      // Farmers can accept or cancel their orders
+      if (!['ACCEPTED', 'CANCELLED'].includes(status)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Farmers are only authorized to mark orders as ACCEPTED or CANCELLED.',
+        });
+      }
+    } else if (isBuyer) {
+      // Buyers can mark orders as COMPLETED (verified delivered) or DISPUTED/CANCELLED
+      if (!['COMPLETED', 'DISPUTED', 'CANCELLED'].includes(status)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Buyers are only authorized to mark orders as COMPLETED or DISPUTED.',
+        });
+      }
+    } else if (isLogistics) {
+      // Logistics partner can accept unassigned orders or advance their assigned shipments
+      if (order.logisticsPartner && !isAssignedLogistics) {
+        return res.status(403).json({
+          success: false,
+          message: 'This delivery is assigned to another logistics carrier.',
+        });
+      }
+
+      const logisticsAllowedStatuses = ['ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED'];
+      if (!logisticsAllowedStatuses.includes(status)) {
+        return res.status(403).json({
+          success: false,
+          message: `Logistics partners can only update status to: ${logisticsAllowedStatuses.join(', ')}.`,
+        });
+      }
+
+      // Automatically assign the logistics partner if claiming an unassigned shipment
+      if (!order.logisticsPartner) {
+        order.logisticsPartner = req.user._id;
+      }
+
+      // Allow optional vehicle assignment
+      const assignedVehicle = vehicleAssigned || vehicleNumber;
+      if (assignedVehicle) {
+        order.vehicleAssigned = assignedVehicle;
+      }
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this order.',
+      });
+    }
+
+    // Idempotent logistics requirement handling on transition to CONFIRMED
+    if (status === 'CONFIRMED') {
+      if (!order.logisticsStatus) {
+        order.logisticsStatus = 'PENDING';
+      }
+    } else if (['ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED'].includes(status)) {
+      order.logisticsStatus = status;
     }
 
     order.status = status;
@@ -271,6 +351,7 @@ const updateOrderStatus = async (req, res) => {
     for (const item of order.items) {
       if (item.batchId) {
         let stageName = 'IN_TRANSIT';
+        if (status === 'CONFIRMED') stageName = 'ORDER_PLACED';
         if (status === 'ACCEPTED') stageName = 'SELLER_ACCEPTED';
         if (status === 'DELIVERED') stageName = 'DELIVERED';
         if (status === 'COMPLETED') stageName = 'BUYER_VERIFIED';

@@ -55,10 +55,20 @@ const orderSchema = new mongoose.Schema(
     logisticsPartner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      default: null,
+    },
+    vehicleAssigned: {
+      type: String,
+      default: null,
     },
     status: {
       type: String,
-      enum: ['PENDING', 'ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'DISPUTED', 'CANCELLED'],
+      enum: ['PENDING', 'CONFIRMED', 'ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'DISPUTED', 'CANCELLED'],
+      default: 'CONFIRMED',
+    },
+    logisticsStatus: {
+      type: String,
+      enum: ['PENDING', 'ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED'],
       default: 'PENDING',
     },
     paymentStatus: {

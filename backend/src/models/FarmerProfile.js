@@ -42,6 +42,29 @@ const farmerProfileSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    fpo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FPOProfile',
+      default: null,
+    },
+    fpoMembershipStatus: {
+      type: String,
+      enum: ['NOT_MEMBER', 'PENDING', 'APPROVED', 'REJECTED'],
+      default: 'NOT_MEMBER',
+    },
+    fpoRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    fpoApprovedAt: {
+      type: Date,
+      default: null,
+    },
+    fpoRejectedAt: {
+      type: Date,
+      default: null,
+    },
+    fpoRejectionReason: String,
   },
   { timestamps: true }
 );
