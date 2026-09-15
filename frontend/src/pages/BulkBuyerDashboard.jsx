@@ -184,32 +184,19 @@ const BulkBuyerDashboard = () => {
   const { user } = useAuth();
   const { addToCart, cartItems } = useCart();
 
-  // Mode Tab: 'MARKETPLACE' | 'MY_ORDERS' | 'AI_AGGREGATOR'
-  const [activeTab, setActiveTab] = useState('MARKETPLACE');
+  // Mode Tab on Dashboard: 'MY_ORDERS' | 'AI_AGGREGATOR'
+  const [activeTab, setActiveTab] = useState('MY_ORDERS');
 
   // ==========================================
-  // LOCATION & MARKETPLACE STATE
+  // LOCATION & MARKETPLACE LISTINGS STATE
   // ==========================================
   const [listings, setListings] = useState(SAMPLE_LISTINGS);
-  const [listingsLoading, setListingsLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('ALL');
-  const [grade, setGrade] = useState('ALL');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [maxDistanceKm, setMaxDistanceKm] = useState('ALL');
-  const [sort, setSort] = useState('ai_recommended');
-
   const [userLocationName, setUserLocationName] = useState(
     user?.address?.city ? `${user.address.city}, ${user.address.state || ''}` : 'Delhi NCR'
   );
   const [userLat, setUserLat] = useState(user?.address?.lat || 28.6139);
   const [userLng, setUserLng] = useState(user?.address?.lng || 77.2090);
-  const [customPincode, setCustomPincode] = useState(user?.address?.pincode || '');
-  const [locationMsg, setLocationMsg] = useState('');
-  const [gpsLoading, setGpsLoading] = useState(false);
   const [toastSuccess, setToastSuccess] = useState('');
-  const [orderQtyMap, setOrderQtyMap] = useState({});
 
   // ==========================================
   // ORDERS HISTORY STATE
@@ -243,20 +230,9 @@ const BulkBuyerDashboard = () => {
 
   // Fetch Produce Listings
   const fetchListings = async () => {
-    setListingsLoading(true);
     try {
       const { data } = await API.get('/products', {
-        params: {
-          userLat,
-          userLng,
-          search: search.trim() || undefined,
-          category: category !== 'ALL' ? category : undefined,
-          grade: grade !== 'ALL' ? grade : undefined,
-          minPrice: minPrice || undefined,
-          maxPrice: maxPrice || undefined,
-          maxDistanceKm: maxDistanceKm !== 'ALL' ? maxDistanceKm : undefined,
-          sort,
-        },
+        params: { userLat, userLng },
       });
       if (data.success && data.listings && data.listings.length > 0) {
         setListings(data.listings);
@@ -266,8 +242,6 @@ const BulkBuyerDashboard = () => {
     } catch (err) {
       console.error('Failed to fetch listings:', err);
       setListings(SAMPLE_LISTINGS);
-    } finally {
-      setListingsLoading(false);
     }
   };
 
@@ -294,84 +268,8 @@ const BulkBuyerDashboard = () => {
 
   useEffect(() => {
     fetchListings();
-  }, [category, grade, minPrice, maxPrice, maxDistanceKm, sort, userLat, userLng]);
-
-  useEffect(() => {
     fetchOrders();
-  }, []);
-
-  // Pincode Search
-  const handlePincodeSearch = async (val) => {
-    setCustomPincode(val);
-    setLocationMsg('');
-    if (val.trim().length === 6 && !isNaN(Number(val))) {
-      const res = await fetchLocationByPincode(val);
-      if (res.success) {
-        setUserLat(res.lat);
-        setUserLng(res.lng);
-        setUserLocationName(`${res.district}, ${res.state} (${val})`);
-        setLocationMsg(`📍 Location updated to ${res.district}, ${res.state} (${val})`);
-        setTimeout(() => setLocationMsg(''), 4000);
-      }
-    }
-  };
-
-  // GPS Location
-  const handleUseGpsLocation = async () => {
-    setGpsLoading(true);
-    setLocationMsg('');
-    try {
-      const loc = await getCurrentGpsLocation();
-      setUserLat(loc.lat);
-      setUserLng(loc.lng);
-      setUserLocationName(`${loc.district}, ${loc.state} (GPS Traced)`);
-      if (loc.pincode) setCustomPincode(loc.pincode);
-      setLocationMsg(`🎯 Live GPS Acquired: ${loc.lat.toFixed(4)}°N, ${loc.lng.toFixed(4)}°E`);
-      setTimeout(() => setLocationMsg(''), 5000);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGpsLoading(false);
-    }
-  };
-
-  const handleQtyChange = (listingId, val) => {
-    setOrderQtyMap((prev) => ({
-      ...prev,
-      [listingId]: Math.max(1, Number(val) || 1),
-    }));
-  };
-
-  const handleAddToCart = (listing) => {
-    const qty = orderQtyMap[listing._id] || Math.min(listing.availableQuantityKg, 100);
-    addToCart(listing, qty);
-    setToastSuccess(`Added ${qty.toLocaleString()} kg of ${listing.cropName} to your Bulk Cart! 🛒`);
-    setTimeout(() => setToastSuccess(''), 4000);
-  };
-
-  const handleDirectOrder = async (listing) => {
-    const qty = orderQtyMap[listing._id] || Math.min(listing.availableQuantityKg, 100);
-    try {
-      const { data } = await API.post('/orders', {
-        items: [{ listingId: listing._id, quantityKg: qty }],
-        deliveryAddress: {
-          street: user?.address?.street || 'Procurement Center',
-          city: user?.address?.city || 'Delhi',
-          state: user?.address?.state || 'Delhi NCR',
-          pincode: user?.address?.pincode || '110001',
-        },
-      });
-
-      if (data.success) {
-        setToastSuccess(`Bulk Order #${data.order.orderNumber} placed for ${qty.toLocaleString()} kg ${listing.cropName}! Escrow locked.`);
-        fetchOrders();
-        fetchListings();
-        setActiveTab('MY_ORDERS');
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to place bulk order.');
-    }
-  };
+  }, [userLat, userLng]);
 
   // AI Matching Request
   const handleCreateRequest = async (e) => {
@@ -423,7 +321,6 @@ const BulkBuyerDashboard = () => {
       if (data.success) {
         setToastSuccess(`Bulk Order #${data.order.orderNumber} placed successfully! ${agg.aggregatedQuantityKg.toLocaleString()} kg aggregated across ${agg.suppliersCount} farmer listings.`);
         fetchOrders();
-        fetchListings();
         setActiveTab('MY_ORDERS');
       }
     } catch (err) {
@@ -489,27 +386,12 @@ const BulkBuyerDashboard = () => {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
-        {/* Simple & Clean Navigation Tabs Bar */}
+        {/* Simple Navigation Tabs Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => setActiveTab('MARKETPLACE')}
-              className={`flex-1 sm:flex-none py-2 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                activeTab === 'MARKETPLACE'
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <Sprout className="w-4 h-4 text-emerald-400" />
-              <span>Marketplace</span>
-              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                {listings.length} Lots
-              </span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('MY_ORDERS')}
-              className={`flex-1 sm:flex-none py-2 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none py-2 px-5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'MY_ORDERS'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -524,7 +406,7 @@ const BulkBuyerDashboard = () => {
 
             <button
               onClick={() => setActiveTab('AI_AGGREGATOR')}
-              className={`flex-1 sm:flex-none py-2 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none py-2 px-5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'AI_AGGREGATOR'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -535,21 +417,31 @@ const BulkBuyerDashboard = () => {
             </button>
           </div>
 
-          <Link
-            to="/cart"
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-extrabold text-xs flex items-center gap-2 border border-emerald-200 transition-all self-end sm:self-auto"
-          >
-            <ShoppingCart className="w-4 h-4 text-emerald-700" />
-            <span>Cart</span>
-            {cartItems.length > 0 && (
-              <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                {cartItems.length}
-              </span>
-            )}
-          </Link>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Link
+              to="/marketplace"
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs flex items-center gap-1.5 transition-all"
+            >
+              <Sprout className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Explore Marketplace →</span>
+            </Link>
+
+            <Link
+              to="/cart"
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-extrabold text-xs flex items-center gap-2 border border-emerald-200 transition-all"
+            >
+              <ShoppingCart className="w-4 h-4 text-emerald-700" />
+              <span>Cart</span>
+              {cartItems.length > 0 && (
+                <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  {cartItems.length}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
 
-        {/* Global Toast Success Message */}
+        {/* Toast Success Message */}
         {toastSuccess && (
           <div className="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-2xl flex items-center justify-between shadow-2xs">
             <span className="flex items-center gap-2">
@@ -563,321 +455,7 @@ const BulkBuyerDashboard = () => {
         )}
 
         {/* ========================================================= */}
-        {/* MODE 1: MARKETPLACE SOURCING */}
-        {/* ========================================================= */}
-        {activeTab === 'MARKETPLACE' && (
-          <div className="space-y-5">
-            {/* Header Hero Banner */}
-            <div className="bg-gradient-to-r from-agri-dark via-emerald-950 to-slate-950 rounded-3xl p-6 text-white shadow-agri-md space-y-2">
-              <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-extrabold text-emerald-300">
-                <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Bulk Procurement Engine</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Fresh Produce <span className="text-emerald-400">Directly From Indian Farmers & FPOs</span>
-              </h1>
-              <p className="text-xs text-slate-300 font-medium max-w-3xl">
-                AI recommends verified bulk agricultural crops based on your current location coordinates, AGMARK quality grades, distance proximity, and wholesale price index.
-              </p>
-            </div>
-
-            {/* AI Produce Matcher & Search Filter Box */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800">
-                    <Sprout className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900">AI Produce Matcher & Search</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">Filter farmer listings by location proximity, grade, distance & price range.</p>
-                  </div>
-                </div>
-
-                {/* Traced Location Input */}
-                <div className="flex items-center gap-2 bg-emerald-50/80 p-1.5 px-3 rounded-2xl border border-emerald-200/90 text-xs">
-                  <MapPin className="w-4 h-4 text-emerald-700 flex-shrink-0" />
-                  <span className="font-bold text-slate-700 text-[11px] whitespace-nowrap">Traced Location:</span>
-                  <span className="font-black text-emerald-950 text-xs">{userLocationName}</span>
-
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={customPincode}
-                    onChange={(e) => handlePincodeSearch(e.target.value)}
-                    placeholder="Pincode"
-                    className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-center font-mono font-bold text-xs"
-                  />
-
-                  <button
-                    onClick={handleUseGpsLocation}
-                    disabled={gpsLoading}
-                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-extrabold flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>🎯 {gpsLoading ? 'GPS...' : 'Use My GPS Location'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {locationMsg && (
-                <div className="p-2.5 bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>{locationMsg}</span>
-                </div>
-              )}
-
-              {/* Search input bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search grains or produce (type 2-3 letters e.g. Wheat, Tomato, Rice...)"
-                  className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none shadow-2xs"
-                />
-              </div>
-
-              {/* Filter Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Max Distance</label>
-                  <select
-                    value={maxDistanceKm}
-                    onChange={(e) => setMaxDistanceKm(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-800"
-                  >
-                    <option value="ALL">Any Distance</option>
-                    <option value="10">Within 10 km (Nearby)</option>
-                    <option value="25">Within 25 km</option>
-                    <option value="50">Within 50 km</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Quality Grade</label>
-                  <select
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-800"
-                  >
-                    <option value="ALL">All Quality Grades</option>
-                    <option value="GRADE_A">Grade A (Premium)</option>
-                    <option value="GRADE_B">Grade B (Standard)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Min Price (₹/kg)</label>
-                  <input
-                    type="number"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    placeholder="Min ₹"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Max Price (₹/kg)</label>
-                  <input
-                    type="number"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    placeholder="Max ₹"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Sorting Engine</label>
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-300 text-xs font-extrabold bg-emerald-50 text-emerald-950"
-                  >
-                    <option value="ai_recommended">📊 AI Recommended Rank</option>
-                    <option value="distance_asc">📍 Distance: Nearest First</option>
-                    <option value="price_asc">💵 Price: Low to High</option>
-                    <option value="quantity_desc">📦 Stock: Highest First</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Category Filter Pills */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-                <span className="text-xs font-bold text-slate-500 mr-2">Category:</span>
-                {['ALL', 'VEGETABLES', 'FRUITS', 'GRAINS', 'PULSES', 'SPICES'].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategory(cat)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
-                      category === cat
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              <div className="text-xs font-bold text-slate-500 pt-1">
-                Active Filter Results: <span className="text-emerald-700 font-extrabold">{listings.length} real farmer listings</span>
-              </div>
-            </div>
-
-            {/* Produce Cards Grid */}
-            {listingsLoading ? (
-              <div className="p-12 text-center text-xs font-bold text-slate-400 animate-pulse">
-                Fetching real-time Farmer & FPO produce listings...
-              </div>
-            ) : listings.length === 0 ? (
-              <div className="bg-white rounded-3xl p-12 text-center space-y-3 border border-slate-100 shadow-2xs">
-                <Sprout className="w-10 h-10 text-slate-300 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-700">No produce listings found matching criteria</h3>
-                <p className="text-xs text-slate-500">Try adjusting your crop search, price, or distance filters.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {listings.map((item) => {
-                  const farmerLat = item.farmer?.address?.lat || item.location?.lat || 29.6857;
-                  const farmerLng = item.farmer?.address?.lng || item.location?.lng || 76.9905;
-                  const dist = calculateDistanceKm(userLat, userLng, farmerLat, farmerLng);
-                  const isNearby = dist <= 10;
-                  const requestedQty = orderQtyMap[item._id] || Math.min(item.availableQuantityKg, 100);
-
-                  return (
-                    <div
-                      key={item._id}
-                      className="bg-white rounded-3xl border border-slate-100 shadow-agri-sm hover:shadow-agri-md transition-all overflow-hidden flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Image Banner */}
-                        <div className="h-48 bg-slate-100 relative overflow-hidden">
-                          <img
-                            src={
-                              item.images?.[0] ||
-                              'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80'
-                            }
-                            alt={item.cropName}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                            <span className="bg-slate-950/80 backdrop-blur-xs text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
-                              {item.grade || 'GRADE_A'}
-                            </span>
-                            <span className="bg-emerald-600/90 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-1 rounded-full">
-                              {item.category || 'VEGETABLES'}
-                            </span>
-                          </div>
-
-                          <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-xl text-xs font-black text-slate-900 shadow-xs flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                            <span>{dist.toFixed(1)} km</span>
-                            {isNearby && (
-                              <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded ml-1">
-                                Nearby
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-5 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="text-base font-extrabold text-slate-900">{item.cropName}</h3>
-                              <p className="text-xs text-slate-500 font-medium">
-                                Batch #{item.batchId || 'KS-BATCH-9948'} • Quality Score: {item.aiQualityEstimateScore || 92}/100
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-lg font-black text-emerald-700">₹{item.pricePerKg}</span>
-                              <span className="text-[10px] text-slate-400 font-bold block">/ kg</span>
-                            </div>
-                          </div>
-
-                          {/* Farmer Details Box */}
-                          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center font-bold text-slate-500">
-                              {item.farmer?.profileImage ? (
-                                <img
-                                  src={item.farmer.profileImage}
-                                  alt={item.farmer.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span>👤</span>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between">
-                                <p className="text-xs font-extrabold text-slate-900 truncate">
-                                  {item.farmer?.name || 'Verified Farmer Partner'}
-                                </p>
-                                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
-                                  Verified
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 font-medium truncate">
-                                📍 {item.location?.district || item.farmer?.address?.city || 'Karnal'}, {item.location?.state || item.farmer?.address?.state || 'Haryana'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Stock Info */}
-                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                            <span className="text-slate-500 font-medium">Available Stock:</span>
-                            <span className="font-extrabold text-slate-900">
-                              {item.availableQuantityKg?.toLocaleString()} kg
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Box */}
-                      <div className="p-4 bg-slate-50/80 border-t border-slate-100 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <label className="text-[11px] font-bold text-slate-600 whitespace-nowrap">Order Qty (kg):</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={item.availableQuantityKg}
-                            value={requestedQty}
-                            onChange={(e) => handleQtyChange(item._id, e.target.value)}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 text-center bg-white"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => handleAddToCart(item)}
-                            className="py-2.5 px-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                          >
-                            <ShoppingCart className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Add to Cart</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleDirectOrder(item)}
-                            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Direct Order ⚡</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ========================================================= */}
-        {/* MODE 2: MY ORDERS (Master-Detail View - Styled exactly like Consumer Orders Page) */}
+        {/* MODE 1: MY ORDERS (Master-Detail View - Styled like Consumer Orders Page) */}
         {/* ========================================================= */}
         {activeTab === 'MY_ORDERS' && (
           <div className="space-y-5">
@@ -886,7 +464,7 @@ const BulkBuyerDashboard = () => {
               <div>
                 <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-extrabold text-emerald-300 mb-2">
                   <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Bulk Orders</span>
+                  <span>Bulk Buyer Dashboard</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white">Bulk Orders</h1>
                 <p className="text-xs text-slate-300 font-medium">Manage bulk procurement orders and track their fulfillment status.</p>
@@ -974,12 +552,12 @@ const BulkBuyerDashboard = () => {
                 <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
                 <h3 className="text-sm font-bold text-slate-700">No procurement orders found</h3>
                 <p className="text-xs text-slate-500">You haven't placed any bulk procurement orders matching this status.</p>
-                <button
-                  onClick={() => setActiveTab('MARKETPLACE')}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500"
+                <Link
+                  to="/marketplace"
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 inline-block"
                 >
-                  Explore Bulk Marketplace →
-                </button>
+                  Explore Marketplace →
+                </Link>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1216,7 +794,7 @@ const BulkBuyerDashboard = () => {
         )}
 
         {/* ========================================================= */}
-        {/* MODE 3: AI SMART AGGREGATOR (With Farmer Quality Ratings & Traced Distance) */}
+        {/* MODE 2: AI SMART AGGREGATOR */}
         {/* ========================================================= */}
         {activeTab === 'AI_AGGREGATOR' && (
           <div className="space-y-6">
@@ -1286,7 +864,7 @@ const BulkBuyerDashboard = () => {
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-600" /> AI Producer Quality Rankings & Distance Matrix
+                  <Award className="w-4 h-4 text-emerald-600" /> AI Producer Quality Rankings & Traced Distance Matrix
                 </h3>
                 <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
                   Traced from Registered Coordinates
@@ -1348,7 +926,7 @@ const BulkBuyerDashboard = () => {
               </div>
             </div>
 
-            {/* Pooled Aggregation Package (if active match exists) */}
+            {/* Pooled Aggregation Package */}
             {matchData && (
               <div className="bg-gradient-to-r from-agri-dark via-emerald-950 to-slate-950 p-6 rounded-3xl text-white shadow-agri-md space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">

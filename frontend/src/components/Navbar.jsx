@@ -167,9 +167,15 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Procurement Engine',
+            label: 'Marketplace',
+            path: '/marketplace',
+            icon: Search,
+            isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+          },
+          {
+            label: 'Dashboard',
             path: '/buyer/procurement',
-            icon: Building2,
+            icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/buyer/procurement',
           },
         ];
