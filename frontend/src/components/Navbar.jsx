@@ -32,6 +32,8 @@ import {
   PackagePlus,
   Users,
   Landmark,
+  Navigation,
+  Thermometer,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -189,26 +191,16 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Procurement Engine',
+            label: 'Marketplace',
+            path: '/marketplace',
+            icon: Search,
+            isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+          },
+          {
+            label: 'Dashboard',
             path: '/buyer/procurement',
-            icon: Building2,
+            icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/buyer/procurement',
-          },
-          {
-            label: 'Farmer Hub',
-            path: '/farmer-hub',
-            icon: Landmark,
-            isActive: (pathname) => pathname === '/farmer-hub',
-          },
-          {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
-            isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
           },
         ];
 
@@ -221,26 +213,32 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Logistics Hub',
-            path: '/logistics/dashboard',
+            label: 'Shipment Dispatches',
+            path: '/logistics/dashboard?tab=dispatches',
             icon: Truck,
-            isActive: (pathname) => pathname === '/logistics/dashboard',
+            isActive: (pathname, search) =>
+              pathname === '/logistics/dashboard' && (!search || search.includes('dispatches')),
           },
           {
-            label: 'Farmer Hub',
-            path: '/farmer-hub',
-            icon: Landmark,
-            isActive: (pathname) => pathname === '/farmer-hub',
+            label: 'TSP Route Map',
+            path: '/logistics/dashboard?tab=route-map',
+            icon: Navigation,
+            isActive: (pathname, search) =>
+              pathname === '/logistics/dashboard' && search && search.includes('route-map'),
           },
           {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
+            label: 'Fleet & Cold-Chain',
+            path: '/logistics/dashboard?tab=fleet-telemetry',
+            icon: Thermometer,
+            isActive: (pathname, search) =>
+              pathname === '/logistics/dashboard' && search && search.includes('fleet-telemetry'),
+          },
+          {
+            label: 'Logistics Intelligence',
+            path: '/logistics/intelligence',
+            icon: Sparkles,
             isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
+              pathname === '/logistics/intelligence',
           },
         ];
 
@@ -303,16 +301,6 @@ const Navbar = () => {
             path: '/consumer/orders',
             icon: ShoppingBag,
             isActive: (pathname) => pathname === '/consumer/orders',
-          },
-          {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
-            isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
           },
         ];
     }
@@ -529,7 +517,7 @@ const Navbar = () => {
             <nav className="hidden md:flex items-center gap-2 text-sm font-medium" aria-label="Global Navigation">
               {navLinks.map((item) => {
                 const Icon = item.icon;
-                const active = item.isActive(location.pathname);
+                const active = item.isActive(location.pathname, location.search);
                 return (
                   <Link
                     key={item.path}
@@ -703,7 +691,7 @@ const Navbar = () => {
           <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-emerald-900/10 px-4 pt-2 pb-4 shadow-md space-y-1 animate-in fade-in slide-in-from-top-2">
             {navLinks.map((item) => {
               const Icon = item.icon;
-              const active = item.isActive(location.pathname);
+              const active = item.isActive(location.pathname, location.search);
               return (
                 <Link
                   key={item.path}

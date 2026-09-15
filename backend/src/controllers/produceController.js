@@ -1,4 +1,5 @@
 const ProduceListing = require('../models/ProduceListing');
+const User = require('../models/User');
 const BatchTraceability = require('../models/BatchTraceability');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');

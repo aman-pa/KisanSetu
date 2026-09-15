@@ -128,7 +128,7 @@ const DISTRICT_COORDINATES = {
 class OpenMeteoWeatherProvider {
   constructor(options = {}) {
     this.apiUrl = options.apiUrl || 'https://api.open-meteo.com/v1/forecast';
-    this.timeoutMs = options.timeoutMs || 8000;
+    this.timeoutMs = options.timeoutMs || 2500;
     this.cache = new SimpleTtlCache(options.cacheTtlSeconds || 1800); // 30 min cache
     this.lastSuccessfulFetch = null;
     this.lastFailure = null;
