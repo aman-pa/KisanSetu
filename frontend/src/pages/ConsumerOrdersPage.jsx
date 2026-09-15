@@ -35,6 +35,7 @@ const ConsumerOrdersPage = () => {
 
   // Simulated Escrow Payment Gateway State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentSuccessStep, setPaymentSuccessStep] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [toastSuccess, setToastSuccess] = useState('');
@@ -44,8 +45,8 @@ const ConsumerOrdersPage = () => {
     try {
       const { data } = await API.put(`/orders/${orderId}/pay`);
       if (data.success) {
-        setToastSuccess('Payment confirmed & Escrow locked! Order is now in transit 🚚');
-        setIsPaymentModalOpen(false);
+        setToastSuccess('Payment Done! Escrow locked & order is now in transit 🚚');
+        setPaymentSuccessStep(true);
         fetchOrders();
       }
     } catch (err) {
@@ -519,6 +520,24 @@ const ConsumerOrdersPage = () => {
                   {/* Independently Scrollable Detail Body */}
                   <div className="p-4 sm:p-5 space-y-5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
                     
+                    {/* Payment Done Confirmation Banner */}
+                    {['PAID', 'PAID_ESCROW'].includes(selectedOrder.paymentStatus) && (
+                      <div className="p-4 bg-gradient-to-r from-emerald-50 via-emerald-50/70 to-teal-50/40 border border-emerald-300 rounded-2xl flex items-center gap-3.5 shadow-2xs">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs">
+                          <CheckCircle2 className="w-6 h-6 text-emerald-200" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-black text-emerald-950 flex items-center gap-2">
+                            <span>Payment Done! Escrow Funds Secured (₹{selectedOrder.totalAmount?.toLocaleString()})</span>
+                            <span className="bg-emerald-200 text-emerald-950 text-[10px] px-2 py-0.5 rounded-full font-extrabold">PAID</span>
+                          </h4>
+                          <p className="text-[11px] text-emerald-800 font-medium leading-relaxed">
+                            Your payment has been completed and safely locked in KisanSetu Escrow. The farmer has been notified to dispatch your produce.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Action Card: Seller Accepted -> Pay & Lock Escrow Button */}
                     {selectedOrder.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(selectedOrder.paymentStatus) && (
                       <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl space-y-3 shadow-2xs">
@@ -534,7 +553,10 @@ const ConsumerOrdersPage = () => {
                           </div>
 
                           <button
-                            onClick={() => setIsPaymentModalOpen(true)}
+                            onClick={() => {
+                              setPaymentSuccessStep(false);
+                              setIsPaymentModalOpen(true);
+                            }}
                             className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                           >
                             <CreditCard className="w-4 h-4 text-emerald-300" />
@@ -838,53 +860,86 @@ const ConsumerOrdersPage = () => {
                 <ShieldCheck className="w-4 h-4 text-emerald-600" /> KisanSetu Escrow Payment Gateway
               </span>
               <button
-                onClick={() => setIsPaymentModalOpen(false)}
+                onClick={() => {
+                  setIsPaymentModalOpen(false);
+                  setPaymentSuccessStep(false);
+                }}
                 className="text-slate-400 font-bold hover:text-slate-600 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-4 bg-emerald-50/60 rounded-2xl space-y-2 text-center border border-emerald-200">
-              <p className="text-xs text-slate-500 font-semibold">Total Order Escrow Amount</p>
-              <p className="text-3xl font-black text-emerald-700">₹{selectedOrder.totalAmount?.toLocaleString()}</p>
-              <p className="text-[10px] text-slate-500">
-                Payment is safely locked in KisanSetu Escrow and released to Farmer upon doorstep delivery.
-              </p>
-            </div>
+            {paymentSuccessStep ? (
+              <div className="text-center py-4 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-md animate-bounce">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black text-slate-900">Payment Done! 🎉</h3>
+                  <p className="text-xs font-extrabold text-emerald-800">
+                    ₹{selectedOrder.totalAmount?.toLocaleString()} Paid &amp; Locked in KisanSetu Escrow
+                  </p>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto pt-1 leading-relaxed">
+                    The farmer has been notified of your payment. Funds will remain secured in escrow until delivery is verified.
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">Select Payment Method</label>
-              <div className="grid grid-cols-2 gap-2">
                 <button
-                  type="button"
-                  onClick={() => setPaymentMethod('UPI')}
-                  className={`p-3 rounded-xl border-2 text-xs font-bold text-left transition-all ${
-                    paymentMethod === 'UPI' ? 'border-emerald-600 bg-emerald-50 text-emerald-950' : 'border-slate-200 text-slate-600'
-                  }`}
+                  onClick={() => {
+                    setIsPaymentModalOpen(false);
+                    setPaymentSuccessStep(false);
+                  }}
+                  className="w-full py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  📱 UPI / QR Code
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('CARD')}
-                  className={`p-3 rounded-xl border-2 text-xs font-bold text-left transition-all ${
-                    paymentMethod === 'CARD' ? 'border-emerald-600 bg-emerald-50 text-emerald-950' : 'border-slate-200 text-slate-600'
-                  }`}
-                >
-                  💳 Net Banking / Card
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <span>Done • View Fulfillment Tracker 🚚</span>
                 </button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="p-4 bg-emerald-50/60 rounded-2xl space-y-2 text-center border border-emerald-200">
+                  <p className="text-xs text-slate-500 font-semibold">Total Order Escrow Amount</p>
+                  <p className="text-3xl font-black text-emerald-700">₹{selectedOrder.totalAmount?.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-500">
+                    Payment is safely locked in KisanSetu Escrow and released to Farmer upon doorstep delivery.
+                  </p>
+                </div>
 
-            <button
-              onClick={() => handlePayEscrow(selectedOrder._id)}
-              disabled={paymentProcessing}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              <CreditCard className="w-4 h-4 text-emerald-300" />
-              <span>{paymentProcessing ? 'Securing Escrow Payment...' : `Confirm & Pay ₹${selectedOrder.totalAmount?.toLocaleString()}`}</span>
-            </button>
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">Select Payment Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('UPI')}
+                      className={`p-3 rounded-xl border-2 text-xs font-bold text-left transition-all ${
+                        paymentMethod === 'UPI' ? 'border-emerald-600 bg-emerald-50 text-emerald-950' : 'border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      📱 UPI / QR Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('CARD')}
+                      className={`p-3 rounded-xl border-2 text-xs font-bold text-left transition-all ${
+                        paymentMethod === 'CARD' ? 'border-emerald-600 bg-emerald-50 text-emerald-950' : 'border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      💳 Net Banking / Card
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handlePayEscrow(selectedOrder._id)}
+                  disabled={paymentProcessing}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4 text-emerald-300" />
+                  <span>{paymentProcessing ? 'Securing Escrow Payment...' : `Confirm & Pay ₹${selectedOrder.totalAmount?.toLocaleString()}`}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
