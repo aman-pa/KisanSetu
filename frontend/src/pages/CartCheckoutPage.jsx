@@ -14,10 +14,11 @@ import {
   ArrowLeft,
   Truck,
   Building,
+  Send,
 } from 'lucide-react';
 
 const CartCheckoutPage = () => {
-  const { cartItems, removeFromCart, clearCart, totalProduceCost, totalQuantityKg, maxConsumerLimitKg } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, totalProduceCost, totalQuantityKg, maxConsumerLimitKg } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -35,7 +36,7 @@ const CartCheckoutPage = () => {
   const platformFee = Math.round(totalProduceCost * 0.02);
   const grandTotal = totalProduceCost + logisticsCost + platformFee;
 
-  const handleOpenPayment = (e) => {
+  const handleSubmitBuyRequest = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -49,18 +50,7 @@ const CartCheckoutPage = () => {
       return;
     }
 
-    // Consumer Max Limit Verification
-    if (user.role === 'CONSUMER' && totalQuantityKg > maxConsumerLimitKg) {
-      setError(`Consumer purchase limit exceeded! You requested ${totalQuantityKg} kg, but max limit is ${maxConsumerLimitKg} kg.`);
-      return;
-    }
-
-    setIsPaymentModalOpen(true);
-  };
-
-  const handleSimulatePayment = async () => {
     setPaymentProcessing(true);
-    setError('');
     try {
       const payload = {
         items: cartItems,
@@ -72,10 +62,9 @@ const CartCheckoutPage = () => {
       if (data.success) {
         setOrderSuccess(data.order);
         clearCart();
-        setIsPaymentModalOpen(false);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Payment processing error.');
+      setError(err.response?.data?.message || 'Failed to submit buy request.');
     } finally {
       setPaymentProcessing(false);
     }
@@ -85,30 +74,46 @@ const CartCheckoutPage = () => {
     return (
       <MainLayout>
         <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-6">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto shadow-agri-md animate-bounce">
+          <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto shadow-md animate-bounce">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900">Order Confirmed! 🌾</h1>
+          <h1 className="text-3xl font-black text-slate-900">Buy Request Submitted to Seller! 📩</h1>
           <p className="text-xs text-slate-600">
-            Order ID: <span className="font-mono font-bold text-slate-800">{orderSuccess.orderNumber}</span> • Payment Secured in Escrow
+            Ticket ID: <span className="font-mono font-bold text-slate-900">{orderSuccess.orderNumber}</span> • Status: <span className="text-amber-700 font-extrabold bg-amber-100 px-2 py-0.5 rounded">Awaiting Seller Acceptance</span>
           </p>
 
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 text-left space-y-4 shadow-agri-sm">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 text-left space-y-4 shadow-sm">
             <div className="flex justify-between text-xs font-bold border-b border-slate-100 pb-3">
-              <span>Total Produce Amount: ₹{orderSuccess.totalProduceCost.toLocaleString()}</span>
-              <span className="text-emerald-800">Grand Total: ₹{orderSuccess.totalAmount.toLocaleString()}</span>
+              <span>Produce Requested: ₹{orderSuccess.totalProduceCost?.toLocaleString()}</span>
+              <span className="text-emerald-800">Grand Total: ₹{orderSuccess.totalAmount?.toLocaleString()}</span>
             </div>
-            <p className="text-xs text-slate-500">
-              Delivery to: {orderSuccess.deliveryAddress.street}, {orderSuccess.deliveryAddress.city}, {orderSuccess.deliveryAddress.state}
+            <p className="text-xs text-slate-500 font-medium">
+              Delivery to: {orderSuccess.deliveryAddress?.street}, {orderSuccess.deliveryAddress?.city}, {orderSuccess.deliveryAddress?.state} - {orderSuccess.deliveryAddress?.pincode}
             </p>
+            <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 font-semibold space-y-2">
+              <p>ℹ️ The seller has been notified of your request. Once the seller accepts, you can pay &amp; confirm escrow on your Trade Ticket or My Orders dashboard.</p>
+              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px] font-bold flex items-start gap-2">
+                <span className="text-base leading-none">⏰</span>
+                <div>
+                  <p className="font-extrabold text-blue-900">6-Hour Area Batch Dispatch Active</p>
+                  <p className="text-[10px] text-blue-700 font-medium">To protect farmer profit margins and eliminate hourly transport fees, orders in your area are combined into scheduled 6-hour delivery batches.</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-center gap-4 pt-4">
+          <div className="flex flex-wrap justify-center gap-4 pt-4">
             <Link
-              to="/marketplace"
-              className="px-6 py-3 rounded-xl bg-agri-primary text-white text-xs font-bold shadow-agri-sm hover:bg-agri-dark transition-all"
+              to={`/ticket/${orderSuccess._id}`}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white text-xs font-black shadow-md hover:shadow-lg transition-all"
             >
-              Continue Shopping
+              View & Print Official Trade Ticket
+            </Link>
+            <Link
+              to="/consumer/orders"
+              className="px-6 py-3 rounded-2xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 transition-all border border-slate-300"
+            >
+              Go to My Orders
             </Link>
           </div>
         </div>
@@ -150,24 +155,76 @@ const CartCheckoutPage = () => {
                 <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">Selected Produce</h2>
                 <div className="space-y-4">
                   {cartItems.map((item) => (
-                    <div key={item.listingId} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-slate-100">
+                    <div key={item.listingId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-slate-100 gap-4">
                       <div className="flex items-center gap-4">
                         {item.image && <img src={item.image} alt={item.cropName} className="w-14 h-14 rounded-xl object-cover" />}
                         <div>
                           <h4 className="text-sm font-bold text-slate-900">{item.cropName}</h4>
-                          <p className="text-[11px] text-slate-500">Farmer: {item.farmerName} • Grade: {item.grade}</p>
+                          <p className="text-[11px] text-slate-500">Farmer: {item.farmerName} • Grade: {item.grade?.replace('GRADE_', 'Grade ')}</p>
                           <p className="text-xs font-bold text-agri-primary mt-1">
-                            {item.quantityKg} kg × ₹{item.pricePerKg}/kg = ₹{(item.quantityKg * item.pricePerKg).toLocaleString()}
+                            ₹{item.pricePerKg}/kg × Subtotal: ₹{(item.quantityKg * item.pricePerKg).toLocaleString()}
                           </p>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => removeFromCart(item.listingId)}
-                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
+                        {/* Interactive Quantity Control (+ / - / typed input) */}
+                        <div className="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                updateQuantity(item.listingId, Math.max(1, item.quantityKg - 1));
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors"
+                            title="Decrease quantity"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            step="any"
+                            value={item.quantityKg}
+                            onChange={(e) => {
+                              try {
+                                const val = Number(e.target.value);
+                                if (!isNaN(val)) {
+                                  updateQuantity(item.listingId, val);
+                                }
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                            className="w-16 text-center py-1 text-xs font-extrabold text-slate-900 focus:outline-none bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                updateQuantity(item.listingId, item.quantityKg + 1);
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors"
+                            title="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => removeFromCart(item.listingId)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -238,52 +295,14 @@ const CartCheckoutPage = () => {
                   </div>
 
                   <button
-                    onClick={handleOpenPayment}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-bold text-xs shadow-agri-md hover:shadow-agri-lg transition-all flex items-center justify-center gap-2"
+                    onClick={handleSubmitBuyRequest}
+                    disabled={paymentProcessing}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <CreditCard className="w-4 h-4" /> Pay & Confirm Order
+                    <Send className="w-4 h-4 text-emerald-300" />
+                    <span>{paymentProcessing ? 'Submitting Request...' : 'Send Buy Request to Seller (No Payment Required Now)'}</span>
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* SIMULATED PAYMENT MODAL */}
-          {isPaymentModalOpen && (
-            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> KisanSetu Escrow Payment Gateway
-                  </span>
-                  <button onClick={() => setIsPaymentModalOpen(false)} className="text-slate-400 font-bold hover:text-slate-600">✕</button>
-                </div>
-
-                <div className="p-4 bg-[#F8F9FA] rounded-2xl space-y-2 text-center">
-                  <p className="text-xs text-slate-500">Simulated Payment Amount</p>
-                  <p className="text-3xl font-black text-agri-primary">₹{grandTotal.toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400">Digital Escrow Protection • Instant Producer Settlement</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">Select Payment Method</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" className="p-3 rounded-xl border-2 border-agri-primary bg-emerald-50 text-xs font-bold text-agri-primary text-left">
-                      📱 UPI / QR Code
-                    </button>
-                    <button type="button" className="p-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 text-left">
-                      💳 Net Banking
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleSimulatePayment}
-                  disabled={paymentProcessing}
-                  className="w-full py-3.5 rounded-xl bg-agri-dark text-white font-bold text-xs shadow-agri-md hover:bg-agri-primary transition-all"
-                >
-                  {paymentProcessing ? 'Processing Escrow Payment...' : 'Complete Simulated Payment'}
-                </button>
               </div>
             </div>
           )}

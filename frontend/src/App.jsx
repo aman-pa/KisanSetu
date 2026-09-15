@@ -23,6 +23,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import BatchTraceabilityPage from './pages/BatchTraceabilityPage';
 import MarketIntelligencePage from './pages/MarketIntelligencePage';
 import ConsumerOrdersPage from './pages/ConsumerOrdersPage';
+import TradeTicketPage from './pages/TradeTicketPage';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
           <Route path="/cart" element={<CartCheckoutPage />} />
           <Route path="/trace/:batchId" element={<BatchTraceabilityPage />} />
           <Route path="/consumer/orders" element={<ConsumerOrdersPage />} />
+          <Route path="/ticket/:id" element={<TradeTicketPage />} />
 
           {/* Role-Protected Farmer & FPO Routes */}
           <Route

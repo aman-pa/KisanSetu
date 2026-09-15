@@ -8,6 +8,9 @@ const User = require('../models/User');
 // @desc Place Order (Consumer or Bulk Aggregated Order)
 // @route POST /api/orders
 // @access Private
+// @desc Place Order (Buy Request sent to Seller - No upfront payment)
+// @route POST /api/orders
+// @access Private
 const placeOrder = async (req, res) => {
   try {
     const { items, deliveryAddress, procurementRequestId } = req.body;
@@ -16,23 +19,7 @@ const placeOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order items cannot be empty' });
     }
 
-    // 1. ADMIN CONFIGURABLE PURCHASE LIMIT VALIDATION FOR CONSUMERS
-    if (req.user.role === 'CONSUMER') {
-      const configDoc = await SystemConfig.findOne({ key: 'CONSUMER_MAX_PURCHASE_LIMIT_KG' });
-      const maxLimitKg = configDoc ? Number(configDoc.value) : 10;
-
-      const totalOrderedKg = items.reduce((sum, item) => sum + Number(item.quantityKg), 0);
-
-      if (totalOrderedKg > maxLimitKg) {
-        return res.status(400).json({
-          success: false,
-          errorType: 'PURCHASE_LIMIT_EXCEEDED',
-          message: `Consumer purchase limit exceeded! You requested ${totalOrderedKg} kg, but consumer accounts are restricted to maximum ${maxLimitKg} kg per order to ensure fair distribution. For larger quantities, please register as a Bulk Buyer.`,
-        });
-      }
-    }
-
-    // 2. Validate availability and calculate item subtotals
+    // Validate availability and calculate item subtotals
     let totalProduceCost = 0;
     const processedItems = [];
 
@@ -49,6 +36,18 @@ const placeOrder = async (req, res) => {
         });
       }
 
+      // Calculate distance between user location and farmer/FPO location for logistics tracking
+      const userLat = req.user.address?.lat || 28.6139;
+      const userLng = req.user.address?.lng || 77.2090;
+      const farmerLat = listing.location?.lat || 29.6857;
+      const farmerLng = listing.location?.lng || 76.9905;
+      
+      const R = 6371;
+      const dLat = (farmerLat - userLat) * (Math.PI / 180);
+      const dLon = (farmerLng - userLng) * (Math.PI / 180);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(userLat * (Math.PI / 180)) * Math.cos(farmerLat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const distKm = Math.round(R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))) * 10) / 10;
+
       const subtotal = item.quantityKg * listing.pricePerKg;
       totalProduceCost += subtotal;
 
@@ -62,7 +61,7 @@ const placeOrder = async (req, res) => {
         batchId: listing.batchId,
       });
 
-      // Deduct available stock
+      // Deduct available stock upon placing request
       listing.availableQuantityKg -= item.quantityKg;
       if (listing.availableQuantityKg <= 0) {
         listing.status = 'SOLD_OUT';
@@ -75,7 +74,8 @@ const placeOrder = async (req, res) => {
     const platformFee = Math.round(totalProduceCost * 0.02);
     const grandTotal = totalProduceCost + logisticsCost + platformFee;
 
-    const orderNumber = `KS-ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const orderNumber = `KS-TICKET-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const batchWindowEndsAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6-hour area batching window
 
     const order = await Order.create({
       orderNumber,
@@ -92,23 +92,23 @@ const placeOrder = async (req, res) => {
         state: req.user.address?.state || 'Delhi',
         pincode: req.user.address?.pincode || '110001',
       },
-      paymentStatus: 'PAID_ESCROW',
-      paymentTransactionId: `TXN-SIMULATED-${Date.now()}`,
+      paymentStatus: 'UNPAID',
       procurementRequestRef: procurementRequestId || null,
-      status: 'CONFIRMED',
+      batchWindowEndsAt,
+      status: 'PENDING',
       logisticsStatus: 'PENDING',
       logisticsPartner: null,
       vehicleAssigned: null,
     });
 
-    // Notify Farmers of new incoming orders
+    // Notify Farmers of incoming Buy Request
     for (const item of processedItems) {
       await Notification.create({
         recipient: item.farmer,
-        title: 'New Order Received! 🛒',
-        message: `Order #${orderNumber}: ${item.quantityKg} kg of ${item.cropName} ordered by ${req.user.name}.`,
+        title: 'New Buy Request Received! 📩',
+        message: `Ticket #${orderNumber}: ${req.user.name} sent a request to buy ${item.quantityKg} kg of ${item.cropName}. Click to review & accept.`,
         type: 'ORDER',
-        link: `/farmer/orders`,
+        link: `/ticket/${order._id}`,
       });
 
       // Update Batch Traceability Timeline
@@ -118,11 +118,11 @@ const placeOrder = async (req, res) => {
           {
             $push: {
               timeline: {
-                stage: 'ORDER_PLACED',
+                stage: 'BUY_REQUESTED',
                 timestamp: new Date(),
                 actor: req.user.name,
-                location: 'KisanSetu Order Processing',
-                notes: `Order #${orderNumber} confirmed with Escrow payment. Quantity reserved: ${item.quantityKg} kg. Logistics requirement created (PENDING).`,
+                location: 'KisanSetu Order System',
+                notes: `Buy Request Ticket #${orderNumber} submitted by ${req.user.name} (${item.quantityKg} kg). Awaiting Seller Acceptance.`,
               },
             },
           }
@@ -132,11 +132,30 @@ const placeOrder = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Order placed successfully with simulated payment!',
+      message: `Buy Request sent to Seller successfully! Ticket ID: ${orderNumber}`,
       order,
     });
   } catch (error) {
     console.error('Place order error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc Get Single Order / Trade Ticket Details by ID
+// @route GET /api/orders/:id
+const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('buyer', 'name email phone address role profileDetails')
+      .populate('items.listing', 'cropName grade images batchId category pricePerKg')
+      .populate('items.farmer', 'name phone email address profileDetails');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Trade Ticket / Order not found' });
+    }
+
+    return res.json({ success: true, order });
+  } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -160,7 +179,7 @@ const getOrders = async (req, res) => {
     }
 
     const orders = await Order.find(filter)
-      .populate('buyer', 'name email phone')
+      .populate('buyer', 'name email phone address')
       .populate('items.listing', 'cropName grade images batchId location')
       .populate('items.farmer', 'name phone email address profileDetails')
       .populate('logisticsPartner', 'name phone')
@@ -172,12 +191,54 @@ const getOrders = async (req, res) => {
   }
 };
 
-// @desc Update Order Status (Accept, Pickup, Deliver, Complete)
+// @desc Pay Escrow & Confirm Order (After Seller Accepts Buy Request)
+// @route PUT /api/orders/:id/pay
+const payOrderEscrow = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('buyer', 'name email phone')
+      .populate('items.farmer', 'name phone email');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order Ticket not found' });
+    }
+
+    if (order.buyer.toString() !== req.user._id.toString() && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Not authorized to pay for this order' });
+    }
+
+    order.paymentStatus = 'PAID_ESCROW';
+    order.paymentTransactionId = `TXN-ESCROW-${Date.now()}`;
+    order.status = 'IN_TRANSIT';
+    await order.save();
+
+    // Notify Farmer of Escrow Payment Confirmation
+    for (const item of order.items) {
+      await Notification.create({
+        recipient: item.farmer._id || item.farmer,
+        title: 'Escrow Payment Secured! 💳',
+        message: `Buyer ${req.user.name} paid ₹${order.totalAmount} for Ticket #${order.orderNumber}. Dispatch produce now.`,
+        type: 'ORDER',
+        link: `/ticket/${order._id}`,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Escrow Payment secured successfully! Produce is now in transit.',
+      order,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc Update Order Status (Accept, Decline, Deliver, Complete)
 // @route PUT /api/orders/:id/status
 const updateOrderStatus = async (req, res) => {
   try {
     const { status, notes, vehicleAssigned, vehicleNumber } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('buyer', 'name email phone');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -255,17 +316,43 @@ const updateOrderStatus = async (req, res) => {
     }
 
     order.status = status;
+
+    // If Seller declines/cancels order, restore produce stock
+    if (status === 'CANCELLED') {
+      for (const item of order.items) {
+        const listing = await ProduceListing.findById(item.listing);
+        if (listing) {
+          listing.availableQuantityKg += item.quantityKg;
+          if (listing.status === 'SOLD_OUT') listing.status = 'AVAILABLE';
+          await listing.save();
+        }
+      }
+    }
+
     if (status === 'COMPLETED') {
       order.paymentStatus = 'RELEASED_TO_FARMER';
     }
 
     await order.save();
 
+    // Notify Buyer of Status Update
+    await Notification.create({
+      recipient: order.buyer._id || order.buyer,
+      title: status === 'ACCEPTED' ? 'Buy Request Accepted! 🎉' : `Order Status Updated: ${status}`,
+      message:
+        status === 'ACCEPTED'
+          ? `Seller accepted your Buy Request (Ticket #${order.orderNumber})! You can now proceed to Pay & Confirm Escrow.`
+          : `Order Ticket #${order.orderNumber} status changed to ${status}.`,
+      type: 'ORDER',
+      link: `/ticket/${order._id}`,
+    });
+
     // Update batch timeline
     for (const item of order.items) {
       if (item.batchId) {
         let stageName = 'IN_TRANSIT';
         if (status === 'CONFIRMED') stageName = 'ORDER_PLACED';
+        if (status === 'ACCEPTED') stageName = 'SELLER_ACCEPTED';
         if (status === 'DELIVERED') stageName = 'DELIVERED';
         if (status === 'COMPLETED') stageName = 'BUYER_VERIFIED';
 
@@ -277,8 +364,8 @@ const updateOrderStatus = async (req, res) => {
                 stage: stageName,
                 timestamp: new Date(),
                 actor: req.user.name,
-                location: `${order.deliveryAddress?.city || 'Delhi'}, ${order.deliveryAddress?.state || 'Delhi'}`,
-                notes: notes || `Order #${order.orderNumber} status updated to ${status}.`,
+                location: `${order.deliveryAddress?.city || 'Market'}, ${order.deliveryAddress?.state || 'State'}`,
+                notes: notes || `Order Ticket #${order.orderNumber} status updated to ${status}.`,
               },
             },
           }
@@ -286,10 +373,10 @@ const updateOrderStatus = async (req, res) => {
       }
     }
 
-    return res.json({ success: true, message: `Order updated to ${status}`, order });
+    return res.json({ success: true, message: `Order Ticket updated to ${status}`, order });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-module.exports = { placeOrder, getOrders, updateOrderStatus };
+module.exports = { placeOrder, getOrders, getOrderById, payOrderEscrow, updateOrderStatus };

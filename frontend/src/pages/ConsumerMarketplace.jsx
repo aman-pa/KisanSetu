@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import API from '../services/api';
+import { fetchLocationByPincode, getCurrentGpsLocation } from '../services/locationService';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -43,16 +44,63 @@ const ConsumerMarketplace = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef(null);
 
-  // User location simulation (Delhi NCR default coordinates or custom)
-  const [userLocationName, setUserLocationName] = useState('Delhi NCR');
-  const [userLat, setUserLat] = useState(28.6139);
-  const [userLng, setUserLng] = useState(77.2090);
+  // User location & GPS tracking
+  const { user } = useAuth();
+  const [userLocationName, setUserLocationName] = useState(
+    user?.address?.city ? `${user.address.city}, ${user.address.state || ''}` : 'Delhi NCR'
+  );
+  const [userLat, setUserLat] = useState(user?.address?.lat || 28.6139);
+  const [userLng, setUserLng] = useState(user?.address?.lng || 77.2090);
+  const [customPincode, setCustomPincode] = useState(user?.address?.pincode || '');
+  const [locationMsg, setLocationMsg] = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.address?.lat && user?.address?.lng) {
+      setUserLat(user.address.lat);
+      setUserLng(user.address.lng);
+      setUserLocationName(`${user.address.city || 'My Location'} (${user.address.pincode || ''})`);
+    }
+  }, [user]);
+
+  const handlePincodeSearch = async (val) => {
+    setCustomPincode(val);
+    setLocationMsg('');
+    if (val.trim().length === 6 && !isNaN(Number(val))) {
+      const res = await fetchLocationByPincode(val);
+      if (res.success) {
+        setUserLat(res.lat);
+        setUserLng(res.lng);
+        setUserLocationName(`${res.district}, ${res.state} (${val})`);
+        setLocationMsg(`📍 Updated location to ${res.district}, ${res.state} (${val})`);
+        setTimeout(() => setLocationMsg(''), 4000);
+      }
+    }
+  };
+
+  const handleUseGpsLocation = async () => {
+    setGpsLoading(true);
+    setLocationMsg('');
+    try {
+      const loc = await getCurrentGpsLocation();
+      setUserLat(loc.lat);
+      setUserLng(loc.lng);
+      setUserLocationName(`${loc.district}, ${loc.state} (GPS Traced)`);
+      if (loc.pincode) setCustomPincode(loc.pincode);
+      setLocationMsg(`🎯 Live GPS Acquired: ${loc.lat.toFixed(4)}°N, ${loc.lng.toFixed(4)}°E`);
+      setTimeout(() => setLocationMsg(''), 5000);
+    } catch (err) {
+      setToastError(err.message || 'GPS location error');
+      setTimeout(() => setToastError(''), 5000);
+    } finally {
+      setGpsLoading(false);
+    }
+  };
 
   const [toastMessage, setToastMessage] = useState('');
   const [toastError, setToastError] = useState('');
 
   const { addToCart, maxConsumerLimitKg } = useCart();
-  const { user } = useAuth();
 
   // Fetch produce listings from DB with AI recommendation & location parameters
   const fetchListings = async (customSearch = null) => {
@@ -142,12 +190,49 @@ const ConsumerMarketplace = () => {
     fetchListings();
   };
 
-  const handleAddToCart = (listing) => {
+  // State for quantity selected per produce item
+  const [selectedQuantities, setSelectedQuantities] = useState({});
+
+  const getQuantityInputVal = (id) => {
+    const val = selectedQuantities[id];
+    return val !== undefined ? val : 1;
+  };
+
+  const getQuantityNumber = (id) => {
+    const val = Number(selectedQuantities[id]);
+    return !val || isNaN(val) || val < 1 ? 1 : val;
+  };
+
+  const handleQuantityChange = (id, val, availableStock = 9999) => {
+    if (val === '' || val === null || val === undefined) {
+      setSelectedQuantities((prev) => ({ ...prev, [id]: '' }));
+      return;
+    }
+    let num = Number(val);
+    if (isNaN(num)) num = 1;
+    if (num < 1) num = 1;
+    if (availableStock && num > availableStock) num = availableStock;
+
+    setSelectedQuantities((prev) => ({
+      ...prev,
+      [id]: num,
+    }));
+  };
+
+  const handleStepQuantity = (id, delta, availableStock = 9999) => {
+    const current = getQuantityNumber(id);
+    const next = Math.max(1, current + delta);
+    handleQuantityChange(id, next, availableStock);
+  };
+
+  const handleAddToCart = (listing, quantityOverride = null) => {
     setToastMessage('');
     setToastError('');
+    const qty = quantityOverride !== null ? quantityOverride : getQuantityNumber(listing._id);
+
     try {
-      addToCart(listing, 1);
-      setToastMessage(`Added 1 kg of ${listing.cropName} to cart!`);
+      addToCart(listing, qty);
+      setToastMessage(`Added ${qty} kg of ${listing.cropName} to cart!`);
       setTimeout(() => setToastMessage(''), 4000);
     } catch (err) {
       setToastError(err.message);
@@ -189,11 +274,6 @@ const ConsumerMarketplace = () => {
               <p className="text-xs sm:text-sm text-emerald-200/90 font-medium max-w-2xl">
                 AI recommends verified crops based on your <b>current location</b>, <b>quality grades</b>, <b>distance proximity</b>, and <b>competitive prices</b>.
               </p>
-              {user?.role === 'CONSUMER' && (
-                <div className="inline-block bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-semibold">
-                  ℹ️ Retail Consumer Purchase Limit Active: Max <b>{maxConsumerLimitKg} kg</b> per order.
-                </div>
-              )}
             </div>
           </div>
 
@@ -268,22 +348,44 @@ const ConsumerMarketplace = () => {
                 </div>
               </div>
 
-              {/* Location Selector */}
-              <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2 rounded-2xl border border-slate-200 text-xs">
-                <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                <span className="font-bold text-slate-600">Your Location:</span>
-                <select
-                  value={userLocationName}
-                  onChange={handleLocationPresetChange}
-                  className="bg-transparent font-black text-emerald-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="Delhi NCR">Delhi NCR (28.61° N, 77.20° E)</option>
-                  <option value="Karnal, Haryana">Karnal, Haryana (29.68° N, 76.99° E)</option>
-                  <option value="Chandigarh">Chandigarh (30.73° N, 76.77° E)</option>
-                  <option value="Jaipur, Rajasthan">Jaipur, Rajasthan (26.91° N, 75.78° E)</option>
-                </select>
+              {/* Real Location Selector & GPS Tracing Controls */}
+              <div className="flex flex-wrap items-center gap-3 bg-emerald-50/80 p-2.5 rounded-2xl border border-emerald-200 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                  <span>Traced Location:</span>
+                  <span className="font-extrabold text-emerald-900 bg-white px-2.5 py-1 rounded-xl border border-emerald-200">
+                    {userLocationName}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength="6"
+                    value={customPincode}
+                    onChange={(e) => handlePincodeSearch(e.target.value)}
+                    placeholder="Enter Pincode (e.g. 110016)"
+                    className="w-36 px-3 py-1.5 rounded-xl border border-emerald-300 text-xs font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-agri-primary"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleUseGpsLocation}
+                    disabled={gpsLoading}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <span>🎯 {gpsLoading ? 'GPS...' : 'Use My GPS Location'}</span>
+                  </button>
+                </div>
               </div>
             </div>
+
+            {locationMsg && (
+              <div className="p-2.5 bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                <span>{locationMsg}</span>
+              </div>
+            )}
 
             {/* Typeahead Search Bar & Autosuggest Dropdown */}
             <form onSubmit={handleSearchSubmit} className="space-y-4">
@@ -627,20 +729,96 @@ const ConsumerMarketplace = () => {
                     </div>
                   </div>
 
-                  {/* Card Action Buttons */}
-                  <div className="p-5 pt-0 flex gap-2">
-                    <Link
-                      to={`/product/${item._id}`}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-300 text-center text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
-                    >
-                      View Details
-                    </Link>
-                    <button
-                      onClick={() => handleAddToCart(item)}
-                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <ShoppingCart className="w-4 h-4" /> Add 1 kg
-                    </button>
+                  {/* Card Action & Quantity Selection Box */}
+                  <div className="p-5 pt-0 space-y-3">
+                    {/* Live Calculated Savings & Distance Advisory Banner */}
+                    {getQuantityNumber(item._id) < 5 ? (
+                      item.distanceKm > 10 ? (
+                        <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-[11px] font-bold space-y-1">
+                          <p className="flex items-center gap-1 text-amber-800">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                            <span>Distant FPO ({item.distanceKm} km away) — Higher Unit Transport</span>
+                          </p>
+                          <p className="text-[10px] text-amber-700 font-normal">
+                            Small {getQuantityNumber(item._id)} kg orders have higher per-kg transport. Add <strong>{5 - getQuantityNumber(item._id)} kg more</strong> to save ~₹{Math.round(item.pricePerKg * 0.15 * 5 + 45)} overall!
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-[11px] font-bold">
+                          <p className="flex items-center gap-1 text-blue-800">
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                            <span>Order 5+ kg &amp; Save ~₹{Math.round(item.pricePerKg * 0.15 * 5 + 45)}!</span>
+                          </p>
+                          <p className="text-[10px] text-blue-700 font-normal mt-0.5">
+                            Local FPO ({item.distanceKm} km). Increasing quantity reduces unit delivery cost.
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-[11px] font-extrabold flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Max Farm Savings Unlocked!
+                        </span>
+                        <span className="text-emerald-800 bg-emerald-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                          Saved ~₹{Math.round(item.pricePerKg * 0.15 * getQuantityNumber(item._id) + 45)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Quantity Adjuster Row (+ / - / typeable input) */}
+                    <div className="flex items-center justify-between bg-slate-50 p-2 rounded-2xl border border-slate-200 text-xs">
+                      <span className="font-extrabold text-slate-600">Qty (kg):</span>
+                      <div className="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => handleStepQuantity(item._id, -1, item.availableQuantityKg)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer select-none"
+                          title="Decrease quantity"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          step="any"
+                          max={item.availableQuantityKg}
+                          value={getQuantityInputVal(item._id)}
+                          onChange={(e) => handleQuantityChange(item._id, e.target.value, item.availableQuantityKg)}
+                          onBlur={() => {
+                            if (!getQuantityInputVal(item._id) || Number(getQuantityInputVal(item._id)) < 1) {
+                              handleQuantityChange(item._id, 1, item.availableQuantityKg);
+                            }
+                          }}
+                          className="w-14 text-center py-1 text-xs font-extrabold text-slate-900 focus:outline-none bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleStepQuantity(item._id, +1, item.availableQuantityKg)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer select-none"
+                          title="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/product/${item._id}`}
+                        className="py-2.5 px-3 rounded-xl border border-slate-300 text-center text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+                      >
+                        Details
+                      </Link>
+                      <button
+                        onClick={() => handleAddToCart(item)}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <ShoppingCart className="w-4 h-4 text-emerald-300" />
+                        <span>
+                          Add {getQuantityNumber(item._id)} kg (₹{(item.pricePerKg * getQuantityNumber(item._id)).toLocaleString()})
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

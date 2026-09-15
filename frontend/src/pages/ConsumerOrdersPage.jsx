@@ -18,6 +18,8 @@ import {
   ExternalLink,
   AlertCircle,
   IndianRupee,
+  FileText,
+  CreditCard,
 } from 'lucide-react';
 
 const ConsumerOrdersPage = () => {
@@ -462,7 +464,7 @@ const ConsumerOrdersPage = () => {
                     </div>
                   </div>
 
-                  {/* Footer Cost & Delivery Summary */}
+                  {/* Footer Cost & Delivery Summary & Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100 text-xs">
                     <div className="text-slate-600">
                       <span className="font-bold">Delivery Address:</span>{' '}
@@ -471,9 +473,27 @@ const ConsumerOrdersPage = () => {
                         : 'Default Registered Address'}
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <span className="text-[11px] text-slate-400 font-bold block">Total Amount Paid</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {order.status === 'ACCEPTED' && order.paymentStatus === 'UNPAID' && (
+                        <Link
+                          to={`/ticket/${order._id}`}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-extrabold text-xs shadow-md animate-pulse flex items-center gap-1.5"
+                        >
+                          <CreditCard className="w-4 h-4 text-emerald-300" />
+                          <span>Pay & Confirm Escrow (₹{order.totalAmount?.toLocaleString()})</span>
+                        </Link>
+                      )}
+
+                      <Link
+                        to={`/ticket/${order._id}`}
+                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all"
+                      >
+                        <FileText className="w-4 h-4 text-emerald-400" />
+                        <span>View & Print Trade Ticket</span>
+                      </Link>
+
+                      <div className="text-right pl-2">
+                        <span className="text-[11px] text-slate-400 font-bold block">Grand Total</span>
                         <span className="text-lg font-black text-slate-900">₹{order.totalAmount?.toLocaleString()}</span>
                       </div>
                     </div>

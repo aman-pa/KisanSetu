@@ -157,6 +157,51 @@ const FPODashboard = () => {
           </div>
         </div>
 
+        {/* 6-Hour Area Batching Logistics Card for FPO Aggregation */}
+        <div className="bg-gradient-to-r from-teal-900 via-emerald-900 to-slate-900 rounded-3xl p-6 text-white shadow-md space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-700/50 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-500/30 border border-teal-400/40 text-teal-200 flex items-center justify-center font-bold text-lg">
+                ⏰
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                  FPO 6-Hour Area Batching & Dispatch Hub
+                  <span className="bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                    Pincode Route Optimizer
+                  </span>
+                </h3>
+                <p className="text-xs text-teal-200 mt-0.5">
+                  Consolidate small 1–5 kg consumer orders from the same area into scheduled 6-hour batch trips to eliminate individual delivery overhead!
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-teal-950/80 px-4 py-2 rounded-2xl border border-teal-700/60 text-right">
+              <span className="text-[10px] uppercase font-bold text-teal-300 block">FPO Freight Cost Reduction</span>
+              <span className="text-base font-black text-emerald-400">Save 75% on Last-Mile Shipping</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-teal-200">Zone A: Delhi NCR (110016)</span>
+              <p className="font-black text-white">4 Orders Pooled (85 kg total)</p>
+              <span className="text-[10px] text-emerald-400 font-bold">⏰ Batch Window Ends in ~2h 40m</span>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-teal-200">Zone B: Karnal Sector 14</span>
+              <p className="font-black text-white">6 Orders Pooled (210 kg total)</p>
+              <span className="text-[10px] text-emerald-400 font-bold">⏰ Batch Window Ends in ~4h 10m</span>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-teal-200">Zone C: Panipat Industrial Area</span>
+              <p className="font-black text-white">2 Orders Pooled (40 kg total)</p>
+              <span className="text-[10px] text-amber-300 font-bold">⏰ Accumulating Area Orders...</span>
+            </div>
+          </div>
+        </div>
+
         {/* Member Farmers Registry Table */}
         <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
