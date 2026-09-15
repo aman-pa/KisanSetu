@@ -131,6 +131,32 @@ export const CartProvider = ({ children }) => {
     setCartItems(updatedCart);
   };
 
+  const updateQuantity = (listingId, newQuantityKg) => {
+    const qty = Number(newQuantityKg);
+    if (!qty || qty <= 0) {
+      removeFromCart(listingId);
+      return;
+    }
+
+    const updatedCart = cartItems.map((item) => {
+      if (item.listingId === listingId) {
+        return { ...item, quantityKg: qty };
+      }
+      return item;
+    });
+
+    if (user?.role === 'CONSUMER') {
+      const totalKg = updatedCart.reduce((sum, i) => sum + i.quantityKg, 0);
+      if (totalKg > maxConsumerLimitKg) {
+        throw new Error(
+          `Consumer purchase limit exceeded! You have ${totalKg} kg in cart. Consumer limit is max ${maxConsumerLimitKg} kg per order.`
+        );
+      }
+    }
+
+    setCartItems(updatedCart);
+  };
+
   const removeFromCart = (listingId) => {
     setCartItems(cartItems.filter((i) => i.listingId !== listingId));
   };
@@ -149,6 +175,7 @@ export const CartProvider = ({ children }) => {
       value={{
         cartItems,
         addToCart,
+        updateQuantity,
         removeFromCart,
         clearCart,
         totalProduceCost,

@@ -142,12 +142,32 @@ const ConsumerMarketplace = () => {
     fetchListings();
   };
 
-  const handleAddToCart = (listing) => {
+  // State for quantity selected per produce item
+  const [selectedQuantities, setSelectedQuantities] = useState({});
+
+  const getQuantity = (id) => selectedQuantities[id] || 1;
+
+  const handleQuantityChange = (id, val, availableStock = 9999) => {
+    let num = Number(val);
+    if (isNaN(num)) num = 1;
+    if (num < 1) num = 1;
+    const maxAllowed = user?.role === 'CONSUMER' ? Math.min(maxConsumerLimitKg, availableStock) : availableStock;
+    if (num > maxAllowed) num = maxAllowed;
+
+    setSelectedQuantities((prev) => ({
+      ...prev,
+      [id]: num,
+    }));
+  };
+
+  const handleAddToCart = (listing, quantityOverride = null) => {
     setToastMessage('');
     setToastError('');
+    const qty = quantityOverride !== null ? quantityOverride : getQuantity(listing._id);
+
     try {
-      addToCart(listing, 1);
-      setToastMessage(`Added 1 kg of ${listing.cropName} to cart!`);
+      addToCart(listing, qty);
+      setToastMessage(`Added ${qty} kg of ${listing.cropName} to cart!`);
       setTimeout(() => setToastMessage(''), 4000);
     } catch (err) {
       setToastError(err.message);
@@ -627,20 +647,55 @@ const ConsumerMarketplace = () => {
                     </div>
                   </div>
 
-                  {/* Card Action Buttons */}
-                  <div className="p-5 pt-0 flex gap-2">
-                    <Link
-                      to={`/product/${item._id}`}
-                      className="flex-1 py-2.5 rounded-xl border border-slate-300 text-center text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
-                    >
-                      View Details
-                    </Link>
-                    <button
-                      onClick={() => handleAddToCart(item)}
-                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <ShoppingCart className="w-4 h-4" /> Add 1 kg
-                    </button>
+                  {/* Card Action & Quantity Selection Box */}
+                  <div className="p-5 pt-0 space-y-3">
+                    {/* Quantity Adjuster Row (+ / - / typeable input) */}
+                    <div className="flex items-center justify-between bg-slate-50 p-2 rounded-2xl border border-slate-200 text-xs">
+                      <span className="font-extrabold text-slate-600">Qty (kg):</span>
+                      <div className="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(item._id, getQuantity(item._id) - 1, item.availableQuantityKg)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer"
+                          title="Decrease quantity"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          step="any"
+                          max={user?.role === 'CONSUMER' ? Math.min(maxConsumerLimitKg, item.availableQuantityKg) : item.availableQuantityKg}
+                          value={getQuantity(item._id)}
+                          onChange={(e) => handleQuantityChange(item._id, e.target.value, item.availableQuantityKg)}
+                          className="w-14 text-center py-1 text-xs font-extrabold text-slate-900 focus:outline-none bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(item._id, getQuantity(item._id) + 1, item.availableQuantityKg)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer"
+                          title="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/product/${item._id}`}
+                        className="py-2.5 px-3 rounded-xl border border-slate-300 text-center text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+                      >
+                        Details
+                      </Link>
+                      <button
+                        onClick={() => handleAddToCart(item)}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <ShoppingCart className="w-4 h-4 text-emerald-300" />
+                        <span>Add {getQuantity(item._id)} kg (₹{(item.pricePerKg * getQuantity(item._id)).toLocaleString()})</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

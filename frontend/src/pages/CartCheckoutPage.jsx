@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 const CartCheckoutPage = () => {
-  const { cartItems, removeFromCart, clearCart, totalProduceCost, totalQuantityKg, maxConsumerLimitKg } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, totalProduceCost, totalQuantityKg, maxConsumerLimitKg } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -150,24 +150,76 @@ const CartCheckoutPage = () => {
                 <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">Selected Produce</h2>
                 <div className="space-y-4">
                   {cartItems.map((item) => (
-                    <div key={item.listingId} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-slate-100">
+                    <div key={item.listingId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-slate-100 gap-4">
                       <div className="flex items-center gap-4">
                         {item.image && <img src={item.image} alt={item.cropName} className="w-14 h-14 rounded-xl object-cover" />}
                         <div>
                           <h4 className="text-sm font-bold text-slate-900">{item.cropName}</h4>
-                          <p className="text-[11px] text-slate-500">Farmer: {item.farmerName} • Grade: {item.grade}</p>
+                          <p className="text-[11px] text-slate-500">Farmer: {item.farmerName} • Grade: {item.grade?.replace('GRADE_', 'Grade ')}</p>
                           <p className="text-xs font-bold text-agri-primary mt-1">
-                            {item.quantityKg} kg × ₹{item.pricePerKg}/kg = ₹{(item.quantityKg * item.pricePerKg).toLocaleString()}
+                            ₹{item.pricePerKg}/kg × Subtotal: ₹{(item.quantityKg * item.pricePerKg).toLocaleString()}
                           </p>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => removeFromCart(item.listingId)}
-                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
+                        {/* Interactive Quantity Control (+ / - / typed input) */}
+                        <div className="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                updateQuantity(item.listingId, Math.max(1, item.quantityKg - 1));
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors"
+                            title="Decrease quantity"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            step="any"
+                            value={item.quantityKg}
+                            onChange={(e) => {
+                              try {
+                                const val = Number(e.target.value);
+                                if (!isNaN(val)) {
+                                  updateQuantity(item.listingId, val);
+                                }
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                            className="w-16 text-center py-1 text-xs font-extrabold text-slate-900 focus:outline-none bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                updateQuantity(item.listingId, item.quantityKg + 1);
+                              } catch (err) {
+                                setError(err.message);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors"
+                            title="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => removeFromCart(item.listingId)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
