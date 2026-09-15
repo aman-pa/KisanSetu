@@ -123,7 +123,7 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/fpo/farmers',
           },
           {
-            label: 'Produce / Inventory',
+            label: 'Stock',
             path: '/fpo/produce',
             icon: Package,
             isActive: (pathname) =>

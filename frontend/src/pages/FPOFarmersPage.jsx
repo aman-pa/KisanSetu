@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   XCircle,
   MapPin,
-  Building2,
   RefreshCw,
   Phone,
   Mail,
@@ -19,11 +18,13 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronRight,
-  Eye,
   Check,
   X,
   Award,
   Layers,
+  Search,
+  Package,
+  ArrowRight,
 } from 'lucide-react';
 
 // Isolated Demo Requests & Members for Offline / Development Fallback
@@ -151,22 +152,23 @@ const DEMO_APPROVED_MEMBERS = [
 ];
 
 const FPOFarmersPage = () => {
-  const [activeTab, setActiveTab] = useState('PENDING'); // 'PENDING' | 'MEMBERS'
+  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'PENDING' | 'MEMBERS'
   const [pendingRequests, setPendingRequests] = useState([]);
   const [demoPending, setDemoPending] = useState(DEMO_PENDING_REQUESTS);
   const [members, setMembers] = useState([]);
   const [demoMembers, setDemoMembers] = useState(DEMO_APPROVED_MEMBERS);
+  const [selectedFarmerId, setSelectedFarmerId] = useState(null);
   const [fpoInfo, setFpoInfo] = useState({ orgName: 'Punjab Kisan Co-operative HQ', serviceRadiusKm: 15 });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [selectedFarmer, setSelectedFarmer] = useState(null);
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   // Fetch Pending Requests & Approved Members
   const fetchFarmersData = async () => {
     try {
+      setLoading(true);
       const [pendingRes, membersRes] = await Promise.allSettled([
         API.get('/fpo/farmers/pending-requests'),
         API.get('/fpo/farmers/members'),
@@ -210,7 +212,6 @@ const FPOFarmersPage = () => {
       setDemoPending((prev) => prev.filter((item) => item._id !== farmer._id));
       setDemoMembers((prev) => [approvedMember, ...prev]);
       setSuccessMessage(`Farmer ${farmer.farmerName} has been approved as an active FPO member!`);
-      if (detailsModalOpen) setDetailsModalOpen(false);
       setActionLoading(false);
       return;
     }
@@ -219,7 +220,6 @@ const FPOFarmersPage = () => {
       const { data } = await API.post('/fpo/farmers/accept', { farmerProfileId: farmer._id });
       if (data.success) {
         setSuccessMessage(data.message || `Farmer approved successfully!`);
-        if (detailsModalOpen) setDetailsModalOpen(false);
         fetchFarmersData();
       } else {
         setErrorMessage(data.message || 'Failed to accept membership request.');
@@ -242,7 +242,6 @@ const FPOFarmersPage = () => {
     if (farmer._id && farmer._id.startsWith('req_demo')) {
       setDemoPending((prev) => prev.filter((item) => item._id !== farmer._id));
       setSuccessMessage(`Membership request for ${farmer.farmerName} has been rejected.`);
-      if (detailsModalOpen) setDetailsModalOpen(false);
       setActionLoading(false);
       return;
     }
@@ -251,7 +250,6 @@ const FPOFarmersPage = () => {
       const { data } = await API.post('/fpo/farmers/reject', { farmerProfileId: farmer._id });
       if (data.success) {
         setSuccessMessage(data.message || `Membership request rejected.`);
-        if (detailsModalOpen) setDetailsModalOpen(false);
         fetchFarmersData();
       } else {
         setErrorMessage(data.message || 'Failed to reject membership request.');
@@ -267,523 +265,548 @@ const FPOFarmersPage = () => {
   // Active display lists
   const displayPending = pendingRequests.length > 0 ? pendingRequests : demoPending;
   const displayMembers = members.length > 0 ? members : demoMembers;
+  const combinedFarmers = [
+    ...displayPending.map((p) => ({ ...p, status: 'PENDING' })),
+    ...displayMembers.map((m) => ({ ...m, status: 'APPROVED' })),
+  ];
+
+  const filteredFarmers = combinedFarmers.filter((f) => {
+    if (activeFilter === 'PENDING' && f.status !== 'PENDING') return false;
+    if (activeFilter === 'MEMBERS' && f.status !== 'APPROVED') return false;
+
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    const nameMatch = (f.farmerName || '').toLowerCase().includes(query);
+    const villageMatch = (f.location?.village || '').toLowerCase().includes(query);
+    const districtMatch = (f.location?.district || '').toLowerCase().includes(query);
+    const phoneMatch = (f.phone || '').toLowerCase().includes(query);
+    const cropsMatch = (f.cropsGrown || []).join(' ').toLowerCase().includes(query);
+
+    return nameMatch || villageMatch || districtMatch || phoneMatch || cropsMatch;
+  });
+
+  const selectedFarmer =
+    filteredFarmers.find((f) => f._id === selectedFarmerId) ||
+    filteredFarmers[0] ||
+    null;
 
   const totalAcreage = displayMembers.reduce((sum, m) => sum + (Number(m.farmSizeAcres) || 0), 0);
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+      <div className="max-w-7xl mx-auto space-y-5 pb-8">
         {/* ========================================================================= */}
-        {/* TOP WELCOME BANNER */}
+        {/* 1. TOP HEADER BANNER */}
         {/* ========================================================================= */}
-        <div className="bg-gradient-to-r from-[#0A2412] via-[#12401E] to-[#1B5E2B] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        <div className="relative overflow-hidden bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-md border border-emerald-800/40">
           <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="space-y-2 relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              {fpoInfo.orgName || 'Farmer Producer Organisation Portal'}
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 mb-1.5 backdrop-blur-md">
+                <Users className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{fpoInfo.orgName || 'FPO Co-operative Network'}</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                Farmers <span className="bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-transparent">Directory & Membership</span>
+              </h1>
+              <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                Review nearby farmer membership applications, verify cluster proximity limit (10–20 km), and manage active co-operative members.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              FPO Farmers Management 🌾
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-medium">
-              Review pending membership applications from nearby farmers, verify service radius eligibility (10–20 km), and manage active co-operative members.
-            </p>
-          </div>
 
-          <div className="flex items-center gap-3 relative z-10">
             <button
               onClick={() => {
-                setLoading(true);
                 fetchFarmersData();
               }}
-              className="px-5 py-3 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs shadow-sm transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
+              disabled={loading}
+              className="self-start md:self-auto px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 border border-white/20 backdrop-blur-md transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Farmers
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-300 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh Farmers</span>
             </button>
           </div>
         </div>
 
         {/* Notifications */}
         {successMessage && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-sm animate-fade-in">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <span>{successMessage}</span>
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+            <button onClick={() => setSuccessMessage('')} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold cursor-pointer">✕</button>
           </div>
         )}
 
         {errorMessage && (
-          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-900 text-xs font-bold rounded-2xl flex items-center gap-2 shadow-sm animate-fade-in">
-            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-            <span>{errorMessage}</span>
+          <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-900 text-xs font-bold rounded-2xl flex items-center justify-between gap-2 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+            <button onClick={() => setErrorMessage('')} className="text-rose-700 hover:text-rose-900 text-xs font-bold cursor-pointer">✕</button>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 4 SUMMARY METRIC CARDS */}
+        {/* 2. FOUR SUMMARY METRIC CARDS */}
         {/* ========================================================================= */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Pending Requests */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Pending Requests</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
-              </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all flex items-center justify-between group">
+            <div>
+              <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider block">Pending Requests</span>
+              <div className="text-xl sm:text-2xl font-black text-amber-900 mt-0.5">{displayPending.length}</div>
+              <p className="text-[10px] text-slate-500 font-medium">Awaiting FPO review</p>
             </div>
-            <div className="pt-1">
-              <p className="text-2xl sm:text-3xl font-black text-slate-900">{displayPending.length}</p>
-              <p className="text-[11px] font-bold text-amber-700 mt-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Awaiting FPO Review
-              </p>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:bg-amber-100 transition-all">
+              <Clock className="w-5 h-5" />
             </div>
           </div>
 
-          {/* Card 2: Active Members */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Active Members</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <Users className="w-5 h-5" />
-              </div>
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all flex items-center justify-between group">
+            <div>
+              <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">Active Members</span>
+              <div className="text-xl sm:text-2xl font-black text-emerald-900 mt-0.5">{displayMembers.length}</div>
+              <p className="text-[10px] text-slate-500 font-medium">Approved co-op network</p>
             </div>
-            <div className="pt-1">
-              <p className="text-2xl sm:text-3xl font-black text-emerald-700">{displayMembers.length}</p>
-              <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Approved Member Network
-              </p>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:bg-emerald-100 transition-all">
+              <Users className="w-5 h-5" />
             </div>
           </div>
 
-          {/* Card 3: Service Radius */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Service Radius</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                <MapPin className="w-5 h-5" />
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all flex items-center justify-between group">
+            <div>
+              <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">Service Radius</span>
+              <div className="text-xl sm:text-2xl font-black text-blue-950 mt-0.5">
+                {fpoInfo.serviceRadiusKm || 15} <span className="text-xs font-bold text-slate-500">km</span>
               </div>
+              <p className="text-[10px] text-slate-500 font-medium">Cluster Boundary Limit</p>
             </div>
-            <div className="pt-1">
-              <p className="text-2xl sm:text-3xl font-black text-blue-700">{fpoInfo.serviceRadiusKm || 15} <span className="text-sm font-bold text-slate-500">km</span></p>
-              <p className="text-[11px] font-bold text-blue-700 mt-1 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> 10–20 km Member Boundary
-              </p>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:bg-blue-100 transition-all">
+              <MapPin className="w-5 h-5" />
             </div>
           </div>
 
-          {/* Card 4: Total Aggregated Acreage */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Aggregated Land</span>
-              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <Wheat className="w-5 h-5" />
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all flex items-center justify-between group">
+            <div>
+              <span className="text-[10px] font-extrabold text-purple-600 uppercase tracking-wider block">Farmland Base</span>
+              <div className="text-xl sm:text-2xl font-black text-purple-950 mt-0.5">
+                {totalAcreage.toFixed(1)} <span className="text-xs font-bold text-slate-500">Acres</span>
               </div>
+              <p className="text-[10px] text-slate-500 font-medium">Aggregated member land</p>
             </div>
-            <div className="pt-1">
-              <p className="text-2xl sm:text-3xl font-black text-purple-700">{totalAcreage.toFixed(1)} <span className="text-sm font-bold text-slate-500">Acres</span></p>
-              <p className="text-[11px] font-bold text-purple-700 mt-1 flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5" /> Collective Farmland Base
-              </p>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0 group-hover:scale-110 group-hover:bg-purple-100 transition-all">
+              <Wheat className="w-5 h-5" />
             </div>
           </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB CONTROLS & MAIN SECTION */}
+        {/* 3. FILTER TABS BAR */}
         {/* ========================================================================= */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-          
-          {/* Tab Navigation Header */}
-          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                  <Users className="w-4 h-4 text-emerald-700" />
-                </div>
-                <h2 className="text-base font-extrabold text-slate-900">Farmer Directory & Applications</h2>
-              </div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: 'ALL', label: `All Farmers (${combinedFarmers.length})` },
+            { id: 'PENDING', label: `Pending Requests (${displayPending.length})` },
+            { id: 'MEMBERS', label: `Active Members (${displayMembers.length})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                activeFilter === tab.id
+                  ? 'bg-emerald-800 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Loading / Error States */}
+        {loading && (
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-2xs">
+            <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-3" />
+            <p className="text-sm font-bold text-slate-700">Loading farmer records...</p>
+          </div>
+        )}
+
+        {/* Empty State - If Total Farmers is 0 */}
+        {!loading && combinedFarmers.length === 0 && (
+          <div className="text-center py-16 px-4 bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto">
+              <Users className="w-8 h-8" />
+            </div>
+            <div className="max-w-md mx-auto">
+              <h3 className="text-lg font-black text-slate-900">No Farmers Found</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Verify farmer credentials, proximity to FPO hub, and grant membership access.
+                Nearby farmers will appear here when they submit membership requests.
               </p>
             </div>
-
-            {/* Tab Switches */}
-            <div className="flex items-center bg-slate-200/80 p-1 rounded-2xl self-start sm:self-auto text-xs font-bold">
-              <button
-                onClick={() => setActiveTab('PENDING')}
-                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'PENDING'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                Pending Requests
-                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold">
-                  {displayPending.length}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('MEMBERS')}
-                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === 'MEMBERS'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                FPO Members
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                  {displayMembers.length}
-                </span>
-              </button>
-            </div>
           </div>
+        )}
 
-          {/* ========================================================================= */}
-          {/* TAB 1: PENDING REQUESTS TABLE */}
-          {/* ========================================================================= */}
-          {activeTab === 'PENDING' && (
-            <div className="overflow-x-auto">
-              {displayPending.length === 0 ? (
-                <div className="p-12 text-center space-y-3">
-                  <Clock className="w-12 h-12 text-slate-300 mx-auto" />
-                  <p className="text-sm font-extrabold text-slate-700">No Pending Membership Requests</p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    When nearby farmers request to join your FPO via the KisanSetu Farmer Dashboard, they will appear here for verification.
-                  </p>
+        {/* ========================================================================= */}
+        {/* 4. DUAL INDEPENDENT SCROLLABLE MASTER-DETAIL LAYOUT */}
+        {/* ========================================================================= */}
+        {!loading && combinedFarmers.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            
+            {/* ========================================================================= */}
+            {/* LEFT INDEPENDENT SCROLLABLE LIST PANE (lg:col-span-5) */}
+            {/* ========================================================================= */}
+            <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 flex flex-col h-[560px] lg:h-[650px]">
+              {/* Header & Fixed Search Bar */}
+              <div className="space-y-2 pb-2.5 border-b border-slate-100 flex-shrink-0">
+                <div className="flex items-center justify-between text-xs px-1">
+                  <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                    <span>Farmers</span>
+                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[11px] font-black">
+                      {filteredFarmers.length}
+                    </span>
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-bold">Select to inspect</span>
                 </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50/80">
-                      <th className="py-3.5 px-6">Farmer Name</th>
-                      <th className="py-3.5 px-6">Location & Distance</th>
-                      <th className="py-3.5 px-6">Farm Size & Crops</th>
-                      <th className="py-3.5 px-6">Trust & Quality</th>
-                      <th className="py-3.5 px-6">Request Date</th>
-                      <th className="py-3.5 px-6 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {displayPending.map((req) => {
-                      const reqDate = req.fpoRequestedAt
-                        ? new Date(req.fpoRequestedAt).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : 'Recent';
 
-                      return (
-                        <tr key={req._id} className="hover:bg-slate-50/80 transition-colors">
-                          {/* Farmer Name */}
-                          <td className="py-4 px-6 font-medium">
-                            <span className="font-extrabold text-slate-900 block">{req.farmerName}</span>
-                            <span className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
-                              <Phone className="w-3 h-3 text-slate-400" /> {req.phone || 'Contact on File'}
-                            </span>
-                          </td>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, village, crops, phone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-8 py-2 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-slate-400 font-medium"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 transition-colors cursor-pointer text-xs font-bold leading-none px-1"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                          {/* Location & Distance */}
-                          <td className="py-4 px-6 space-y-1">
-                            <span className="text-xs text-slate-800 font-semibold block flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                              {req.location?.village ? `${req.location.village}, ` : ''}
-                              {req.location?.district}, {req.location?.state}
-                            </span>
-                            {req.distanceKm !== undefined && req.distanceKm !== null && (
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                                  req.isWithinRadius
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                    : 'bg-amber-50 text-amber-800 border-amber-200'
-                                }`}
-                              >
-                                ~{req.distanceKm} km away • {req.isWithinRadius ? 'Within Radius' : 'Outside Radius'}
+              {/* Independently Scrollable Left Container */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2 mt-2.5 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
+                {filteredFarmers.length > 0 ? (
+                  filteredFarmers.map((farmer) => {
+                    const isSelected = selectedFarmer?._id === farmer._id;
+                    const isPending = farmer.status === 'PENDING';
+
+                    return (
+                      <div
+                        key={farmer._id}
+                        onClick={() => setSelectedFarmerId(farmer._id)}
+                        className={`p-3 rounded-2xl transition-all cursor-pointer relative overflow-hidden group ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-emerald-50/90 via-emerald-50/40 to-white border-y border-r border-emerald-300 border-l-4 border-l-emerald-600 shadow-sm ring-2 ring-emerald-500/15'
+                            : 'bg-white hover:bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:border-slate-300 hover:translate-x-0.5'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 text-emerald-800 border border-emerald-200/80 flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
+                              {farmer.farmerName?.charAt(0) || 'F'}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black text-slate-900 truncate">
+                                  {farmer.farmerName}
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-semibold text-slate-600 truncate flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                                <span>{farmer.location?.village || 'Cluster'}, {farmer.location?.district}</span>
+                              </p>
+                              <span className="text-[10px] text-slate-400 font-medium block">
+                                {farmer.farmSizeAcres || 5} Acres • {farmer.cropsGrown?.slice(0, 2).join(', ') || 'Produce'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0">
+                            {isPending ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold border bg-amber-50 text-amber-800 border-amber-300">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                <span>Pending</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold border bg-emerald-50 text-emerald-800 border-emerald-300">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                <span>Member</span>
                               </span>
                             )}
-                          </td>
-
-                          {/* Farm Size & Crops */}
-                          <td className="py-4 px-6">
-                            <span className="font-bold text-slate-900 block">{req.farmSizeAcres} Acres</span>
-                            <span className="text-[11px] text-slate-500 block">
-                              {req.cropsGrown && req.cropsGrown.length ? req.cropsGrown.join(', ') : 'Mixed Produce'}
-                            </span>
-                          </td>
-
-                          {/* Trust & Quality */}
-                          <td className="py-4 px-6">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <Award className="w-3 h-3 text-emerald-600" /> {req.trustScore || 90} Score
-                            </span>
-                          </td>
-
-                          {/* Request Date */}
-                          <td className="py-4 px-6 text-slate-500 font-medium">
-                            {reqDate}
-                          </td>
-
-                          {/* Actions */}
-                          <td className="py-4 px-6 text-right space-x-2 whitespace-nowrap">
-                            <button
-                              onClick={() => {
-                                setSelectedFarmer(req);
-                                setDetailsModalOpen(true);
-                              }}
-                              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] transition-all inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-slate-600" /> Details
-                            </button>
-
-                            <button
-                              disabled={actionLoading}
-                              onClick={() => handleAcceptRequest(req)}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Check className="w-3.5 h-3.5" /> Accept
-                            </button>
-
-                            <button
-                              disabled={actionLoading}
-                              onClick={() => handleRejectRequest(req)}
-                              className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] transition-all inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <X className="w-3.5 h-3.5 text-rose-600" /> Reject
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
+                            {farmer.distanceKm !== undefined && (
+                              <span className="text-[9px] text-slate-400 font-bold block mt-1">
+                                ~{farmer.distanceKm} km
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center py-12 px-4 space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto shadow-2xs">
+                      <Search className="w-5 h-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-800">No Farmers Found</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5 max-w-[200px] leading-relaxed">
+                        {searchQuery
+                          ? `No results matching "${searchQuery}"`
+                          : `No farmers under "${activeFilter}"`}
+                      </p>
+                    </div>
+                    {(searchQuery || activeFilter !== 'ALL') && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery('');
+                          setActiveFilter('ALL');
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Reset Filters</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* ========================================================================= */}
-          {/* TAB 2: APPROVED MEMBERS TABLE */}
-          {/* ========================================================================= */}
-          {activeTab === 'MEMBERS' && (
-            <div className="overflow-x-auto">
-              {displayMembers.length === 0 ? (
-                <div className="p-12 text-center space-y-3">
-                  <Users className="w-12 h-12 text-slate-300 mx-auto" />
-                  <p className="text-sm font-extrabold text-slate-700">No Active Member Farmers Yet</p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Accept pending membership requests to build your collective farmer network and aggregate produce volume.
-                  </p>
+            {/* ========================================================================= */}
+            {/* RIGHT INDEPENDENT SCROLLABLE DETAIL OVERVIEW PANE (lg:col-span-7) */}
+            {/* ========================================================================= */}
+            <div className="lg:col-span-7 h-[560px] lg:h-[650px]">
+              {selectedFarmer ? (
+                <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col h-full">
+                  
+                  {/* Fixed Sticky Header for Selected Farmer */}
+                  <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-b from-slate-50/70 to-white flex-shrink-0 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-800 text-white flex items-center justify-center font-black text-lg shadow-sm flex-shrink-0">
+                          {selectedFarmer.farmerName?.charAt(0) || 'F'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                              {selectedFarmer.farmerName}
+                            </h3>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                selectedFarmer.status === 'PENDING'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  selectedFarmer.status === 'PENDING' ? 'bg-amber-500' : 'bg-emerald-600'
+                                }`}
+                              />
+                              <span>{selectedFarmer.status === 'PENDING' ? 'Pending Approval' : 'Active FPO Member'}</span>
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            {selectedFarmer.status === 'PENDING'
+                              ? `Requested on ${selectedFarmer.fpoRequestedAt ? new Date(selectedFarmer.fpoRequestedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently'}`
+                              : `Member since ${selectedFarmer.joinedDate ? new Date(selectedFarmer.joinedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Active Record'}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                          <Award className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Trust {selectedFarmer.trustScore || 92}/100</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Independently Scrollable Detail Body */}
+                  <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
+                    
+                    {/* Proximity / Radius Eligibility Box */}
+                    {selectedFarmer.distanceKm !== undefined && (
+                      <div className="p-3.5 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-slate-50 rounded-2xl border border-emerald-200/80 flex items-center justify-between shadow-2xs">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-extrabold text-emerald-900 uppercase tracking-wider block">
+                            Service Radius Proximity Check
+                          </span>
+                          <p className="text-xs font-bold text-slate-900">
+                            ~{selectedFarmer.distanceKm} km from FPO HQ ({fpoInfo.serviceRadiusKm || 15} km service limit)
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold border ${
+                            selectedFarmer.isWithinRadius !== false
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-amber-100 text-amber-900 border-amber-300'
+                          }`}
+                        >
+                          {selectedFarmer.isWithinRadius !== false ? 'Within Service Radius' : 'Outside Radius'}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 3 Quick KPI Stat Boxes */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-slate-50/90 rounded-2xl p-3 border border-slate-200/80 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Farmland</span>
+                        <span className="text-sm sm:text-base font-black text-slate-900 mt-0.5 block">
+                          {selectedFarmer.farmSizeAcres || 5} Acres
+                        </span>
+                      </div>
+                      <div className="bg-slate-50/90 rounded-2xl p-3 border border-slate-200/80 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Trust Score</span>
+                        <span className="text-sm sm:text-base font-black text-emerald-700 mt-0.5 block">
+                          {selectedFarmer.trustScore || 92} / 100
+                        </span>
+                      </div>
+                      <div className="bg-slate-50/90 rounded-2xl p-3 border border-slate-200/80 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">AI Quality</span>
+                        <span className="text-sm sm:text-base font-black text-blue-800 mt-0.5 block">
+                          {selectedFarmer.qualityScore || 94}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contact & Location Details */}
+                    <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 space-y-2.5 shadow-2xs text-xs">
+                      <h4 className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Farmer Details & Location</span>
+                      </h4>
+
+                      <div className="space-y-2 pt-1 border-t border-slate-200/60">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">Farm Village:</span>
+                          <span className="font-bold text-slate-900">
+                            {selectedFarmer.location?.village || 'Cluster Village'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">District & State:</span>
+                          <span className="font-bold text-slate-900">
+                            {selectedFarmer.location?.district || 'Karnal'}, {selectedFarmer.location?.state || 'Haryana'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-emerald-600" /> Phone:
+                          </span>
+                          <a
+                            href={`tel:${selectedFarmer.phone}`}
+                            className="font-bold text-emerald-800 hover:underline inline-flex items-center gap-1"
+                          >
+                            {selectedFarmer.phone || '+91 98765 43210'}
+                          </a>
+                        </div>
+                        {selectedFarmer.email && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 font-medium flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" /> Email:
+                            </span>
+                            <span className="font-mono text-[11px] text-slate-700">{selectedFarmer.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Primary Crops Grown */}
+                    <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 space-y-2 shadow-2xs text-xs">
+                      <h4 className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                        <Wheat className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Primary Crops & Capacity</span>
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {selectedFarmer.cropsGrown && selectedFarmer.cropsGrown.length > 0 ? (
+                          selectedFarmer.cropsGrown.map((crop, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 font-bold text-slate-800 text-xs shadow-2xs"
+                            >
+                              {crop}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-500 italic">Mixed seasonal harvest</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fixed Sticky Footer for Actions */}
+                  <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200/90 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 text-xs">
+                    <div>
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Farmer ID</span>
+                      <span className="text-xs font-mono font-bold text-slate-700">#{selectedFarmer.farmerId || selectedFarmer._id}</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedFarmer.status === 'PENDING' ? (
+                        <>
+                          <button
+                            disabled={actionLoading}
+                            onClick={() => handleRejectRequest(selectedFarmer)}
+                            className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Reject</span>
+                          </button>
+
+                          <button
+                            disabled={actionLoading}
+                            onClick={() => handleAcceptRequest(selectedFarmer)}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-extrabold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            {actionLoading ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" />
+                            )}
+                            <span>Accept & Add Member</span>
+                          </button>
+                        </>
+                      ) : (
+                        <Link
+                          to="/fpo/produce"
+                          className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <Package className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>View Pooled Stock</span>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50/80">
-                      <th className="py-3.5 px-6">Member Name</th>
-                      <th className="py-3.5 px-6">Location</th>
-                      <th className="py-3.5 px-6">Farmland Size</th>
-                      <th className="py-3.5 px-6">Primary Crops</th>
-                      <th className="py-3.5 px-6">Joined Date</th>
-                      <th className="py-3.5 px-6">Membership Status</th>
-                      <th className="py-3.5 px-6 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {displayMembers.map((mem) => {
-                      const joinDate = mem.joinedDate
-                        ? new Date(mem.joinedDate).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : 'Active';
-
-                      return (
-                        <tr key={mem._id} className="hover:bg-slate-50/80 transition-colors">
-                          {/* Member Name */}
-                          <td className="py-4 px-6 font-medium">
-                            <span className="font-extrabold text-slate-900 block">{mem.farmerName}</span>
-                            <span className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
-                              <Phone className="w-3 h-3 text-slate-400" /> {mem.phone || 'Verified Phone'}
-                            </span>
-                          </td>
-
-                          {/* Location */}
-                          <td className="py-4 px-6">
-                            <span className="text-xs text-slate-800 font-semibold block flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                              {mem.location?.village ? `${mem.location.village}, ` : ''}
-                              {mem.location?.district}, {mem.location?.state}
-                            </span>
-                          </td>
-
-                          {/* Farmland Size */}
-                          <td className="py-4 px-6 font-bold text-slate-900">
-                            {mem.farmSizeAcres} Acres
-                          </td>
-
-                          {/* Primary Crops */}
-                          <td className="py-4 px-6 text-slate-700">
-                            {mem.cropsGrown && mem.cropsGrown.length ? mem.cropsGrown.join(', ') : 'Mixed Harvest'}
-                          </td>
-
-                          {/* Joined Date */}
-                          <td className="py-4 px-6 text-slate-500 font-medium">
-                            {joinDate}
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-4 px-6">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Active Member
-                            </span>
-                          </td>
-
-                          {/* Action */}
-                          <td className="py-4 px-6 text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedFarmer(mem);
-                                setDetailsModalOpen(true);
-                              }}
-                              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] transition-all inline-flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-slate-600" /> View Farmer
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* FARMER DETAILS MODAL / DRAWER */}
-      {/* ========================================================================= */}
-      {detailsModalOpen && selectedFarmer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                  <Users className="w-5 h-5 text-emerald-700" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">
-                    {selectedFarmer.farmerName}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {selectedFarmer.status === 'APPROVED' ? 'Active FPO Member Farmer' : 'Incoming Membership Application'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setDetailsModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4 text-xs overflow-y-auto">
-              
-              {/* Proximity Banner */}
-              {selectedFarmer.distanceKm !== undefined && selectedFarmer.distanceKm !== null && (
-                <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider block">FPO Proximity Verification</span>
-                    <p className="text-xs font-bold text-emerald-950">
-                      ~{selectedFarmer.distanceKm} km from FPO Hub ({selectedFarmer.serviceRadiusKm || 15} km configured limit)
+                <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 text-center text-slate-400 space-y-3.5 flex flex-col items-center justify-center h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-300 shadow-2xs">
+                    <Users className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <div className="max-w-xs space-y-1">
+                    <h3 className="text-sm font-black text-slate-800">No Farmer Selected</h3>
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                      Select a farmer from the left list or adjust your search to inspect farm acreage, cluster proximity, and membership actions.
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px]">
-                    {selectedFarmer.isWithinRadius !== false ? 'Eligible' : 'Check Boundary'}
-                  </span>
-                </div>
-              )}
-
-              {/* Data Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-slate-400 font-semibold block text-[10px]">Farmland Size</span>
-                  <span className="text-sm font-black text-slate-900 mt-0.5 block">{selectedFarmer.farmSizeAcres || 5} Acres</span>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-slate-400 font-semibold block text-[10px]">Trust Score</span>
-                  <span className="text-sm font-black text-emerald-700 mt-0.5 block">{selectedFarmer.trustScore || 92} / 100 ★</span>
-                </div>
-              </div>
-
-              {/* Location & Contact Details */}
-              <div className="space-y-2 border-t border-slate-100 pt-3">
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Farm Village</span>
-                  <span className="font-bold text-slate-900">{selectedFarmer.location?.village || 'Village On Record'}</span>
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">District & State</span>
-                  <span className="font-bold text-slate-900">{selectedFarmer.location?.district}, {selectedFarmer.location?.state}</span>
-                </div>
-
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-slate-500 font-medium">Contact Phone</span>
-                  <span className="font-mono font-bold text-slate-900">{selectedFarmer.phone || 'Available in Directory'}</span>
-                </div>
-
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-500 font-medium">Primary Crops Grown</span>
-                  <span className="font-bold text-slate-900">
-                    {selectedFarmer.cropsGrown && selectedFarmer.cropsGrown.length ? selectedFarmer.cropsGrown.join(', ') : 'Mixed Harvest'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer / Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <button
-                onClick={() => setDetailsModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-all cursor-pointer"
-              >
-                Close
-              </button>
-
-              {selectedFarmer.status === 'PENDING' && (
-                <div className="flex items-center gap-2">
-                  <button
-                    disabled={actionLoading}
-                    onClick={() => handleRejectRequest(selectedFarmer)}
-                    className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-all cursor-pointer"
-                  >
-                    Reject
-                  </button>
-
-                  <button
-                    disabled={actionLoading}
-                    onClick={() => handleAcceptRequest(selectedFarmer)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Accept Member
-                  </button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   );
 };
