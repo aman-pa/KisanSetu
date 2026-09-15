@@ -380,20 +380,22 @@ const TradeTicketPage = () => {
             </div>
 
             {/* 6-Hour Area Batch Dispatch Notification Box */}
-            <div className="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200 text-blue-950 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-sm">
-                ⏰
-              </div>
-              <div className="space-y-0.5 text-xs">
-                <div className="font-extrabold text-blue-900 flex items-center gap-2">
-                  <span>6-Hour Area Batch Dispatch Active</span>
-                  <span className="bg-blue-200 text-blue-900 text-[10px] px-2 py-0.5 rounded-full font-bold">Scheduled Group Delivery</span>
+            {order.buyerRole === 'CONSUMER' && (
+              <div className="p-4 bg-blue-50/90 border border-blue-200/90 rounded-2xl flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-800 font-black text-sm flex-shrink-0">
+                  ⏰
                 </div>
-                <p className="text-[11px] text-blue-800 font-medium leading-relaxed">
-                  To eliminate repetitive transport costs for local farmers and keep consumer prices low, orders in this pincode/area are batched together for single-trip dispatch within 6 hours.
-                </p>
+                <div className="space-y-0.5 text-xs">
+                  <div className="font-extrabold text-blue-900 flex items-center gap-2">
+                    <span>6-Hour Area Batch Dispatch Active</span>
+                    <span className="bg-blue-200 text-blue-900 text-[10px] px-2 py-0.5 rounded-full font-bold">Scheduled Group Delivery</span>
+                  </div>
+                  <p className="text-[11px] text-blue-800 font-medium leading-relaxed">
+                    To eliminate repetitive transport costs for local farmers and keep consumer prices low, orders in this pincode/area are batched together for single-trip dispatch within 6 hours.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Buyer vs Seller Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
