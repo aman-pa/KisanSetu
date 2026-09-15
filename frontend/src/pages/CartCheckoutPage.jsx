@@ -49,12 +49,6 @@ const CartCheckoutPage = () => {
       return;
     }
 
-    // Consumer Max Limit Verification
-    if (user.role === 'CONSUMER' && totalQuantityKg > maxConsumerLimitKg) {
-      setError(`Consumer purchase limit exceeded! You requested ${totalQuantityKg} kg, but max limit is ${maxConsumerLimitKg} kg.`);
-      return;
-    }
-
     setIsPaymentModalOpen(true);
   };
 

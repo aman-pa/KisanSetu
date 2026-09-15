@@ -16,21 +16,7 @@ const placeOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order items cannot be empty' });
     }
 
-    // 1. ADMIN CONFIGURABLE PURCHASE LIMIT VALIDATION FOR CONSUMERS
-    if (req.user.role === 'CONSUMER') {
-      const configDoc = await SystemConfig.findOne({ key: 'CONSUMER_MAX_PURCHASE_LIMIT_KG' });
-      const maxLimitKg = configDoc ? Number(configDoc.value) : 10;
 
-      const totalOrderedKg = items.reduce((sum, item) => sum + Number(item.quantityKg), 0);
-
-      if (totalOrderedKg > maxLimitKg) {
-        return res.status(400).json({
-          success: false,
-          errorType: 'PURCHASE_LIMIT_EXCEEDED',
-          message: `Consumer purchase limit exceeded! You requested ${totalOrderedKg} kg, but consumer accounts are restricted to maximum ${maxLimitKg} kg per order to ensure fair distribution. For larger quantities, please register as a Bulk Buyer.`,
-        });
-      }
-    }
 
     // 2. Validate availability and calculate item subtotals
     let totalProduceCost = 0;

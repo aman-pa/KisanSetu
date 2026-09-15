@@ -118,16 +118,6 @@ export const CartProvider = ({ children }) => {
       });
     }
 
-    // Check Consumer Purchase Limit
-    if (user?.role === 'CONSUMER') {
-      const totalKg = updatedCart.reduce((sum, i) => sum + i.quantityKg, 0);
-      if (totalKg > maxConsumerLimitKg) {
-        throw new Error(
-          `Consumer Order Limit Exceeded! You have ${totalKg} kg in cart. Consumer accounts are capped at max ${maxConsumerLimitKg} kg per order to ensure fair retail distribution. For bulk orders, use a Bulk Buyer account.`
-        );
-      }
-    }
-
     setCartItems(updatedCart);
   };
 
@@ -144,15 +134,6 @@ export const CartProvider = ({ children }) => {
       }
       return item;
     });
-
-    if (user?.role === 'CONSUMER') {
-      const totalKg = updatedCart.reduce((sum, i) => sum + i.quantityKg, 0);
-      if (totalKg > maxConsumerLimitKg) {
-        throw new Error(
-          `Consumer purchase limit exceeded! You have ${totalKg} kg in cart. Consumer limit is max ${maxConsumerLimitKg} kg per order.`
-        );
-      }
-    }
 
     setCartItems(updatedCart);
   };

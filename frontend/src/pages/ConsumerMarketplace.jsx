@@ -145,14 +145,25 @@ const ConsumerMarketplace = () => {
   // State for quantity selected per produce item
   const [selectedQuantities, setSelectedQuantities] = useState({});
 
-  const getQuantity = (id) => selectedQuantities[id] || 1;
+  const getQuantityInputVal = (id) => {
+    const val = selectedQuantities[id];
+    return val !== undefined ? val : 1;
+  };
+
+  const getQuantityNumber = (id) => {
+    const val = Number(selectedQuantities[id]);
+    return !val || isNaN(val) || val < 1 ? 1 : val;
+  };
 
   const handleQuantityChange = (id, val, availableStock = 9999) => {
+    if (val === '' || val === null || val === undefined) {
+      setSelectedQuantities((prev) => ({ ...prev, [id]: '' }));
+      return;
+    }
     let num = Number(val);
     if (isNaN(num)) num = 1;
     if (num < 1) num = 1;
-    const maxAllowed = user?.role === 'CONSUMER' ? Math.min(maxConsumerLimitKg, availableStock) : availableStock;
-    if (num > maxAllowed) num = maxAllowed;
+    if (availableStock && num > availableStock) num = availableStock;
 
     setSelectedQuantities((prev) => ({
       ...prev,
@@ -160,10 +171,16 @@ const ConsumerMarketplace = () => {
     }));
   };
 
+  const handleStepQuantity = (id, delta, availableStock = 9999) => {
+    const current = getQuantityNumber(id);
+    const next = Math.max(1, current + delta);
+    handleQuantityChange(id, next, availableStock);
+  };
+
   const handleAddToCart = (listing, quantityOverride = null) => {
     setToastMessage('');
     setToastError('');
-    const qty = quantityOverride !== null ? quantityOverride : getQuantity(listing._id);
+    const qty = quantityOverride !== null ? quantityOverride : getQuantityNumber(listing._id);
 
     try {
       addToCart(listing, qty);
@@ -209,11 +226,6 @@ const ConsumerMarketplace = () => {
               <p className="text-xs sm:text-sm text-emerald-200/90 font-medium max-w-2xl">
                 AI recommends verified crops based on your <b>current location</b>, <b>quality grades</b>, <b>distance proximity</b>, and <b>competitive prices</b>.
               </p>
-              {user?.role === 'CONSUMER' && (
-                <div className="inline-block bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs px-3 py-1.5 rounded-xl font-semibold">
-                  ℹ️ Retail Consumer Purchase Limit Active: Max <b>{maxConsumerLimitKg} kg</b> per order.
-                </div>
-              )}
             </div>
           </div>
 
@@ -655,8 +667,8 @@ const ConsumerMarketplace = () => {
                       <div className="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden shadow-2xs">
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(item._id, getQuantity(item._id) - 1, item.availableQuantityKg)}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer"
+                          onClick={() => handleStepQuantity(item._id, -1, item.availableQuantityKg)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer select-none"
                           title="Decrease quantity"
                         >
                           -
@@ -665,15 +677,20 @@ const ConsumerMarketplace = () => {
                           type="number"
                           min="1"
                           step="any"
-                          max={user?.role === 'CONSUMER' ? Math.min(maxConsumerLimitKg, item.availableQuantityKg) : item.availableQuantityKg}
-                          value={getQuantity(item._id)}
+                          max={item.availableQuantityKg}
+                          value={getQuantityInputVal(item._id)}
                           onChange={(e) => handleQuantityChange(item._id, e.target.value, item.availableQuantityKg)}
+                          onBlur={() => {
+                            if (!getQuantityInputVal(item._id) || Number(getQuantityInputVal(item._id)) < 1) {
+                              handleQuantityChange(item._id, 1, item.availableQuantityKg);
+                            }
+                          }}
                           className="w-14 text-center py-1 text-xs font-extrabold text-slate-900 focus:outline-none bg-white"
                         />
                         <button
                           type="button"
-                          onClick={() => handleQuantityChange(item._id, getQuantity(item._id) + 1, item.availableQuantityKg)}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer"
+                          onClick={() => handleStepQuantity(item._id, +1, item.availableQuantityKg)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer select-none"
                           title="Increase quantity"
                         >
                           +
@@ -693,7 +710,9 @@ const ConsumerMarketplace = () => {
                         className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary hover:to-agri-accent text-white text-xs font-extrabold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       >
                         <ShoppingCart className="w-4 h-4 text-emerald-300" />
-                        <span>Add {getQuantity(item._id)} kg (₹{(item.pricePerKg * getQuantity(item._id)).toLocaleString()})</span>
+                        <span>
+                          Add {getQuantityNumber(item._id)} kg (₹{(item.pricePerKg * getQuantityNumber(item._id)).toLocaleString()})
+                        </span>
                       </button>
                     </div>
                   </div>
