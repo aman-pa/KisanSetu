@@ -100,25 +100,11 @@ export const CartProvider = ({ children }) => {
     if (!qty || qty <= 0) return;
 
     const dist = listing.distanceKm || 18.5;
-
-    // Small order restriction: < 5 kg requires distance <= 10 km
-    if (qty < 5 && dist > 10) {
-      throw new Error(
-        `For small orders under 5 kg, seller distance must be within 10 km (Current distance: ${dist} km). Please order 5 kg or more to unlock long-distance shipping, or select a local seller!`
-      );
-    }
-
     const existingIndex = cartItems.findIndex((item) => item.listingId === listing._id);
     let updatedCart = [...cartItems];
 
     if (existingIndex > -1) {
-      const newQty = updatedCart[existingIndex].quantityKg + qty;
-      if (newQty < 5 && dist > 10) {
-        throw new Error(
-          `For small orders under 5 kg, seller distance must be within 10 km (Current distance: ${dist} km). Please order 5 kg or more to unlock long-distance shipping!`
-        );
-      }
-      updatedCart[existingIndex].quantityKg = newQty;
+      updatedCart[existingIndex].quantityKg += qty;
     } else {
       updatedCart.push({
         listingId: listing._id,
@@ -142,16 +128,6 @@ export const CartProvider = ({ children }) => {
     if (!qty || qty <= 0) {
       removeFromCart(listingId);
       return;
-    }
-
-    const itemToUpdate = cartItems.find((i) => i.listingId === listingId);
-    if (itemToUpdate) {
-      const dist = itemToUpdate.distanceKm || 18.5;
-      if (qty < 5 && dist > 10) {
-        throw new Error(
-          `For small orders under 5 kg, seller distance must be within 10 km (Current distance: ${dist} km). Please order 5 kg or more to unlock long-distance shipping!`
-        );
-      }
     }
 
     const updatedCart = cartItems.map((item) => {

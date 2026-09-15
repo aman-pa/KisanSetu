@@ -36,7 +36,7 @@ const placeOrder = async (req, res) => {
         });
       }
 
-      // Small Order Distance Validation (1-4 kg requires distance <= 10 km)
+      // Calculate distance between user location and farmer/FPO location for logistics tracking
       const userLat = req.user.address?.lat || 28.6139;
       const userLng = req.user.address?.lng || 77.2090;
       const farmerLat = listing.location?.lat || 29.6857;
@@ -47,13 +47,6 @@ const placeOrder = async (req, res) => {
       const dLon = (farmerLng - userLng) * (Math.PI / 180);
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(userLat * (Math.PI / 180)) * Math.cos(farmerLat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
       const distKm = Math.round(R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))) * 10) / 10;
-
-      if (item.quantityKg < 5 && distKm > 10) {
-        return res.status(400).json({
-          success: false,
-          message: `Small order distance restriction: For orders under 5 kg of '${listing.cropName}', the FPO/Farmer must be within 10 km (Current distance: ${distKm} km). Please order 5 kg or more to unlock long-distance shipping, or choose a local seller!`,
-        });
-      }
 
       const subtotal = item.quantityKg * listing.pricePerKg;
       totalProduceCost += subtotal;

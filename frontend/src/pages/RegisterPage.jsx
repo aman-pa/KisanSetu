@@ -19,6 +19,8 @@ import {
   Phone,
 } from 'lucide-react';
 
+import { INDIAN_PINCODES, getPincodeDetails } from '../data/pincodeData';
+
 const RegisterPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,11 +29,14 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('FARMER');
 
-  // Address
+  // Address & Pincode Lookup
   const [street, setStreet] = useState('');
-  const [city, setCity] = useState('Karnal');
-  const [state, setState] = useState('Haryana');
-  const [pincode, setPincode] = useState('132001');
+  const [selectedPincodeObj, setSelectedPincodeObj] = useState(INDIAN_PINCODES[4]); // Default 132001 Karnal
+  const [city, setCity] = useState(INDIAN_PINCODES[4].city);
+  const [state, setState] = useState(INDIAN_PINCODES[4].state);
+  const [pincode, setPincode] = useState(INDIAN_PINCODES[4].pincode);
+  const [lat, setLat] = useState(INDIAN_PINCODES[4].lat);
+  const [lng, setLng] = useState(INDIAN_PINCODES[4].lng);
 
   // Role details
   const [farmSizeAcres, setFarmSizeAcres] = useState(5);
@@ -118,7 +123,7 @@ const RegisterPage = () => {
         phone: phone.trim(),
         password,
         role,
-        address: { street, city, state, pincode },
+        address: { street, city, state, pincode, lat, lng },
         profileDetails: {
           farmSizeAcres: Number(farmSizeAcres),
           orgName,
@@ -273,6 +278,52 @@ const RegisterPage = () => {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold"
                   placeholder="Kheri Village / GT Road"
                 />
+              </div>
+            </div>
+
+            {/* Real Pincode Selection & Tracing Dropdown */}
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200/90 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <span>📍 Real Pincode & Area Location Tracing</span>
+                  <span className="bg-emerald-200 text-emerald-900 text-[10px] px-2 py-0.5 rounded-full font-bold">Auto-GPS Coordinates</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Select Pincode / Area Hub:</label>
+                  <select
+                    value={pincode}
+                    onChange={(e) => {
+                      const pStr = e.target.value;
+                      const details = getPincodeDetails(pStr);
+                      setSelectedPincodeObj(details);
+                      setPincode(details.pincode);
+                      setCity(details.city);
+                      setState(details.state);
+                      setLat(details.lat);
+                      setLng(details.lng);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-emerald-300 text-xs font-bold bg-white focus:ring-2 focus:ring-agri-primary"
+                  >
+                    {INDIAN_PINCODES.map((item) => (
+                      <option key={item.pincode} value={item.pincode}>
+                        {item.pincode} — {item.areaName} ({item.state})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-xs space-y-1">
+                  <div className="flex justify-between items-center font-bold text-slate-800 text-[11px]">
+                    <span>Traced Location:</span>
+                    <span className="text-emerald-700">{city}, {state}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Coordinates: <span className="font-mono text-slate-700">{lat.toFixed(4)}°N, {lng.toFixed(4)}°E</span> (Pincode {pincode})
+                  </p>
+                </div>
               </div>
             </div>
 

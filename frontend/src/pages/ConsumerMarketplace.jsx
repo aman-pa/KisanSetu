@@ -661,36 +661,36 @@ const ConsumerMarketplace = () => {
 
                   {/* Card Action & Quantity Selection Box */}
                   <div className="p-5 pt-0 space-y-3">
-                    {/* FPO Distance Restriction Alert & 5+ kg Savings Incentive Banner */}
+                    {/* Live Calculated Savings & Distance Advisory Banner */}
                     {getQuantityNumber(item._id) < 5 ? (
                       item.distanceKm > 10 ? (
                         <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-[11px] font-bold space-y-1">
                           <p className="flex items-center gap-1 text-amber-800">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                            <span>Distance Alert ({item.distanceKm} km &gt; 10 km limit)</span>
+                            <span>Distant FPO ({item.distanceKm} km away) — Higher Unit Transport</span>
                           </p>
                           <p className="text-[10px] text-amber-700 font-normal">
-                            Orders under 5 kg must be within 10 km. Increase quantity to <strong>5+ kg</strong> to order from this FPO/Farmer!
+                            Small {getQuantityNumber(item._id)} kg orders have higher per-kg transport. Add <strong>{5 - getQuantityNumber(item._id)} kg more</strong> to save ~₹{Math.round(item.pricePerKg * 0.15 * 5 + 45)} overall!
                           </p>
                         </div>
                       ) : (
                         <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl text-[11px] font-bold">
                           <p className="flex items-center gap-1 text-blue-800">
                             <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                            <span>Order 5+ kg &amp; Save up to ₹{Math.round(item.pricePerKg * 0.15 * 5 + 45)}!</span>
+                            <span>Order 5+ kg &amp; Save ~₹{Math.round(item.pricePerKg * 0.15 * 5 + 45)}!</span>
                           </p>
                           <p className="text-[10px] text-blue-700 font-normal mt-0.5">
-                            Bulk orders save logistics fees and give direct farm benefit.
+                            Local FPO ({item.distanceKm} km). Increasing quantity reduces unit delivery cost.
                           </p>
                         </div>
                       )
                     ) : (
                       <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-[11px] font-extrabold flex items-center justify-between">
                         <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Bulk Savings Unlocked!
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Max Farm Savings Unlocked!
                         </span>
                         <span className="text-emerald-800 bg-emerald-200/60 px-1.5 py-0.5 rounded text-[10px]">
-                          Save ~₹{Math.round(item.pricePerKg * 0.15 * getQuantityNumber(item._id) + 45)}
+                          Saved ~₹{Math.round(item.pricePerKg * 0.15 * getQuantityNumber(item._id) + 45)}
                         </span>
                       </div>
                     )}

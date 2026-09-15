@@ -36,6 +36,8 @@ const userSchema = new mongoose.Schema(
       city: String,
       state: String,
       pincode: String,
+      lat: Number,
+      lng: Number,
     },
     profileImage: {
       type: String,
