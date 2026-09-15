@@ -19,7 +19,7 @@ import {
   Phone,
 } from 'lucide-react';
 
-import { INDIAN_PINCODES, getPincodeDetails } from '../data/pincodeData';
+import { fetchLocationByPincode, getCurrentGpsLocation } from '../services/locationService';
 
 const RegisterPage = () => {
   const [name, setName] = useState('');
@@ -29,14 +29,21 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('FARMER');
 
-  // Address & Pincode Lookup
+  // Real Address & Location Tracing
   const [street, setStreet] = useState('');
-  const [selectedPincodeObj, setSelectedPincodeObj] = useState(INDIAN_PINCODES[4]); // Default 132001 Karnal
-  const [city, setCity] = useState(INDIAN_PINCODES[4].city);
-  const [state, setState] = useState(INDIAN_PINCODES[4].state);
-  const [pincode, setPincode] = useState(INDIAN_PINCODES[4].pincode);
-  const [lat, setLat] = useState(INDIAN_PINCODES[4].lat);
-  const [lng, setLng] = useState(INDIAN_PINCODES[4].lng);
+  const [pincode, setPincode] = useState('110001');
+  const [city, setCity] = useState('Delhi');
+  const [state, setState] = useState('Delhi');
+  const [lat, setLat] = useState(28.6139);
+  const [lng, setLng] = useState(77.2090);
+
+  // Area Options for typed pincode
+  const [areaOptions, setAreaOptions] = useState([]);
+  const [selectedAreaName, setSelectedAreaName] = useState('');
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [locationSuccessMsg, setLocationSuccessMsg] = useState('');
+  const [locationErrorMsg, setLocationErrorMsg] = useState('');
 
   // Role details
   const [farmSizeAcres, setFarmSizeAcres] = useState(5);
@@ -54,6 +61,57 @@ const RegisterPage = () => {
 
   const { register, setUser } = useAuth();
   const navigate = useNavigate();
+
+  // Handle Pincode Typing / Lookup via official India Post API
+  const handlePincodeLookup = async (val) => {
+    setPincode(val);
+    setLocationSuccessMsg('');
+    setLocationErrorMsg('');
+    setAreaOptions([]);
+    setSelectedAreaName('');
+
+    if (val.trim().length === 6 && !isNaN(Number(val))) {
+      setPincodeLoading(true);
+      const res = await fetchLocationByPincode(val);
+      setPincodeLoading(false);
+
+      if (res.success) {
+        setCity(res.district);
+        setState(res.state);
+        setLat(res.lat);
+        setLng(res.lng);
+        setAreaOptions(res.areaOptions || []);
+        if (res.areaOptions && res.areaOptions.length > 0) {
+          setSelectedAreaName(res.areaOptions[0].name);
+        }
+        setLocationSuccessMsg(`📍 Pincode ${val} verified via India Post API! District: ${res.district}, State: ${res.state}`);
+      } else {
+        setLocationErrorMsg(res.message);
+      }
+    }
+  };
+
+  // Handle GPS Location Button Click
+  const handleUseGpsLocation = async () => {
+    setGpsLoading(true);
+    setLocationSuccessMsg('');
+    setLocationErrorMsg('');
+    try {
+      const loc = await getCurrentGpsLocation();
+      setLat(loc.lat);
+      setLng(loc.lng);
+      setPincode(loc.pincode);
+      setCity(loc.district);
+      setState(loc.state);
+      if (loc.street) setStreet(loc.street);
+
+      setLocationSuccessMsg(`🎯 Live GPS Acquired: ${loc.lat.toFixed(4)}°N, ${loc.lng.toFixed(4)}°E (${loc.district}, ${loc.state})`);
+    } catch (err) {
+      setLocationErrorMsg(err.message || 'Failed to acquire GPS location.');
+    } finally {
+      setGpsLoading(false);
+    }
+  };
 
   // Step 1: Send OTP to Email/Phone
   const handleInitiateRegistration = async (e) => {
@@ -281,49 +339,88 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Real Pincode Selection & Tracing Dropdown */}
-            <div className="p-4 bg-emerald-50/70 border border-emerald-200/90 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
-                  <span>📍 Real Pincode & Area Location Tracing</span>
-                  <span className="bg-emerald-200 text-emerald-900 text-[10px] px-2 py-0.5 rounded-full font-bold">Auto-GPS Coordinates</span>
-                </label>
+            {/* Real Pincode & GPS Location Tracing Section */}
+            <div className="p-4 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
+                <div>
+                  <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <span>📍 Real Location Tracing (Pincode or GPS)</span>
+                    <span className="bg-emerald-200 text-emerald-950 text-[10px] px-2 py-0.5 rounded-full font-bold">India Post API Verified</span>
+                  </label>
+                  <p className="text-[10px] text-slate-500 font-medium">Enter ANY 6-digit Indian Pincode OR click GPS to trace your exact coordinates.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleUseGpsLocation}
+                  disabled={gpsLoading}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                >
+                  <span>🎯 {gpsLoading ? 'Acquiring GPS...' : 'Use My Current Location'}</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {locationSuccessMsg && (
+                <div className="p-2.5 bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                  <span>{locationSuccessMsg}</span>
+                </div>
+              )}
+
+              {locationErrorMsg && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{locationErrorMsg}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Select Pincode / Area Hub:</label>
-                  <select
-                    value={pincode}
-                    onChange={(e) => {
-                      const pStr = e.target.value;
-                      const details = getPincodeDetails(pStr);
-                      setSelectedPincodeObj(details);
-                      setPincode(details.pincode);
-                      setCity(details.city);
-                      setState(details.state);
-                      setLat(details.lat);
-                      setLng(details.lng);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-300 text-xs font-bold bg-white focus:ring-2 focus:ring-agri-primary"
-                  >
-                    {INDIAN_PINCODES.map((item) => (
-                      <option key={item.pincode} value={item.pincode}>
-                        {item.pincode} — {item.areaName} ({item.state})
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Enter Any 6-Digit Pincode:</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      maxLength="6"
+                      value={pincode}
+                      onChange={(e) => handlePincodeLookup(e.target.value)}
+                      placeholder="e.g. 110016, 132001, 800001, 400001"
+                      className="w-full px-4 py-2 rounded-xl border border-emerald-300 text-xs font-black text-slate-900 bg-white focus:ring-2 focus:ring-agri-primary focus:outline-none"
+                    />
+                    {pincodeLoading && (
+                      <span className="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-600 animate-pulse">
+                        Verifying...
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-xs space-y-1">
-                  <div className="flex justify-between items-center font-bold text-slate-800 text-[11px]">
-                    <span>Traced Location:</span>
-                    <span className="text-emerald-700">{city}, {state}</span>
+                {/* Area / Post Office Dropdown (if multiple post offices returned for this pincode) */}
+                {areaOptions.length > 0 ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Select Exact Area / Post Office:</label>
+                    <select
+                      value={selectedAreaName}
+                      onChange={(e) => setSelectedAreaName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-emerald-300 text-xs font-bold bg-white focus:ring-2 focus:ring-agri-primary"
+                    >
+                      {areaOptions.map((area, idx) => (
+                        <option key={idx} value={area.name}>
+                          {area.name} ({area.district}, {area.state})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    Coordinates: <span className="font-mono text-slate-700">{lat.toFixed(4)}°N, {lng.toFixed(4)}°E</span> (Pincode {pincode})
-                  </p>
-                </div>
+                ) : (
+                  <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-xs space-y-1">
+                    <div className="flex justify-between items-center font-bold text-slate-800 text-[11px]">
+                      <span>Traced District &amp; State:</span>
+                      <span className="text-emerald-700 font-extrabold">{city}, {state}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      GPS Coordinates: <span className="font-mono text-slate-900 font-bold">{lat.toFixed(4)}°N, {lng.toFixed(4)}°E</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

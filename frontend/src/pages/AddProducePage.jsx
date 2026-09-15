@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   PackagePlus,
   Sparkles,
@@ -36,6 +37,7 @@ const CROP_DATABASE = [
 const CATEGORY_LIST = ['Vegetables', 'Fruits', 'Grains', 'Pulses', 'Spices'];
 
 const AddProducePage = () => {
+  const { user } = useAuth();
   // Start completely empty with no pre-filled values
   const [cropName, setCropName] = useState('');
   const [cropSearch, setCropSearch] = useState('');
@@ -157,7 +159,12 @@ const AddProducePage = () => {
         grade: 'GRADE_A',
         harvestDate,
         images: imagesArray.length > 0 ? imagesArray : ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80'],
-        location: { district: 'Karnal', state: 'Haryana', lat: 29.6857, lng: 76.9905 },
+        location: {
+          district: user?.address?.city || 'Karnal',
+          state: user?.address?.state || 'Haryana',
+          lat: user?.address?.lat || 29.6857,
+          lng: user?.address?.lng || 76.9905,
+        },
       };
 
       const { data } = await API.post('/products', payload);

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import API from '../services/api';
+import { fetchLocationByPincode, getCurrentGpsLocation } from '../services/locationService';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -43,16 +44,63 @@ const ConsumerMarketplace = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef(null);
 
-  // User location simulation (Delhi NCR default coordinates or custom)
-  const [userLocationName, setUserLocationName] = useState('Delhi NCR');
-  const [userLat, setUserLat] = useState(28.6139);
-  const [userLng, setUserLng] = useState(77.2090);
+  // User location & GPS tracking
+  const { user } = useAuth();
+  const [userLocationName, setUserLocationName] = useState(
+    user?.address?.city ? `${user.address.city}, ${user.address.state || ''}` : 'Delhi NCR'
+  );
+  const [userLat, setUserLat] = useState(user?.address?.lat || 28.6139);
+  const [userLng, setUserLng] = useState(user?.address?.lng || 77.2090);
+  const [customPincode, setCustomPincode] = useState(user?.address?.pincode || '');
+  const [locationMsg, setLocationMsg] = useState('');
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.address?.lat && user?.address?.lng) {
+      setUserLat(user.address.lat);
+      setUserLng(user.address.lng);
+      setUserLocationName(`${user.address.city || 'My Location'} (${user.address.pincode || ''})`);
+    }
+  }, [user]);
+
+  const handlePincodeSearch = async (val) => {
+    setCustomPincode(val);
+    setLocationMsg('');
+    if (val.trim().length === 6 && !isNaN(Number(val))) {
+      const res = await fetchLocationByPincode(val);
+      if (res.success) {
+        setUserLat(res.lat);
+        setUserLng(res.lng);
+        setUserLocationName(`${res.district}, ${res.state} (${val})`);
+        setLocationMsg(`📍 Updated location to ${res.district}, ${res.state} (${val})`);
+        setTimeout(() => setLocationMsg(''), 4000);
+      }
+    }
+  };
+
+  const handleUseGpsLocation = async () => {
+    setGpsLoading(true);
+    setLocationMsg('');
+    try {
+      const loc = await getCurrentGpsLocation();
+      setUserLat(loc.lat);
+      setUserLng(loc.lng);
+      setUserLocationName(`${loc.district}, ${loc.state} (GPS Traced)`);
+      if (loc.pincode) setCustomPincode(loc.pincode);
+      setLocationMsg(`🎯 Live GPS Acquired: ${loc.lat.toFixed(4)}°N, ${loc.lng.toFixed(4)}°E`);
+      setTimeout(() => setLocationMsg(''), 5000);
+    } catch (err) {
+      setToastError(err.message || 'GPS location error');
+      setTimeout(() => setToastError(''), 5000);
+    } finally {
+      setGpsLoading(false);
+    }
+  };
 
   const [toastMessage, setToastMessage] = useState('');
   const [toastError, setToastError] = useState('');
 
   const { addToCart, maxConsumerLimitKg } = useCart();
-  const { user } = useAuth();
 
   // Fetch produce listings from DB with AI recommendation & location parameters
   const fetchListings = async (customSearch = null) => {
@@ -300,22 +348,44 @@ const ConsumerMarketplace = () => {
                 </div>
               </div>
 
-              {/* Location Selector */}
-              <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2 rounded-2xl border border-slate-200 text-xs">
-                <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                <span className="font-bold text-slate-600">Your Location:</span>
-                <select
-                  value={userLocationName}
-                  onChange={handleLocationPresetChange}
-                  className="bg-transparent font-black text-emerald-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="Delhi NCR">Delhi NCR (28.61° N, 77.20° E)</option>
-                  <option value="Karnal, Haryana">Karnal, Haryana (29.68° N, 76.99° E)</option>
-                  <option value="Chandigarh">Chandigarh (30.73° N, 76.77° E)</option>
-                  <option value="Jaipur, Rajasthan">Jaipur, Rajasthan (26.91° N, 75.78° E)</option>
-                </select>
+              {/* Real Location Selector & GPS Tracing Controls */}
+              <div className="flex flex-wrap items-center gap-3 bg-emerald-50/80 p-2.5 rounded-2xl border border-emerald-200 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                  <span>Traced Location:</span>
+                  <span className="font-extrabold text-emerald-900 bg-white px-2.5 py-1 rounded-xl border border-emerald-200">
+                    {userLocationName}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength="6"
+                    value={customPincode}
+                    onChange={(e) => handlePincodeSearch(e.target.value)}
+                    placeholder="Enter Pincode (e.g. 110016)"
+                    className="w-36 px-3 py-1.5 rounded-xl border border-emerald-300 text-xs font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-agri-primary"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleUseGpsLocation}
+                    disabled={gpsLoading}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <span>🎯 {gpsLoading ? 'GPS...' : 'Use My GPS Location'}</span>
+                  </button>
+                </div>
               </div>
             </div>
+
+            {locationMsg && (
+              <div className="p-2.5 bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                <span>{locationMsg}</span>
+              </div>
+            )}
 
             {/* Typeahead Search Bar & Autosuggest Dropdown */}
             <form onSubmit={handleSearchSubmit} className="space-y-4">
