@@ -242,47 +242,60 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
-        {/* 6-Hour Area Batch Dispatch & Logistics Savings Banner */}
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-md space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-700/50 pb-4">
+        {/* Area Batch Logistics Status */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-500/30 border border-blue-400/40 text-blue-300 flex items-center justify-center font-bold text-lg">
-                ⏰
+              <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                <Clock className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
-                  6-Hour Area Batch Dispatch Engine
-                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                    Active FPO Pooling
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  Area Batch Logistics
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                    6-Hour Window Active
                   </span>
                 </h3>
-                <p className="text-xs text-blue-200 mt-0.5">
-                  Orders from nearby consumers in the same area accumulate over 6 hours so you dispatch together in one low-cost delivery trip!
+                <p className="text-xs text-slate-500 font-medium">
+                  Nearby consumer orders are grouped by area so you dispatch together in single low-cost trips.
                 </p>
               </div>
             </div>
 
-            <div className="bg-blue-950/80 px-4 py-2 rounded-2xl border border-blue-700/60 text-right">
-              <span className="text-[10px] uppercase font-bold text-blue-300 block">Estimated Farmer Savings</span>
-              <span className="text-base font-black text-emerald-400">₹450+ per delivery batch</span>
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] font-extrabold uppercase text-slate-400 block">Freight Savings</span>
+              <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 inline-block">
+                ~75% Transport Cost Saved
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-300">Cluster 1: Delhi NCR (110016)</span>
-              <p className="font-black text-white">2 Orders (45 kg total)</p>
-              <span className="text-[10px] text-emerald-400 font-bold">⏰ Window Ends in ~3h 15m</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 font-bold text-[11px]">
+                <span>Delhi NCR (110016)</span>
+                <span className="text-emerald-700 font-extrabold">Active</span>
+              </div>
+              <p className="font-extrabold text-slate-900 text-sm">2 Orders • 45 kg</p>
+              <p className="text-[10px] text-slate-400 font-medium">Dispatch window: ~3h 15m remaining</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-300">Cluster 2: Karnal District</span>
-              <p className="font-black text-white">3 Orders (120 kg total)</p>
-              <span className="text-[10px] text-emerald-400 font-bold">⏰ Window Ends in ~4h 45m</span>
+
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 font-bold text-[11px]">
+                <span>Karnal District</span>
+                <span className="text-emerald-700 font-extrabold">Active</span>
+              </div>
+              <p className="font-extrabold text-slate-900 text-sm">3 Orders • 120 kg</p>
+              <p className="text-[10px] text-slate-400 font-medium">Dispatch window: ~4h 45m remaining</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] font-bold text-slate-300">Cluster 3: Gurgaon Sector 45</span>
-              <p className="font-black text-white">1 Order (25 kg total)</p>
-              <span className="text-[10px] text-amber-300 font-bold">⏰ Accumulating Orders...</span>
+
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 font-bold text-[11px]">
+                <span>Gurgaon Sector 45</span>
+                <span className="text-amber-700 font-extrabold">Accumulating</span>
+              </div>
+              <p className="font-extrabold text-slate-900 text-sm">1 Order • 25 kg</p>
+              <p className="text-[10px] text-slate-400 font-medium">Gathering neighborhood orders...</p>
             </div>
           </div>
         </div>
