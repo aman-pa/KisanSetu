@@ -212,6 +212,7 @@ const BulkBuyerDashboard = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentSuccessStep, setPaymentSuccessStep] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [copiedId, setCopiedId] = useState(false);
 
   // ==========================================
   // AI AGGREGATOR STATE
