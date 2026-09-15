@@ -23,6 +23,7 @@ import LogisticsDashboard from './pages/LogisticsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import BatchTraceabilityPage from './pages/BatchTraceabilityPage';
 import MarketIntelligencePage from './pages/MarketIntelligencePage';
+import FPOIntelligencePage from './pages/FPOIntelligencePage';
 import ConsumerOrdersPage from './pages/ConsumerOrdersPage';
 import TradeTicketPage from './pages/TradeTicketPage';
 
@@ -147,7 +148,7 @@ function App() {
             path="/fpo/intelligence"
             element={
               <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
-                <MarketIntelligencePage />
+                <FPOIntelligencePage />
               </ProtectedRoute>
             }
           />
