@@ -33,6 +33,8 @@ import {
   ArrowRight,
   TrendingUp,
   Star,
+  CreditCard,
+  ShieldCheck,
 } from 'lucide-react';
 
 // Default Fallback Data if DB has zero records
@@ -136,7 +138,7 @@ const SAMPLE_ORDERS = [
     orderNumber: 'KS-ORD-801078-102',
     createdAt: '2026-09-15T18:30:00.000Z',
     status: 'ACCEPTED',
-    paymentStatus: 'PAID_ESCROW',
+    paymentStatus: 'UNPAID',
     totalAmount: 33000,
     items: [
       {
@@ -207,6 +209,7 @@ const BulkBuyerDashboard = () => {
   const [orderFilter, setOrderFilter] = useState('ALL');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // ==========================================
   // AI AGGREGATOR STATE
@@ -270,6 +273,32 @@ const BulkBuyerDashboard = () => {
     fetchListings();
     fetchOrders();
   }, [userLat, userLng]);
+
+  // Handle Pay & Lock Escrow
+  const handlePayEscrow = async (orderId) => {
+    setPaymentLoading(true);
+    try {
+      // If sample order
+      if (orderId.startsWith('sample_')) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o._id === orderId ? { ...o, status: 'IN_TRANSIT', paymentStatus: 'PAID_ESCROW' } : o
+          )
+        );
+        setToastSuccess('Payment confirmed & Escrow locked! Order is now in transit 🚚');
+      } else {
+        const { data } = await API.put(`/orders/${orderId}/pay`);
+        if (data.success) {
+          setToastSuccess('Payment confirmed & Escrow locked! Order is now in transit 🚚');
+          fetchOrders();
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Payment processing error.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   // AI Matching Request
   const handleCreateRequest = async (e) => {
@@ -381,6 +410,13 @@ const BulkBuyerDashboard = () => {
       default:
         return { label: status || 'Pending', color: 'bg-slate-100 text-slate-800 border-slate-300', dotColor: 'bg-slate-500', icon: Package };
     }
+  };
+
+  const getStepNumber = (status) => {
+    if (['DELIVERED', 'COMPLETED'].includes(status)) return 4;
+    if (status === 'IN_TRANSIT') return 3;
+    if (['ACCEPTED', 'PICKUP_VERIFIED'].includes(status)) return 2;
+    return 1;
   };
 
   return (
@@ -683,9 +719,65 @@ const BulkBuyerDashboard = () => {
                         })()}
 
                         <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          Payment {selectedOrder.paymentStatus || 'Pending'}
+                          {selectedOrder.paymentStatus === 'PAID_ESCROW' ? 'Escrow Locked ✓' : 'Payment Pending'}
                         </span>
                       </div>
+                    </div>
+
+                    {/* ACTION BOX: Farmer Accepted -> Payment & Escrow Lock Button */}
+                    {selectedOrder.status === 'ACCEPTED' && selectedOrder.paymentStatus !== 'PAID_ESCROW' && (
+                      <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                              <span>Farmer Accepted Your Buy Request!</span>
+                            </h4>
+                            <p className="text-[11px] text-emerald-800 font-medium">
+                              Pay &amp; Lock Escrow funds (₹{selectedOrder.totalAmount?.toLocaleString()}) to dispatch this order.
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => handlePayEscrow(selectedOrder._id)}
+                            disabled={paymentLoading}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all"
+                          >
+                            <CreditCard className="w-4 h-4 text-emerald-300" />
+                            <span>{paymentLoading ? 'Securing Escrow...' : 'Pay & Lock Escrow 💳'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Live Order Progress Tracker Bar */}
+                    <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/80 space-y-3">
+                      <span className="text-[11px] font-extrabold text-slate-700 block">
+                        Fulfillment & Delivery Tracker:
+                      </span>
+                      {(() => {
+                        const stepNum = getStepNumber(selectedOrder.status);
+                        return (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                            <div className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${stepNum >= 1 ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold' : 'bg-white border-slate-200 text-slate-400'}`}>
+                              <Clock className="w-3.5 h-3.5 text-emerald-700" />
+                              <span className="text-[10px]">1. Request Sent</span>
+                            </div>
+                            <div className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${stepNum >= 2 ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold' : 'bg-white border-slate-200 text-slate-400'}`}>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                              <span className="text-[10px]">2. Farmer Accepted</span>
+                            </div>
+                            <div className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${stepNum >= 3 ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold' : 'bg-white border-slate-200 text-slate-400'}`}>
+                              <Truck className="w-3.5 h-3.5 text-emerald-700" />
+                              <span className="text-[10px]">3. In Transit</span>
+                            </div>
+                            <div className={`p-2 rounded-xl border flex flex-col items-center gap-1 ${stepNum >= 4 ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-bold' : 'bg-white border-slate-200 text-slate-400'}`}>
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                              <span className="text-[10px]">4. Delivered</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Produce Ordered Details */}
