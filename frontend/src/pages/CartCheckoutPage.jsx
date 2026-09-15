@@ -90,8 +90,15 @@ const CartCheckoutPage = () => {
             <p className="text-xs text-slate-500 font-medium">
               Delivery to: {orderSuccess.deliveryAddress?.street}, {orderSuccess.deliveryAddress?.city}, {orderSuccess.deliveryAddress?.state} - {orderSuccess.deliveryAddress?.pincode}
             </p>
-            <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 font-semibold">
-              ℹ️ The seller has been notified of your request. Once the seller accepts, you can pay & confirm escrow on your Trade Ticket or My Orders dashboard.
+            <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 font-semibold space-y-2">
+              <p>ℹ️ The seller has been notified of your request. Once the seller accepts, you can pay &amp; confirm escrow on your Trade Ticket or My Orders dashboard.</p>
+              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px] font-bold flex items-start gap-2">
+                <span className="text-base leading-none">⏰</span>
+                <div>
+                  <p className="font-extrabold text-blue-900">6-Hour Area Batch Dispatch Active</p>
+                  <p className="text-[10px] text-blue-700 font-medium">To protect farmer profit margins and eliminate hourly transport fees, orders in your area are combined into scheduled 6-hour delivery batches.</p>
+                </div>
+              </div>
             </div>
           </div>
 

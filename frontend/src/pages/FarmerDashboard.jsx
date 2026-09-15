@@ -239,6 +239,51 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
+        {/* 6-Hour Area Batch Dispatch & Logistics Savings Banner */}
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-md space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-700/50 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/30 border border-blue-400/40 text-blue-300 flex items-center justify-center font-bold text-lg">
+                ⏰
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                  6-Hour Area Batch Dispatch Engine
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                    Active FPO Pooling
+                  </span>
+                </h3>
+                <p className="text-xs text-blue-200 mt-0.5">
+                  Orders from nearby consumers in the same area accumulate over 6 hours so you dispatch together in one low-cost delivery trip!
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-blue-950/80 px-4 py-2 rounded-2xl border border-blue-700/60 text-right">
+              <span className="text-[10px] uppercase font-bold text-blue-300 block">Estimated Farmer Savings</span>
+              <span className="text-base font-black text-emerald-400">₹450+ per delivery batch</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-slate-300">Cluster 1: Delhi NCR (110016)</span>
+              <p className="font-black text-white">2 Orders (45 kg total)</p>
+              <span className="text-[10px] text-emerald-400 font-bold">⏰ Window Ends in ~3h 15m</span>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-slate-300">Cluster 2: Karnal District</span>
+              <p className="font-black text-white">3 Orders (120 kg total)</p>
+              <span className="text-[10px] text-emerald-400 font-bold">⏰ Window Ends in ~4h 45m</span>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-slate-300">Cluster 3: Gurgaon Sector 45</span>
+              <p className="font-black text-white">1 Order (25 kg total)</p>
+              <span className="text-[10px] text-amber-300 font-bold">⏰ Accumulating Orders...</span>
+            </div>
+          </div>
+        </div>
+
         {/* Section 1: Detailed Sales History ("What I Have Sold & To Whom") */}
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden space-y-0">
           <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
