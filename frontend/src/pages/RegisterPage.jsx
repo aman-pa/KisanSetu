@@ -52,13 +52,6 @@ const RegisterPage = () => {
   const [profileImageVerified, setProfileImageVerified] = useState(false);
 
   const [aadhaarNumber, setAadhaarNumber] = useState('');
-  const [aadhaarFrontImage, setAadhaarFrontImage] = useState('');
-  const [aadhaarFrontError, setAadhaarFrontError] = useState('');
-  const [aadhaarFrontVerified, setAadhaarFrontVerified] = useState(false);
-
-  const [aadhaarBackImage, setAadhaarBackImage] = useState('');
-  const [aadhaarBackError, setAadhaarBackError] = useState('');
-  const [aadhaarBackVerified, setAadhaarBackVerified] = useState(false);
 
   const handleProfilePhotoChange = async (e) => {
     const file = e.target.files[0];
@@ -73,40 +66,6 @@ const RegisterPage = () => {
       } else {
         setProfileImage(result.dataUrl);
         setProfileImageVerified(true);
-      }
-    }
-  };
-
-  const handleAadhaarFrontChange = async (e) => {
-    const file = e.target.files[0];
-    setAadhaarFrontError('');
-    setAadhaarFrontVerified(false);
-
-    if (file) {
-      const result = await verifyImageClarity(file, 'AADHAAR_FRONT');
-      if (!result.valid) {
-        setAadhaarFrontError(result.message);
-        setAadhaarFrontImage('');
-      } else {
-        setAadhaarFrontImage(result.dataUrl);
-        setAadhaarFrontVerified(true);
-      }
-    }
-  };
-
-  const handleAadhaarBackChange = async (e) => {
-    const file = e.target.files[0];
-    setAadhaarBackError('');
-    setAadhaarBackVerified(false);
-
-    if (file) {
-      const result = await verifyImageClarity(file, 'AADHAAR_BACK');
-      if (!result.valid) {
-        setAadhaarBackError(result.message);
-        setAadhaarBackImage('');
-      } else {
-        setAadhaarBackImage(result.dataUrl);
-        setAadhaarBackVerified(true);
       }
     }
   };
@@ -201,16 +160,6 @@ const RegisterPage = () => {
       return;
     }
 
-    if (!aadhaarFrontImage) {
-      setError('Please upload a clear photo of your Aadhaar Card (Front Side).');
-      return;
-    }
-
-    if (!aadhaarBackImage) {
-      setError('Please upload a clear photo of your Aadhaar Card (Back Side).');
-      return;
-    }
-
     setLoading(true);
     try {
       const { data } = await API.post('/auth/send-registration-otp', {
@@ -270,8 +219,6 @@ const RegisterPage = () => {
         address: { street, city, state, pincode, lat, lng },
         profileImage,
         aadhaarNumber: aadhaarNumber.trim(),
-        aadhaarFrontImage,
-        aadhaarBackImage,
         profileDetails: {
           farmSizeAcres: Number(farmSizeAcres),
           orgName,
@@ -561,8 +508,8 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Mandatory Aadhaar Identity & Document Verification (All Roles) */}
-            <div className="p-4 bg-blue-50/70 border border-blue-200/90 rounded-2xl space-y-4">
+            {/* Mandatory Aadhaar Identity Verification (All Roles) */}
+            <div className="p-4 bg-blue-50/70 border border-blue-200/90 rounded-2xl space-y-3">
               <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
                 <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
                   <span>🆔 Official Aadhaar Card Identity Verification</span>
@@ -580,71 +527,6 @@ const RegisterPage = () => {
                   placeholder="e.g. 5489 1234 5678"
                   className="w-full px-4 py-2.5 rounded-xl border border-blue-300 text-xs font-black font-mono tracking-widest text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
-              </div>
-
-              {/* Aadhaar Front & Back Upload Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Front Side Slot */}
-                <div className="p-3 bg-white rounded-xl border border-blue-200 space-y-2">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-800">
-                    <span>Aadhaar Front Side:</span>
-                    {aadhaarFrontVerified && (
-                      <span className="text-emerald-700 text-[10px] font-extrabold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Front
-                      </span>
-                    )}
-                  </div>
-
-                  {aadhaarFrontError && (
-                    <p className="text-[10px] text-rose-600 font-semibold">{aadhaarFrontError}</p>
-                  )}
-
-                  <div className="h-24 bg-slate-50 border border-dashed border-slate-300 rounded-xl overflow-hidden flex items-center justify-center relative">
-                    {aadhaarFrontImage ? (
-                      <img src={aadhaarFrontImage} alt="Aadhaar Front" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs text-slate-400 font-bold text-center px-2">📄 Front Photo (Clear &amp; Sharp)</span>
-                    )}
-                  </div>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAadhaarFrontChange}
-                    className="w-full text-[11px] text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                  />
-                </div>
-
-                {/* Back Side Slot */}
-                <div className="p-3 bg-white rounded-xl border border-blue-200 space-y-2">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-800">
-                    <span>Aadhaar Back Side:</span>
-                    {aadhaarBackVerified && (
-                      <span className="text-emerald-700 text-[10px] font-extrabold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Back
-                      </span>
-                    )}
-                  </div>
-
-                  {aadhaarBackError && (
-                    <p className="text-[10px] text-rose-600 font-semibold">{aadhaarBackError}</p>
-                  )}
-
-                  <div className="h-24 bg-slate-50 border border-dashed border-slate-300 rounded-xl overflow-hidden flex items-center justify-center relative">
-                    {aadhaarBackImage ? (
-                      <img src={aadhaarBackImage} alt="Aadhaar Back" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs text-slate-400 font-bold text-center px-2">📄 Back Photo (Address &amp; QR)</span>
-                    )}
-                  </div>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAadhaarBackChange}
-                    className="w-full text-[11px] text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                  />
-                </div>
               </div>
             </div>
 
