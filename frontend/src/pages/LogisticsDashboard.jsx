@@ -1073,13 +1073,28 @@ const LogisticsDashboard = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 relative z-10">
-            <button
-              onClick={() => openQrScanner(selectedOrder, 'PICKUP')}
-              className="px-4 py-2.5 rounded-2xl bg-white text-emerald-950 font-bold text-xs shadow-md hover:bg-emerald-50 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <QrCode className="w-4 h-4 text-emerald-700" />
-              Verify Batch QR
-            </button>
+            {selectedOrder && ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(selectedOrder.status) ? (
+              <button
+                onClick={() => openQrScanner(selectedOrder, 'DELIVERY')}
+                className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <ShieldCheck className="w-4 h-4 text-purple-200" />
+                Confirm POD Delivery
+              </button>
+            ) : selectedOrder && (selectedOrder.status === 'DELIVERED' || selectedOrder.status === 'COMPLETED') ? (
+              <span className="px-4 py-2.5 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs shadow-sm flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                Delivered &amp; Settled
+              </span>
+            ) : (
+              <button
+                onClick={() => openQrScanner(selectedOrder, 'PICKUP')}
+                className="px-4 py-2.5 rounded-2xl bg-white text-emerald-950 font-bold text-xs shadow-md hover:bg-emerald-50 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <QrCode className="w-4 h-4 text-emerald-700" />
+                Verify Batch QR (Pickup)
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -1427,17 +1442,21 @@ const LogisticsDashboard = () => {
 
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                        className={`text-xs font-black px-3 py-1 rounded-full ${
                           selectedOrder.status === 'DELIVERED' || selectedOrder.status === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            : selectedOrder.status === 'IN_TRANSIT'
-                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                            : ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(selectedOrder.status)
+                            ? 'bg-indigo-100 text-indigo-950 border border-indigo-300'
                             : selectedOrder.status === 'ACCEPTED'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
                             : 'bg-slate-100 text-slate-800 border border-slate-200'
                         }`}
                       >
-                        {selectedOrder.status}
+                        {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(selectedOrder.status)
+                          ? 'IN_TRANSIT (SHIPPED 🛵)'
+                          : selectedOrder.status === 'DELIVERED' || selectedOrder.status === 'COMPLETED'
+                          ? 'DELIVERED ✅'
+                          : selectedOrder.status}
                       </span>
                     </div>
                   </div>
@@ -1550,32 +1569,48 @@ const LogisticsDashboard = () => {
 
                   <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      {selectedOrder.isConsumer || selectedOrder.buyerRole === 'CONSUMER' || (selectedOrder.totalOrderKg || selectedOrder.quantityKg || 0) <= 50 ? (
-                        <button
-                          onClick={() => {
-                            setActiveWorkspaceTab('TSP_OPTIMIZER');
-                            setSearchParams({ tab: 'route-map' });
-                          }}
-                          className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                        >
-                          <Zap className="w-3.5 h-3.5 text-emerald-300" />
-                          ⚡ Open AI Batch Dispatcher (All 20km Orders)
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => openVehicleAssign(selectedOrder)}
-                          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer"
-                        >
-                          Assign Dedicated Truck
-                        </button>
+                      {/* Dispatcher or vehicle assign button if not yet in transit / delivered */}
+                      {!['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED'].includes(selectedOrder.status) && (
+                        (selectedOrder.isConsumer || selectedOrder.buyerRole === 'CONSUMER' || (selectedOrder.totalOrderKg || selectedOrder.quantityKg || 0) <= 50) ? (
+                          <button
+                            onClick={() => {
+                              setActiveWorkspaceTab('TSP_OPTIMIZER');
+                              setSearchParams({ tab: 'route-map' });
+                            }}
+                            className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          >
+                            <Zap className="w-3.5 h-3.5 text-emerald-300" />
+                            ⚡ Open AI Batch Dispatcher (All 20km Orders)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openVehicleAssign(selectedOrder)}
+                            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all cursor-pointer"
+                          >
+                            Assign Dedicated Truck
+                          </button>
+                        )
                       )}
 
-                      <button
-                        onClick={() => openQrScanner(selectedOrder, 'PICKUP')}
-                        className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        <QrCode className="w-3.5 h-3.5" /> Scan Gate QR
-                      </button>
+                      {/* Left Status Badge / Scan QR */}
+                      {!['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED'].includes(selectedOrder.status) ? (
+                        <button
+                          onClick={() => openQrScanner(selectedOrder, 'PICKUP')}
+                          className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <QrCode className="w-3.5 h-3.5" /> Scan Gate QR
+                        </button>
+                      ) : ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(selectedOrder.status) ? (
+                        <span className="px-3.5 py-2 rounded-xl bg-indigo-50 text-indigo-900 border border-indigo-200 font-extrabold text-xs flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
+                          <span>Shipped &amp; Transmitting En Route 🛵</span>
+                        </span>
+                      ) : (
+                        <span className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 font-extrabold text-xs flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Delivered &amp; Handed Over ✅</span>
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1604,18 +1639,18 @@ const LogisticsDashboard = () => {
                         </button>
                       )}
 
-                      {selectedOrder.status === 'IN_TRANSIT' && (
+                      {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(selectedOrder.status) && (
                         <button
                           onClick={() => openQrScanner(selectedOrder, 'DELIVERY')}
-                          className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                          className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         >
-                          <ShieldCheck className="w-4 h-4" /> Confirm Proof of Delivery
+                          <ShieldCheck className="w-4 h-4 text-purple-200" /> Confirm Proof of Delivery (POD)
                         </button>
                       )}
 
                       {(selectedOrder.status === 'DELIVERED' || selectedOrder.status === 'COMPLETED') && (
                         <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Settled & Delivered
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Settled &amp; Delivered
                         </span>
                       )}
                     </div>
@@ -2353,7 +2388,17 @@ const LogisticsDashboard = () => {
           onClose={() => setQrModalOpen(false)}
           selectedOrder={selectedOrderForModal}
           mode={qrModalMode}
-          onSuccess={() => {
+          onSuccess={(resData) => {
+            const nextStatus = qrModalMode === 'PICKUP' ? 'IN_TRANSIT' : 'DELIVERED';
+            const targetId = selectedOrderForModal?._id;
+            if (targetId) {
+              setTasks((prev) =>
+                prev.map((t) => (t._id === targetId ? { ...t, status: nextStatus } : t))
+              );
+              setDemoTasks((prev) =>
+                prev.map((t) => (t._id === targetId ? { ...t, status: nextStatus } : t))
+              );
+            }
             fetchLogisticsData();
           }}
         />
