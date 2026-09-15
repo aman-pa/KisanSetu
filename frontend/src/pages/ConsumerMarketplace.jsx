@@ -18,7 +18,11 @@ import {
   PlusCircle,
   Layers,
   TrendingUp,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
+import QualityDetailsModal from '../components/QualityDetailsModal';
+import { calculateCurrentQuality } from '../utils/qualityCalculator';
 
 const ConsumerMarketplace = () => {
   const [listings, setListings] = useState([]);
@@ -28,6 +32,7 @@ const ConsumerMarketplace = () => {
   const [grade, setGrade] = useState('ALL');
   const [district, setDistrict] = useState('');
   const [sort, setSort] = useState('newest');
+  const [selectedQualityListing, setSelectedQualityListing] = useState(null);
 
   const [toastMessage, setToastMessage] = useState('');
   const [toastError, setToastError] = useState('');
@@ -266,9 +271,20 @@ const ConsumerMarketplace = () => {
                         <Award className="w-3.5 h-3.5 text-amber-400" /> {item.grade.replace('GRADE_', 'Grade ')}
                       </div>
 
-                      <div className="absolute top-3 right-3 bg-emerald-600 text-white px-2.5 py-1 rounded-xl text-[11px] font-extrabold shadow-sm">
-                        Quality Score: {item.aiQualityEstimateScore}% (Sample)
-                      </div>
+                      {(() => {
+                        const q = item.currentQuality || calculateCurrentQuality(item.aiQualityAssessment, item.storageCondition, item.cropName);
+                        return q.qualityStatus === 'VERIFIED' ? (
+                          <div className="absolute top-3 right-3 bg-emerald-700/95 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[11px] font-extrabold shadow-sm flex items-center gap-1 border border-white/20">
+                            <Sparkles className="w-3 h-3 text-emerald-300" />
+                            VERIFIED: {q.currentGrade} ({q.currentScore}%)
+                          </div>
+                        ) : (
+                          <div className="absolute top-3 right-3 bg-amber-700/95 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-[11px] font-extrabold shadow-sm flex items-center gap-1 border border-white/20">
+                            <Clock className="w-3 h-3 text-amber-300" />
+                            ESTIMATED: {q.currentGrade} ({q.currentScore}%)
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Content */}
@@ -286,20 +302,34 @@ const ConsumerMarketplace = () => {
                         </div>
                       </div>
 
-                      {/* Farmer Info */}
-                      <div className="p-3 bg-slate-50 dark:bg-emerald-950/60 rounded-2xl flex items-center justify-between border border-slate-200 dark:border-emerald-800/40">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
-                            🌾
+                      {/* Geo-Verification & Farmer Info */}
+                      <div className="p-3 bg-slate-50 dark:bg-emerald-950/60 rounded-2xl space-y-2 border border-slate-200 dark:border-emerald-800/40">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
+                              🌾
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-900 dark:text-white">{item.farmer?.name || 'Farmer Partner'}</p>
+                              <p className="text-[10px] text-slate-500 dark:text-emerald-300/80 font-medium">Trust Score: 94/100</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 dark:text-white">{item.farmer?.name || 'Farmer Partner'}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-emerald-300/80 font-medium">Trust Score: 94/100</p>
-                          </div>
+                          <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                            Verified Farmer
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
-                          Verified
-                        </span>
+
+                        {(item.aiQualityAssessment?.latestGeoVerification?.isGeoVerified || item.aiQualityAssessment?.latestGeoVerification?.status === 'VERIFIED') && (
+                          <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800 dark:text-emerald-300 pt-1 border-t border-slate-200/60 dark:border-emerald-800/40">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              Geo-Verification: Verified Origin
+                            </span>
+                            <span className="text-slate-500 dark:text-emerald-300/70 font-medium">
+                              {item.location?.district}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Harvest Date & Stock */}
@@ -309,6 +339,30 @@ const ConsumerMarketplace = () => {
                         </span>
                         <span className="font-bold text-slate-800 dark:text-white">{item.availableQuantityKg.toLocaleString()} kg available</span>
                       </div>
+
+                      {/* View AI Quality Report Button */}
+                      {(() => {
+                        const q = item.currentQuality || calculateCurrentQuality(item.aiQualityAssessment, item.storageCondition, item.cropName);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedQualityListing(item)}
+                            className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-extrabold border border-emerald-200 transition-all flex items-center justify-between cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Award className="w-3.5 h-3.5 text-emerald-600" />
+                              View Quality Report
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                              q.qualityStatus === 'VERIFIED'
+                                ? 'bg-emerald-200 text-emerald-900 border-emerald-300'
+                                : 'bg-amber-100 text-amber-900 border-amber-300'
+                            }`}>
+                              {q.qualityStatus === 'VERIFIED' ? '✓ VERIFIED' : '⏱ ESTIMATED'}
+                            </span>
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -322,7 +376,7 @@ const ConsumerMarketplace = () => {
                     </Link>
                     <button
                       onClick={() => handleAddToCart(item)}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition-all"
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       <ShoppingCart className="w-4 h-4" /> Add
                     </button>
@@ -332,6 +386,26 @@ const ConsumerMarketplace = () => {
             </div>
           )}
         </div>
+
+        {/* Quality Details Modal */}
+        <QualityDetailsModal
+          isOpen={!!selectedQualityListing}
+          onClose={() => setSelectedQualityListing(null)}
+          assessment={
+            selectedQualityListing?.aiQualityAssessment || {
+              overallScore: selectedQualityListing?.aiQualityEstimateScore || 92,
+              grade: selectedQualityListing?.grade?.replace('GRADE_', '') || 'A+',
+              confidence: 88,
+              freshness: 94,
+              appearance: 91,
+              colorQuality: 95,
+              visibleDamage: 96,
+              spoilageRisk: 'Low',
+              maturity: 88,
+            }
+          }
+          produceInfo={selectedQualityListing}
+        />
       </div>
     </MainLayout>
   );

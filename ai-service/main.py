@@ -1,9 +1,28 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from services.demand_forecast import predict_demand
 from services.price_recommender import recommend_price
-from services.visual_quality import estimate_visual_quality
+from services.visual_quality import (
+    estimate_visual_quality,
+    validate_image_quality,
+    assess_crop_quality,
+    check_crop_consistency,
+    assess_single_image_quality,
+)
 from services.route_optimizer import optimize_logistics_route
+
+class ImageValidationRequest(BaseModel):
+    image: str
+
+class CropAnalysisRequest(BaseModel):
+    cropName: str = Field(default="Tomato")
+    category: Optional[str] = Field(default="VEGETABLES")
+    harvestDate: Optional[str] = Field(default=None)
+    storageCondition: Optional[str] = Field(default="Room Temperature")
+    image1: str
+    image2: str
 
 app = FastAPI(
     title="KisanSetu AI Microservice Engine",
@@ -45,6 +64,51 @@ def get_price_recommendation(crop: str = Query("Tomato"), grade: str = Query("GR
 @app.get("/visual-quality")
 def get_visual_quality(grade: str = Query("GRADE_A")):
     return estimate_visual_quality(grade)
+
+@app.post("/quality/validate-image")
+def endpoint_validate_image(payload: ImageValidationRequest):
+    return validate_image_quality(payload.image)
+
+@app.post("/quality/analyze")
+def endpoint_analyze_crop(payload: CropAnalysisRequest):
+    return assess_crop_quality(
+        crop_name=payload.cropName,
+        category=payload.category or "VEGETABLES",
+        harvest_date=payload.harvestDate or "",
+        storage_condition=payload.storageCondition or "Room Temperature",
+        image1=payload.image1,
+        image2=payload.image2
+    )
+
+class CropConsistencyRequest(BaseModel):
+    cropName: str = Field(default="Tomato")
+    category: Optional[str] = Field(default="VEGETABLES")
+    image1: str
+    image2: str
+
+class SingleCropAssessRequest(BaseModel):
+    cropName: str = Field(default="Tomato")
+    category: Optional[str] = Field(default="VEGETABLES")
+    image: str
+    storageCondition: Optional[str] = Field(default="Room Temperature")
+
+@app.post("/quality/check-consistency")
+def endpoint_check_consistency(payload: CropConsistencyRequest):
+    return check_crop_consistency(
+        crop_name=payload.cropName,
+        category=payload.category or "VEGETABLES",
+        image1=payload.image1,
+        image2=payload.image2
+    )
+
+@app.post("/quality/assess-single")
+def endpoint_assess_single(payload: SingleCropAssessRequest):
+    return assess_single_image_quality(
+        crop_name=payload.cropName,
+        category=payload.category or "VEGETABLES",
+        image=payload.image,
+        storage_condition=payload.storageCondition or "Room Temperature"
+    )
 
 @app.get("/optimize-route")
 def get_optimized_route():
