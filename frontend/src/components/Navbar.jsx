@@ -211,13 +211,6 @@ const Navbar = () => {
             isActive: (pathname, search) =>
               pathname === '/logistics/dashboard' && search && search.includes('fleet-telemetry'),
           },
-          {
-            label: 'Logistics Intelligence',
-            path: '/logistics/intelligence',
-            icon: Sparkles,
-            isActive: (pathname) =>
-              pathname === '/logistics/intelligence',
-          },
         ];
 
       case 'ADMIN':

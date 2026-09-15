@@ -24,7 +24,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import BatchTraceabilityPage from './pages/BatchTraceabilityPage';
 import MarketIntelligencePage from './pages/MarketIntelligencePage';
 import FPOIntelligencePage from './pages/FPOIntelligencePage';
-import LogisticsIntelligencePage from './pages/LogisticsIntelligencePage';
 import ConsumerOrdersPage from './pages/ConsumerOrdersPage';
 import TradeTicketPage from './pages/TradeTicketPage';
 
@@ -170,14 +169,6 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['LOGISTICS', 'ADMIN', 'FPO']}>
                 <LogisticsDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/logistics/intelligence"
-            element={
-              <ProtectedRoute allowedRoles={['LOGISTICS', 'ADMIN', 'FPO']}>
-                <LogisticsIntelligencePage />
               </ProtectedRoute>
             }
           />
