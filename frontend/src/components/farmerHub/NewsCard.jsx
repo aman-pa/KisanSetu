@@ -1,6 +1,36 @@
 import React from 'react';
 import { Newspaper, Calendar, ExternalLink, ShieldCheck } from 'lucide-react';
 
+/**
+ * Safely parse PIB RSS date strings like "Mon, 10 Mar 2026 14:30:00 IST"
+ * JavaScript does not recognise "IST" timezone abbreviation — replace with +0530.
+ */
+const formatPubDate = (pubDate) => {
+  if (!pubDate) return 'Recent';
+
+  // Normalise known timezone abbreviations to UTC offsets
+  const normalized = pubDate
+    .replace(/\bIST\b/, '+0530')
+    .replace(/\bGMT\b/, '+0000')
+    .replace(/\bUTC\b/, '+0000');
+
+  const date = new Date(normalized);
+
+  if (!isNaN(date.getTime())) {
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  // Fallback: extract "10 Mar 2026" directly via regex
+  const match = pubDate.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/);
+  if (match) return `${match[1]} ${match[2]} ${match[3]}`;
+
+  return 'Recent';
+};
+
 const NewsCard = ({ news }) => {
   return (
     <article className="bg-white rounded-3xl p-6 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group">
@@ -12,7 +42,7 @@ const NewsCard = ({ news }) => {
           </span>
           <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
             <Calendar className="w-3 h-3" />
-            <span>{news.pubDate ? new Date(news.pubDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'}</span>
+            <span>{formatPubDate(news.pubDate)}</span>
           </div>
         </div>
 
