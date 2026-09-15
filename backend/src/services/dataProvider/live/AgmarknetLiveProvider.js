@@ -15,7 +15,7 @@ class AgmarknetLiveProvider extends MarketDataProvider {
     this.apiKey = options.apiKey || null;
     this.apiUrl = options.apiUrl || process.env.AGMARKNET_API_URL || 'https://api.data.gov.in/resource';
     this.resourceId = options.resourceId || process.env.AGMARKNET_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
-    this.timeoutMs = options.timeoutMs || 8000;
+    this.timeoutMs = options.timeoutMs || 2000;
     this.cache = new SimpleTtlCache(options.cacheTtlSeconds || 900); // 15 min cache
     this.rateLimitCooldownMs = options.rateLimitCooldownMs || 60000; // 60s cooldown on 429
     this.rateLimitUntil = null;
