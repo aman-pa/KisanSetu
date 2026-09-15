@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { fetchLocationByPincode, getCurrentGpsLocation } from '../services/locationService';
+import { verifyImageClarity } from '../utils/imageVerification';
 
 const RegisterPage = () => {
   const [name, setName] = useState('');
@@ -44,6 +45,30 @@ const RegisterPage = () => {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [locationSuccessMsg, setLocationSuccessMsg] = useState('');
   const [locationErrorMsg, setLocationErrorMsg] = useState('');
+
+  // Profile Photo & Aadhaar Identity Upload State
+  const [profileImage, setProfileImage] = useState('');
+  const [profileImageError, setProfileImageError] = useState('');
+  const [profileImageVerified, setProfileImageVerified] = useState(false);
+
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+
+  const handleProfilePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    setProfileImageError('');
+    setProfileImageVerified(false);
+
+    if (file) {
+      const result = await verifyImageClarity(file, 'PROFILE');
+      if (!result.valid) {
+        setProfileImageError(result.message);
+        setProfileImage('');
+      } else {
+        setProfileImage(result.dataUrl);
+        setProfileImageVerified(true);
+      }
+    }
+  };
 
   // Role details
   const [farmSizeAcres, setFarmSizeAcres] = useState(5);
@@ -113,7 +138,7 @@ const RegisterPage = () => {
     }
   };
 
-  // Step 1: Send OTP to Email/Phone
+  // Step 1: Send OTP to Email/Phone (with Profile Photo & Aadhaar Validation)
   const handleInitiateRegistration = async (e) => {
     e.preventDefault();
     setError('');
@@ -122,6 +147,16 @@ const RegisterPage = () => {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (!profileImage) {
+      setError('Please upload a clear face profile photo before registering.');
+      return;
+    }
+
+    if (!aadhaarNumber || aadhaarNumber.trim().length !== 12 || isNaN(Number(aadhaarNumber))) {
+      setError('Please enter a valid 12-digit Aadhaar Card Number.');
       return;
     }
 
@@ -182,6 +217,8 @@ const RegisterPage = () => {
         password,
         role,
         address: { street, city, state, pincode, lat, lng },
+        profileImage,
+        aadhaarNumber: aadhaarNumber.trim(),
         profileDetails: {
           farmSizeAcres: Number(farmSizeAcres),
           orgName,
@@ -262,6 +299,53 @@ const RegisterPage = () => {
 
           {/* Registration Form */}
           <form onSubmit={handleInitiateRegistration} className="space-y-4">
+
+            {/* Profile Photo Upload Slot (Face Image Clarity Verification) */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <span>👤 Upload Profile Photo (Clear Face Photo)</span>
+                    {profileImageVerified && (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Face Quality Verified
+                      </span>
+                    )}
+                  </label>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Upload a clear, un-blurred photo of your face. Low resolution or blurry photos will be rejected.
+                  </p>
+                </div>
+              </div>
+
+              {profileImageError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{profileImageError}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-300 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  {profileImage ? (
+                    <img src={profileImage} alt="Profile Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl text-slate-400">📷</span>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePhotoChange}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Accepted: JPG, PNG (Sharp &amp; Clear, Min 150x150px)</p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
@@ -421,6 +505,28 @@ const RegisterPage = () => {
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Mandatory Aadhaar Identity Verification (All Roles) */}
+            <div className="p-4 bg-blue-50/70 border border-blue-200/90 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
+                <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <span>🆔 Official Aadhaar Card Identity Verification</span>
+                  <span className="bg-blue-200 text-blue-950 text-[10px] px-2 py-0.5 rounded-full font-bold">Mandatory Verification</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">12-Digit Aadhaar Card Number:</label>
+                <input
+                  type="text"
+                  maxLength="12"
+                  value={aadhaarNumber}
+                  onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 5489 1234 5678"
+                  className="w-full px-4 py-2.5 rounded-xl border border-blue-300 text-xs font-black font-mono tracking-widest text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
               </div>
             </div>
 
