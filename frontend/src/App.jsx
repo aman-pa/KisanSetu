@@ -27,6 +27,7 @@ import FPOIntelligencePage from './pages/FPOIntelligencePage';
 import LogisticsIntelligencePage from './pages/LogisticsIntelligencePage';
 import ConsumerOrdersPage from './pages/ConsumerOrdersPage';
 import TradeTicketPage from './pages/TradeTicketPage';
+import FarmerHubPage from './pages/FarmerHubPage';
 
 function App() {
   return (
@@ -45,6 +46,16 @@ function App() {
           <Route path="/trace/:batchId" element={<BatchTraceabilityPage />} />
           <Route path="/consumer/orders" element={<ConsumerOrdersPage />} />
           <Route path="/ticket/:id" element={<TradeTicketPage />} />
+
+          {/* Authenticated-Only Farmer Hub Dashboard */}
+          <Route
+            path="/farmer-hub"
+            element={
+              <ProtectedRoute>
+                <FarmerHubPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Role-Protected Farmer & FPO Routes */}
           <Route

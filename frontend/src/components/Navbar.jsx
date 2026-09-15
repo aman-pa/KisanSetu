@@ -31,6 +31,7 @@ import {
   Package,
   PackagePlus,
   Users,
+  Landmark,
   Navigation,
   Thermometer,
 } from 'lucide-react';
@@ -42,14 +43,23 @@ const Navbar = () => {
   const location = useLocation();
 
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('PERSONAL'); // 'PERSONAL' | 'BUSINESS' | 'SECURITY' | 'ORDERS'
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setUserDropdownOpen(false);
   }, [location.pathname]);
 
-    const getNavLinks = () => {
+  // Support opening profile modal via CustomEvent
+  useEffect(() => {
+    const handleOpenModal = () => setProfileModalOpen(true);
+    window.addEventListener('kisansetu:openProfileModal', handleOpenModal);
+    return () => window.removeEventListener('kisansetu:openProfileModal', handleOpenModal);
+  }, []);
+
+  const getNavLinks = () => {
     if (!user) {
       return [
         {
@@ -85,6 +95,12 @@ const Navbar = () => {
             path: '/farmer/dashboard',
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/farmer/dashboard',
+          },
+          {
+            label: 'Farmer Hub',
+            path: '/farmer-hub',
+            icon: Landmark,
+            isActive: (pathname) => pathname === '/farmer-hub',
           },
           {
             label: 'My Produce',
@@ -123,6 +139,12 @@ const Navbar = () => {
             path: '/fpo/farmers',
             icon: Users,
             isActive: (pathname) => pathname === '/fpo/farmers',
+          },
+          {
+            label: 'Farmer Hub',
+            path: '/farmer-hub',
+            icon: Landmark,
+            isActive: (pathname) => pathname === '/farmer-hub',
           },
           {
             label: 'Stock',
@@ -235,6 +257,12 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/admin/dashboard',
           },
           {
+            label: 'Farmer Hub',
+            path: '/farmer-hub',
+            icon: Landmark,
+            isActive: (pathname) => pathname === '/farmer-hub',
+          },
+          {
             label: 'Market Intelligence',
             path: '/market-intelligence',
             icon: TrendingUp,
@@ -261,6 +289,12 @@ const Navbar = () => {
             path: '/marketplace',
             icon: Search,
             isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+          },
+          {
+            label: 'Farmer Hub',
+            path: '/farmer-hub',
+            icon: Landmark,
+            isActive: (pathname) => pathname === '/farmer-hub',
           },
           {
             label: 'My Orders',
@@ -524,26 +558,103 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* Profile Photo Trigger */}
+              {/* Profile Photo Trigger with Dropdown */}
               {user ? (
-                <button
-                  onClick={() => setProfileModalOpen(true)}
-                  className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-slate-200 hover:border-agri-primary/40 hover:bg-emerald-50/60 transition-all cursor-pointer shadow-sm group"
-                  title="Click to view profile, manage email, address & password"
-                >
-                  <img
-                    src={user.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
-                    alt={user.name}
-                    className="w-9 h-9 rounded-xl object-cover border-2 border-agri-primary/30 group-hover:scale-105 transition-transform"
-                  />
-                  <div className="text-left hidden sm:block">
-                    <p className="text-xs font-extrabold text-slate-900 leading-tight">{user.name}</p>
-                    <span className={`inline-block text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadge().color}`}>
-                      {getRoleBadge().label}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-agri-primary" />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-slate-200 hover:border-agri-primary/40 hover:bg-emerald-50/60 transition-all cursor-pointer shadow-sm group focus:outline-none focus:ring-2 focus:ring-agri-primary/20"
+                    aria-expanded={userDropdownOpen}
+                    title="User profile menu & quick navigation"
+                  >
+                    <img
+                      src={user.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+                      alt={user.name}
+                      className="w-9 h-9 rounded-xl object-cover border-2 border-agri-primary/30 group-hover:scale-105 transition-transform"
+                    />
+                    <div className="text-left hidden sm:block">
+                      <p className="text-xs font-extrabold text-slate-900 leading-tight">{user.name}</p>
+                      <span className={`inline-block text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadge().color}`}>
+                        {getRoleBadge().label}
+                      </span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-agri-primary transition-transform ${userDropdownOpen ? 'rotate-180 text-agri-primary' : ''}`} />
+                  </button>
+
+                  {/* Profile Dropdown Panel */}
+                  {userDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setUserDropdownOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                        {/* User Header */}
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-2">
+                          <p className="text-xs font-black text-slate-900 leading-tight">{user.name}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                          <span className={`inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded border ${getRoleBadge().color}`}>
+                            {getRoleBadge().label}
+                          </span>
+                        </div>
+
+                        {/* Dropdown Items */}
+                        <div className="space-y-1 text-xs font-bold text-slate-700">
+                          <Link
+                            to="/farmer-hub"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-emerald-50 text-agri-primary hover:text-emerald-800 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Landmark className="w-4 h-4 text-emerald-600" />
+                              <span>Farmer Hub</span>
+                            </div>
+                            <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white">
+                              Govt
+                            </span>
+                          </Link>
+
+                          <Link
+                            to={getDashboardPath()}
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors"
+                          >
+                            <LayoutDashboard className="w-4 h-4 text-slate-500" />
+                            <span>Role Dashboard</span>
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setProfileModalOpen(true);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors text-left cursor-pointer"
+                          >
+                            <User className="w-4 h-4 text-slate-500" />
+                            <span>Account Settings & Profile</span>
+                          </button>
+                        </div>
+
+                        <div className="border-t border-slate-100 my-1 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              logout();
+                              navigate('/login');
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 font-bold text-xs transition-colors text-left cursor-pointer"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               ) : (
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Link
