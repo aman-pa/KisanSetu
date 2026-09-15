@@ -20,6 +20,8 @@ import {
   Printer,
   Copy,
   Check,
+  CreditCard,
+  ShieldCheck,
 } from 'lucide-react';
 
 const ConsumerOrdersPage = () => {
@@ -30,6 +32,28 @@ const ConsumerOrdersPage = () => {
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState(false);
+
+  // Simulated Escrow Payment Gateway State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [toastSuccess, setToastSuccess] = useState('');
+
+  const handlePayEscrow = async (orderId) => {
+    setPaymentProcessing(true);
+    try {
+      const { data } = await API.put(`/orders/${orderId}/pay`);
+      if (data.success) {
+        setToastSuccess('Payment confirmed & Escrow locked! Order is now in transit 🚚');
+        setIsPaymentModalOpen(false);
+        fetchOrders();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Payment processing error.');
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -474,8 +498,18 @@ const ConsumerOrdersPage = () => {
                           );
                         })()}
                         {selectedOrder.paymentStatus && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                            <span>{selectedOrder.paymentStatus === 'PAID' ? 'Payment Completed' : 'Payment Pending'}</span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                              ['PAID', 'PAID_ESCROW'].includes(selectedOrder.paymentStatus)
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            <span>
+                              {['PAID', 'PAID_ESCROW'].includes(selectedOrder.paymentStatus)
+                                ? 'Payment Completed ✓'
+                                : 'Payment Pending'}
+                            </span>
                           </span>
                         )}
                       </div>
@@ -484,6 +518,31 @@ const ConsumerOrdersPage = () => {
 
                   {/* Independently Scrollable Detail Body */}
                   <div className="p-4 sm:p-5 space-y-5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
+                    
+                    {/* Action Card: Seller Accepted -> Pay & Lock Escrow Button */}
+                    {selectedOrder.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(selectedOrder.paymentStatus) && (
+                      <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl space-y-3 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                              <span>Farmer Accepted Your Buy Request!</span>
+                            </h4>
+                            <p className="text-[11px] text-emerald-800 font-medium">
+                              Pay &amp; Lock Escrow funds (₹{selectedOrder.totalAmount?.toLocaleString()}) to dispatch this order.
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => setIsPaymentModalOpen(true)}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            <CreditCard className="w-4 h-4 text-emerald-300" />
+                            <span>Pay &amp; Lock Escrow 💳</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Produce Purchased Section */}
                     <div className="space-y-2.5">
@@ -730,6 +789,16 @@ const ConsumerOrdersPage = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      {selectedOrder.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(selectedOrder.paymentStatus) && (
+                        <button
+                          onClick={() => setIsPaymentModalOpen(true)}
+                          className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <CreditCard className="w-3.5 h-3.5 text-emerald-300" />
+                          <span>Pay &amp; Confirm Escrow 💳</span>
+                        </button>
+                      )}
+
                       <Link
                         to={`/ticket/${selectedOrder._id}`}
                         className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -757,6 +826,68 @@ const ConsumerOrdersPage = () => {
           </div>
         )}
       </div>
+
+      {/* =========================================================================
+          CONSUMER ESCROW PAYMENT MODAL
+         ========================================================================= */}
+      {isPaymentModalOpen && selectedOrder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" /> KisanSetu Escrow Payment Gateway
+              </span>
+              <button
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="text-slate-400 font-bold hover:text-slate-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 bg-emerald-50/60 rounded-2xl space-y-2 text-center border border-emerald-200">
+              <p className="text-xs text-slate-500 font-semibold">Total Order Escrow Amount</p>
+              <p className="text-3xl font-black text-emerald-700">₹{selectedOrder.totalAmount?.toLocaleString()}</p>
+              <p className="text-[10px] text-slate-500">
+                Payment is safely locked in KisanSetu Escrow and released to Farmer upon doorstep delivery.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">Select Payment Method</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('UPI')}
+                  className={`p-3 rounded-xl border-2 text-xs font-bold text-left transition-all ${
+                    paymentMethod === 'UPI' ? 'border-emerald-600 bg-emerald-50 text-emerald-950' : 'border-slate-200 text-slate-600'
+                  }`}
+                >
+                  📱 UPI / QR Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('CARD')}
+                  className={`p-3 rounded-xl border-2 text-xs font-bold text-left transition-all ${
+                    paymentMethod === 'CARD' ? 'border-emerald-600 bg-emerald-50 text-emerald-950' : 'border-slate-200 text-slate-600'
+                  }`}
+                >
+                  💳 Net Banking / Card
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handlePayEscrow(selectedOrder._id)}
+              disabled={paymentProcessing}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <CreditCard className="w-4 h-4 text-emerald-300" />
+              <span>{paymentProcessing ? 'Securing Escrow Payment...' : `Confirm & Pay ₹${selectedOrder.totalAmount?.toLocaleString()}`}</span>
+            </button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 };
