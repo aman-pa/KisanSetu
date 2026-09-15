@@ -398,15 +398,29 @@ const FarmerDashboard = () => {
                         >
                           {ord.status}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-semibold block">
-                          {ord.paymentStatus || 'ESCROW PROTECTED'}
+                        <span
+                          className={`text-[10px] font-bold block ${
+                            ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                              ? 'text-emerald-800 font-black'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                            ? 'Payment Done 💳 (Escrow Secured)'
+                            : ord.paymentStatus || 'ESCROW PROTECTED'}
                         </span>
                       </td>
 
                       {/* Action */}
                       <td className="py-4 px-6 text-right">
                         {ord._id && !ord._id.startsWith('ord_demo') && (
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                            {['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && (
+                              <span className="text-[10px] font-black text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300 inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Buyer Paid
+                              </span>
+                            )}
+
                             {ord.status === 'PENDING' && (
                               <>
                                 <button
@@ -424,19 +438,16 @@ const FarmerDashboard = () => {
                               </>
                             )}
 
-                            {ord.status === 'ACCEPTED' && (
+                            {ord.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && (
                               <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
                                 Awaiting Buyer Payment
                               </span>
                             )}
 
                             {ord.status === 'IN_TRANSIT' && (
-                              <button
-                                onClick={() => handleUpdateOrderStatus(ord._id, 'DELIVERED')}
-                                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <Truck className="w-3 h-3" /> Mark Delivered
-                              </button>
+                              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1">
+                                <Truck className="w-3 h-3 text-amber-600" /> In Transit
+                              </span>
                             )}
 
                             {(ord.status === 'DELIVERED' || ord.status === 'COMPLETED') && (

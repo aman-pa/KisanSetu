@@ -167,20 +167,16 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Procurement Engine',
-            path: '/buyer/procurement',
-            icon: Building2,
-            isActive: (pathname) => pathname === '/buyer/procurement',
+            label: 'Marketplace',
+            path: '/marketplace',
+            icon: Search,
+            isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
           },
           {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
-            isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
+            label: 'Dashboard',
+            path: '/buyer/procurement',
+            icon: LayoutDashboard,
+            isActive: (pathname) => pathname === '/buyer/procurement',
           },
         ];
 

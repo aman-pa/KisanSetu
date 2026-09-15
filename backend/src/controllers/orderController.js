@@ -75,7 +75,7 @@ const placeOrder = async (req, res) => {
     const grandTotal = totalProduceCost + logisticsCost + platformFee;
 
     const orderNumber = `KS-TICKET-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-    const batchWindowEndsAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6-hour area batching window
+    const batchWindowEndsAt = req.user.role === 'CONSUMER' ? new Date(Date.now() + 6 * 60 * 60 * 1000) : null;
 
     const order = await Order.create({
       orderNumber,
@@ -203,7 +203,8 @@ const payOrderEscrow = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order Ticket not found' });
     }
 
-    if (order.buyer.toString() !== req.user._id.toString() && req.user.role !== 'ADMIN') {
+    const buyerIdStr = (order.buyer?._id || order.buyer)?.toString();
+    if (buyerIdStr !== req.user._id.toString() && req.user.role !== 'ADMIN') {
       return res.status(403).json({ success: false, message: 'Not authorized to pay for this order' });
     }
 
@@ -248,9 +249,14 @@ const updateOrderStatus = async (req, res) => {
     const userRole = req.user.role;
 
     // Security & Authorization check
-    const isBuyer = order.buyer?.toString() === userIdStr;
-    const isFarmer = order.items && order.items.some((item) => item.farmer?.toString() === userIdStr);
-    const isAssignedLogistics = order.logisticsPartner && order.logisticsPartner.toString() === userIdStr;
+    const buyerIdStr = (order.buyer?._id || order.buyer)?.toString();
+    const isBuyer = buyerIdStr === userIdStr;
+    const isFarmer = order.items && order.items.some((item) => {
+      const fId = (item.farmer?._id || item.farmer)?.toString();
+      return fId === userIdStr;
+    });
+    const logisticsIdStr = (order.logisticsPartner?._id || order.logisticsPartner)?.toString();
+    const isAssignedLogistics = logisticsIdStr === userIdStr;
     const isLogistics = userRole === 'LOGISTICS';
     const isAdmin = userRole === 'ADMIN';
 
