@@ -445,12 +445,9 @@ const FarmerDashboard = () => {
                             )}
 
                             {ord.status === 'IN_TRANSIT' && (
-                              <button
-                                onClick={() => handleUpdateOrderStatus(ord._id, 'DELIVERED')}
-                                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <Truck className="w-3 h-3" /> Mark Delivered
-                              </button>
+                              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1">
+                                <Truck className="w-3 h-3 text-amber-600" /> In Transit
+                              </span>
                             )}
 
                             {(ord.status === 'DELIVERED' || ord.status === 'COMPLETED') && (
