@@ -17,6 +17,7 @@ import AddProducePage from './pages/AddProducePage';
 import FPODashboard from './pages/FPODashboard';
 import FPOFarmersPage from './pages/FPOFarmersPage';
 import FPOProduceInventoryPage from './pages/FPOProduceInventoryPage';
+import FPOBulkOrdersPage from './pages/FPOBulkOrdersPage';
 import BulkBuyerDashboard from './pages/BulkBuyerDashboard';
 import LogisticsDashboard from './pages/LogisticsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -138,7 +139,7 @@ function App() {
             path="/fpo/bulk-orders"
             element={
               <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
-                <BulkBuyerDashboard />
+                <FPOBulkOrdersPage />
               </ProtectedRoute>
             }
           />

@@ -5,69 +5,99 @@ import API from '../services/api';
 import {
   Users,
   Package,
-  DollarSign,
-  Award,
-  TrendingUp,
+  ShoppingBag,
   Building2,
   CheckCircle2,
-  Calendar,
-  Layers,
-  ShoppingBag,
-  MapPin,
-  QrCode,
-  Sparkles,
   ArrowRight,
-  ShieldCheck,
-  Wheat,
-  Eye,
 } from 'lucide-react';
 
 const FPODashboard = () => {
-  const [inventory, setInventory] = useState([]);
+  const [fpoInfo, setFpoInfo] = useState({
+    orgName: 'Punjab Kisan Co-operative HQ',
+    registrationNumber: 'FPO-PB-2023-991',
+    numberOfMemberFarmers: 240,
+  });
+  const [activeFarmersCount, setActiveFarmersCount] = useState(240);
   const [inventorySummary, setInventorySummary] = useState({
     totalAggregatedQuantityKg: 12100,
     activeProduceTypesCount: 4,
-    contributingFarmersCount: 9,
-    totalEstimatedInventoryValue: 323000,
   });
-  const [memberFarmers, setMemberFarmers] = useState([
-    { name: 'Ramesh Kumar', village: 'Kheri, Karnal', size: '8.5 Acres', crop: 'Tomato & Wheat', revenue: '₹1,84,000', score: 94 },
-    { name: 'Suresh Singh', village: 'Samalkha, Panipat', size: '6.0 Acres', crop: 'Tomato & Onion', revenue: '₹1,42,000', score: 88 },
-    { name: 'Harpreet Singh', village: 'GT Road, Ambala', size: '12.0 Acres', crop: 'Potato & Rice', revenue: '₹2,65,000', score: 96 },
-    { name: 'Gurmeet Dhillon', village: 'Ludhiana Hub', size: '15.5 Acres', crop: 'Wheat & Mustard', revenue: '₹3,10,000', score: 92 },
-  ]);
-  const [fpoInfo, setFpoInfo] = useState({ orgName: 'Punjab Kisan Co-operative HQ', numberOfMemberFarmers: 240 });
+  const [inventoryList, setInventoryList] = useState([]);
+  const [consumerOrdersCount, setConsumerOrdersCount] = useState(0);
+  const [pendingConsumerOrdersCount, setPendingConsumerOrdersCount] = useState(0);
+  const [bulkOrdersCount, setBulkOrdersCount] = useState(0);
+  const [pendingBulkOrdersCount, setPendingBulkOrdersCount] = useState(0);
+  const [pendingFarmerRequestsCount, setPendingFarmerRequestsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [invRes, membersRes] = await Promise.allSettled([
+        const [invRes, membersRes, pendingReqRes, ordersRes, bulkReqRes] = await Promise.allSettled([
           API.get('/fpo/inventory'),
           API.get('/fpo/farmers/members'),
+          API.get('/fpo/farmers/pending-requests'),
+          API.get('/orders'),
+          API.get('/bulk/requests'),
         ]);
 
         if (invRes.status === 'fulfilled' && invRes.value.data?.success) {
-          if (invRes.value.data.inventory && invRes.value.data.inventory.length > 0) {
-            setInventory(invRes.value.data.inventory);
-            setInventorySummary(invRes.value.data.summary);
+          const invData = invRes.value.data;
+          if (Array.isArray(invData.inventory)) {
+            setInventoryList(invData.inventory);
           }
-          if (invRes.value.data.fpo) {
-            setFpoInfo(invRes.value.data.fpo);
+          if (invData.summary) {
+            setInventorySummary(invData.summary);
+          }
+          if (invData.fpo) {
+            setFpoInfo((prev) => ({ ...prev, ...invData.fpo }));
+            if (invData.fpo.numberOfMemberFarmers) {
+              setActiveFarmersCount(invData.fpo.numberOfMemberFarmers);
+            }
           }
         }
 
         if (membersRes.status === 'fulfilled' && membersRes.value.data?.success) {
-          if (membersRes.value.data.members && membersRes.value.data.members.length > 0) {
-            const formatted = membersRes.value.data.members.map((m) => ({
-              name: m.farmerName,
-              village: `${m.location?.village || ''}, ${m.location?.district || ''}`,
-              size: `${m.farmSizeAcres || 5} Acres`,
-              crop: Array.isArray(m.cropsGrown) ? m.cropsGrown.join(', ') : 'Mixed Produce',
-              revenue: '₹1,50,000',
-              score: m.trustScore || 92,
-            }));
-            setMemberFarmers(formatted);
+          const mData = membersRes.value.data;
+          if (typeof mData.count === 'number' && mData.count > 0) {
+            setActiveFarmersCount(mData.count);
+          } else if (Array.isArray(mData.members) && mData.members.length > 0) {
+            setActiveFarmersCount(mData.members.length);
+          }
+        }
+
+        if (pendingReqRes.status === 'fulfilled' && pendingReqRes.value.data?.success) {
+          const pData = pendingReqRes.value.data;
+          const pCount = typeof pData.count === 'number' ? pData.count : pData.requests?.length || 0;
+          setPendingFarmerRequestsCount(pCount);
+        }
+
+        if (ordersRes.status === 'fulfilled' && ordersRes.value.data?.success) {
+          const allOrders = ordersRes.value.data.orders || [];
+          const consumerOrds = allOrders.filter(
+            (o) => !o.procurementRequestRef && o.buyer?.role !== 'BULK_BUYER'
+          );
+          const bulkOrds = allOrders.filter(
+            (o) => o.procurementRequestRef || o.buyer?.role === 'BULK_BUYER'
+          );
+
+          setConsumerOrdersCount(consumerOrds.length);
+          setPendingConsumerOrdersCount(
+            consumerOrds.filter((o) => o.status === 'PENDING' || o.status === 'CONFIRMED').length
+          );
+
+          setBulkOrdersCount(bulkOrds.length);
+          setPendingBulkOrdersCount(
+            bulkOrds.filter((o) => o.status === 'PENDING' || o.status === 'CONFIRMED').length
+          );
+        }
+
+        if (bulkReqRes.status === 'fulfilled' && bulkReqRes.value.data?.success) {
+          const requests = bulkReqRes.value.data.requests || [];
+          if (requests.length > 0) {
+            setBulkOrdersCount((prev) => Math.max(prev, requests.length));
+            const openReqs = requests.filter((r) => r.status === 'OPEN' || r.status === 'ACTIVE').length;
+            setPendingBulkOrdersCount((prev) => Math.max(prev, openReqs));
           }
         }
       } catch (err) {
@@ -79,220 +109,230 @@ const FPODashboard = () => {
     fetchData();
   }, []);
 
+  const displayProduceList =
+    inventoryList.length > 0
+      ? inventoryList.slice(0, 5)
+      : [
+          { cropName: 'Tomato', totalQuantityKg: 4200 },
+          { cropName: 'Potato', totalQuantityKg: 3100 },
+          { cropName: 'Onion', totalQuantityKg: 2800 },
+          { cropName: 'Wheat', totalQuantityKg: 2000 },
+        ];
+
+  const totalAggregatedKg = inventorySummary.totalAggregatedQuantityKg || 12100;
+  const formattedTotalProduce =
+    totalAggregatedKg >= 1000
+      ? `${(totalAggregatedKg / 1000).toFixed(1)} Tonnes`
+      : `${totalAggregatedKg.toLocaleString()} kg`;
+
+  const totalPendingItems =
+    pendingFarmerRequestsCount + pendingConsumerOrdersCount + pendingBulkOrdersCount;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-agri-sm">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100 text-teal-800 text-xs font-bold mb-2">
-              🏬 Farmers Producer Organization (FPO) Hub
-            </div>
-            <h1 className="text-2xl font-extrabold text-slate-900">{fpoInfo.orgName}</h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Reg: FPO-PB-2023-991 • Managing {fpoInfo.numberOfMemberFarmers || memberFarmers.length} Member Farmers • Regional Supply Aggregation
-            </p>
+        {/* 1. FPO Header */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-1.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+            <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Farmer Producer Organisation (FPO) Hub</span>
           </div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">{fpoInfo.orgName}</h1>
+          <p className="text-xs text-slate-500 font-medium">
+            Reg: {fpoInfo.registrationNumber || 'FPO-PB-2023-991'} • Managing {activeFarmersCount} Active Member Farmers • Regional Supply Aggregation
+          </p>
+        </div>
 
+        {/* 2. Four Simple Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Active Farmers */}
+          <Link
+            to="/fpo/farmers"
+            className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all block group"
+          >
+            <div className="flex items-center justify-between text-slate-500 mb-2">
+              <span className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Active Farmers</span>
+              <Users className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-slate-900">{activeFarmersCount} Active</p>
+            <span className="text-[11px] font-semibold text-slate-500 mt-1 block">
+              Registered Co-op Members
+            </span>
+          </Link>
+
+          {/* Card 2: Available Stock */}
           <Link
             to="/fpo/produce"
-            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-agri-dark to-agri-primary text-white font-bold text-xs shadow-agri-sm hover:shadow-agri-md transition-all flex items-center gap-2"
+            className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all block group"
           >
-            <Package className="w-4 h-4" /> View Aggregated Inventory
+            <div className="flex items-center justify-between text-slate-500 mb-2">
+              <span className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Available Stock</span>
+              <Package className="w-4 h-4 text-teal-600" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-slate-900">{formattedTotalProduce}</p>
+            <span className="text-[11px] font-semibold text-slate-500 mt-1 block">
+              {inventoryList.length || 4} Crop Lines Pooled
+            </span>
+          </Link>
+
+          {/* Card 3: Consumer Orders */}
+          <Link
+            to="/fpo/consumer-orders"
+            className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all block group"
+          >
+            <div className="flex items-center justify-between text-slate-500 mb-2">
+              <span className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Consumer Orders</span>
+              <ShoppingBag className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-slate-900">{consumerOrdersCount} Orders</p>
+            <span className="text-[11px] font-semibold text-slate-500 mt-1 block">
+              {pendingConsumerOrdersCount > 0 ? `${pendingConsumerOrdersCount} Pending Action` : 'All Caught Up'}
+            </span>
+          </Link>
+
+          {/* Card 4: Bulk Orders */}
+          <Link
+            to="/fpo/bulk-orders"
+            className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all block group"
+          >
+            <div className="flex items-center justify-between text-slate-500 mb-2">
+              <span className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Bulk Orders</span>
+              <Building2 className="w-4 h-4 text-indigo-600" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-black text-slate-900">{bulkOrdersCount} Orders</p>
+            <span className="text-[11px] font-semibold text-slate-500 mt-1 block">
+              {pendingBulkOrdersCount > 0 ? `${pendingBulkOrdersCount} Open Requests` : 'Procurement Active'}
+            </span>
           </Link>
         </div>
 
-        {/* 4 Summary Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/fpo/farmers" className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2 hover:border-emerald-300 transition-all block group">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Member Farmers</span>
-              <Users className="w-4 h-4 text-teal-600" />
-            </div>
-            <p className="text-2xl font-black text-slate-900">{fpoInfo.numberOfMemberFarmers || memberFarmers.length} Active</p>
-            <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded flex items-center justify-between">
-              Co-op Farmer Network
-              <span className="text-emerald-700 font-extrabold group-hover:translate-x-0.5 transition-transform">Manage →</span>
-            </span>
-          </Link>
-
-          <Link to="/fpo/produce" className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2 hover:border-emerald-300 transition-all block group">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold group-hover:text-emerald-700 transition-colors">Aggregated Inventory</span>
-              <Package className="w-4 h-4 text-agri-accent" />
-            </div>
-            <p className="text-2xl font-black text-slate-900">
-              {inventorySummary.totalAggregatedQuantityKg >= 1000
-                ? `${(inventorySummary.totalAggregatedQuantityKg / 1000).toFixed(1)} Tonnes`
-                : `${inventorySummary.totalAggregatedQuantityKg.toLocaleString()} kg`}
-            </p>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded flex items-center justify-between">
-              {inventorySummary.activeProduceTypesCount || 4} Crop Lines Pooled
-              <span className="text-emerald-700 font-extrabold group-hover:translate-x-0.5 transition-transform">View →</span>
-            </span>
-          </Link>
-
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold">Estimated Stock Worth</span>
-              <DollarSign className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-black text-emerald-700">
-              ₹{inventorySummary.totalEstimatedInventoryValue.toLocaleString()}
-            </p>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-              Current Market Value
-            </span>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-agri-sm space-y-2">
-            <div className="flex items-center justify-between text-slate-500">
-              <span className="text-xs font-bold">Co-op Quality Score</span>
-              <Award className="w-4 h-4 text-amber-500" />
-            </div>
-            <p className="text-2xl font-black text-amber-600">4.9 / 5.0 ★</p>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-              Verified Co-operative
-            </span>
-          </div>
-        </div>
-
-        {/* 6-Hour Area Batching Logistics Card for FPO Aggregation */}
-        <div className="bg-gradient-to-r from-teal-900 via-emerald-900 to-slate-900 rounded-3xl p-6 text-white shadow-md space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-teal-700/50 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-teal-500/30 border border-teal-400/40 text-teal-200 flex items-center justify-center font-bold text-lg">
-                ⏰
-              </div>
+        {/* 3. Two-Column Lower Section (50/50 Layout) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* LEFT: Current Stock */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
-                  FPO 6-Hour Area Batching & Dispatch Hub
-                  <span className="bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                    Pincode Route Optimizer
-                  </span>
-                </h3>
-                <p className="text-xs text-teal-200 mt-0.5">
-                  Consolidate small 1–5 kg consumer orders from the same area into scheduled 6-hour batch trips to eliminate individual delivery overhead!
-                </p>
+                <h2 className="text-base font-extrabold text-slate-900">Current Stock</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Aggregated from active member farmer listings</p>
               </div>
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                {displayProduceList.length} Active Crops
+              </span>
             </div>
 
-            <div className="bg-teal-950/80 px-4 py-2 rounded-2xl border border-teal-700/60 text-right">
-              <span className="text-[10px] uppercase font-bold text-teal-300 block">FPO Freight Cost Reduction</span>
-              <span className="text-base font-black text-emerald-400">Save 75% on Last-Mile Shipping</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] font-bold text-teal-200">Zone A: Delhi NCR (110016)</span>
-              <p className="font-black text-white">4 Orders Pooled (85 kg total)</p>
-              <span className="text-[10px] text-emerald-400 font-bold">⏰ Batch Window Ends in ~2h 40m</span>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] font-bold text-teal-200">Zone B: Karnal Sector 14</span>
-              <p className="font-black text-white">6 Orders Pooled (210 kg total)</p>
-              <span className="text-[10px] text-emerald-400 font-bold">⏰ Batch Window Ends in ~4h 10m</span>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-3 border border-white/10 text-xs space-y-1">
-              <span className="text-[10px] font-bold text-teal-200">Zone C: Panipat Industrial Area</span>
-              <p className="font-black text-white">2 Orders Pooled (40 kg total)</p>
-              <span className="text-[10px] text-amber-300 font-bold">⏰ Accumulating Area Orders...</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Member Farmers Registry Table */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-              <Users className="w-4 h-4 text-teal-600" /> Registered Member Farmers (Co-op Network)
-            </h3>
-            <Link to="/fpo/farmers" className="text-xs text-emerald-700 font-extrabold hover:underline">
-              View All Members →
-            </Link>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                  <th className="pb-3">Farmer Name</th>
-                  <th className="pb-3">Village / District</th>
-                  <th className="pb-3">Farm Size</th>
-                  <th className="pb-3">Primary Crops</th>
-                  <th className="pb-3">Trust Rating</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {memberFarmers.slice(0, 5).map((mf, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 font-medium text-slate-700">
-                    <td className="py-3 font-extrabold text-slate-900">{mf.name}</td>
-                    <td className="py-3 flex items-center gap-1 text-slate-600">
-                      <MapPin className="w-3 h-3 text-rose-500" /> {mf.village}
-                    </td>
-                    <td className="py-3">{mf.size}</td>
-                    <td className="py-3 font-bold text-teal-700">{mf.crop}</td>
-                    <td className="py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-                        {mf.score}/100
-                      </span>
-                    </td>
-                  </tr>
+            {displayProduceList.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {displayProduceList.map((item, idx) => (
+                  <div key={idx} className="py-3 flex items-center justify-between text-xs hover:bg-slate-50/50 px-1 rounded-xl transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span className="font-bold text-slate-800 text-sm">{item.cropName}</span>
+                    </div>
+                    <span className="font-black text-slate-900 text-sm">
+                      {item.totalQuantityKg.toLocaleString()} kg
+                    </span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Aggregated Member Produce Lots */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-agri-primary" /> Active Aggregated Produce Inventory
-              </h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Automatically pooled from active member farmers for Bulk Buyer & Consumer orders.
-              </p>
-            </div>
-            <Link to="/fpo/produce" className="text-xs text-emerald-700 font-extrabold hover:underline">
-              Manage Inventory →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(inventory.length > 0 ? inventory : [
-              { cropName: 'Tomato', category: 'VEGETABLES', representativeGrade: 'GRADE_A', totalQuantityKg: 2000, weightedAvgPricePerKg: 30, contributingFarmersCount: 3, estimatedTotalValue: 60000 },
-              { cropName: 'Kufri Potato', category: 'VEGETABLES', representativeGrade: 'GRADE_A', totalQuantityKg: 3500, weightedAvgPricePerKg: 23, contributingFarmersCount: 2, estimatedTotalValue: 80000 },
-              { cropName: 'Sharbati Wheat', category: 'GRAINS', representativeGrade: 'GRADE_A', totalQuantityKg: 6000, weightedAvgPricePerKg: 27, contributingFarmersCount: 3, estimatedTotalValue: 162000 },
-              { cropName: 'Organic Spinach', category: 'VEGETABLES', representativeGrade: 'GRADE_A', totalQuantityKg: 600, weightedAvgPricePerKg: 35, contributingFarmersCount: 1, estimatedTotalValue: 21000 },
-            ]).map((crop, idx) => (
-              <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 hover:bg-slate-100/70 transition-all">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-extrabold text-slate-900 text-sm">
-                    {crop.cropName} ({crop.representativeGrade?.replace('_', ' ') || 'Grade A'})
-                  </h4>
-                  <span className="text-sm font-black text-emerald-700">₹{crop.weightedAvgPricePerKg}/kg</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span>
-                    Pooled Available: <b className="text-slate-900">{crop.totalQuantityKg.toLocaleString()} kg</b>
-                  </span>
-                  <span className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 font-extrabold text-[10px]">
-                    {crop.contributingFarmersCount} Farmer(s)
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200/60">
-                  <span className="text-slate-500 font-bold">
-                    Est. Value: ₹{crop.estimatedTotalValue?.toLocaleString()}
-                  </span>
-                  <Link to="/fpo/produce" className="font-bold text-emerald-700 hover:underline flex items-center gap-1">
-                    <Eye className="w-3 h-3" /> View Farmer Breakdown
-                  </Link>
-                </div>
               </div>
-            ))}
+            ) : (
+              <div className="py-8 text-center text-slate-500 text-xs">
+                No active produce listed by member farmers yet.
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100">
+              <Link
+                to="/fpo/produce"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+              >
+                View Stock <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* RIGHT: Needs Attention */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Needs Attention</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Actionable pending items requiring review</p>
+              </div>
+              {totalPendingItems > 0 && (
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg">
+                  {totalPendingItems} Actionable
+                </span>
+              )}
+            </div>
+
+            {totalPendingItems === 0 ? (
+              <div className="py-8 text-center text-slate-500 space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                <p className="text-sm font-bold text-slate-900">You're all caught up.</p>
+                <p className="text-xs text-slate-500">No pending requests or orders requiring action.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingFarmerRequestsCount > 0 && (
+                  <Link
+                    to="/fpo/farmers"
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 hover:bg-amber-50 hover:border-amber-300 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center text-xs font-black">
+                        {pendingFarmerRequestsCount}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-amber-950">
+                        Farmer Requests Pending
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-amber-700 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                )}
+
+                {pendingConsumerOrdersCount > 0 && (
+                  <Link
+                    to="/fpo/consumer-orders"
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 hover:bg-emerald-50 hover:border-emerald-300 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-xl bg-emerald-200/80 text-emerald-900 flex items-center justify-center text-xs font-black">
+                        {pendingConsumerOrdersCount}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-950">
+                        Consumer Orders Pending
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-emerald-700 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                )}
+
+                {pendingBulkOrdersCount > 0 && (
+                  <Link
+                    to="/fpo/bulk-orders"
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 hover:bg-indigo-50 hover:border-indigo-300 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-xl bg-indigo-200/80 text-indigo-900 flex items-center justify-center text-xs font-black">
+                        {pendingBulkOrdersCount}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-indigo-950">
+                        Bulk Buyer Requests
+                      </span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-indigo-700 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                )}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100">
+              <Link
+                to={pendingFarmerRequestsCount > 0 ? '/fpo/farmers' : pendingConsumerOrdersCount > 0 ? '/fpo/consumer-orders' : '/fpo/bulk-orders'}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+              >
+                Review <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
