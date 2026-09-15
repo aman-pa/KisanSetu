@@ -125,9 +125,9 @@ const LandingPage = () => {
       case 'BUYER':
       default:
         return {
-          to: '/market-intelligence',
-          label: 'Market Intelligence',
-          icon: TrendingUp,
+          to: '/marketplace',
+          label: 'Explore Marketplace',
+          icon: ShoppingBag,
         };
     }
   };
