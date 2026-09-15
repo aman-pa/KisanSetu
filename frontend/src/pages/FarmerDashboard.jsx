@@ -385,29 +385,46 @@ const FarmerDashboard = () => {
                         <span className="font-black text-emerald-700 text-sm">₹{(ord.totalProduceCost || 0).toLocaleString()}</span>
                       </td>
 
-                      {/* Status */}
+                      {/* Status & Escrow */}
                       <td className="py-4 px-6 space-y-1">
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${
                             ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              : ord.status === 'IN_TRANSIT'
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status)
+                              ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                              : ord.status === 'ACCEPTED'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}
                         >
-                          {ord.status}
+                          {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status)
+                            ? '🚚 PICKED UP & IN TRANSIT'
+                            : ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
+                            ? 'DELIVERED ✅'
+                            : ord.status}
                         </span>
+
+                        {ord.vehicleAssigned && ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP'].includes(ord.status) && (
+                          <span className="text-[10px] font-semibold text-indigo-700 block">
+                            Carrier: <b>{ord.vehicleAssigned}</b>
+                          </span>
+                        )}
+
                         <span
                           className={`text-[10px] font-bold block ${
-                            ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                            ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord.paymentStatus === 'RELEASED_TO_FARMER'
                               ? 'text-emerald-800 font-black'
+                              : ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                              ? 'text-indigo-800 font-black'
                               : 'text-slate-500'
                           }`}
                         >
-                          {['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
-                            ? 'Payment Done 💳 (Escrow Secured)'
-                            : ord.paymentStatus || 'ESCROW PROTECTED'}
+                          {ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord.paymentStatus === 'RELEASED_TO_FARMER'
+                            ? 'Escrow Released to Farmer 💰'
+                            : ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                            ? 'Escrow Locked 💳 (Buyer Paid)'
+                            : ord.paymentStatus || 'Awaiting Payment'}
                         </span>
                       </td>
 
@@ -415,9 +432,9 @@ const FarmerDashboard = () => {
                       <td className="py-4 px-6 text-right">
                         {ord._id && !ord._id.startsWith('ord_demo') && (
                           <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
-                            {['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && (
+                            {['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && ord.status === 'ACCEPTED' && (
                               <span className="text-[10px] font-black text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300 inline-flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Buyer Paid
+                                <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Ready for Pickup
                               </span>
                             )}
 
@@ -444,9 +461,9 @@ const FarmerDashboard = () => {
                               </span>
                             )}
 
-                            {ord.status === 'IN_TRANSIT' && (
-                              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1">
-                                <Truck className="w-3 h-3 text-amber-600" /> In Transit
+                            {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status) && (
+                              <span className="text-[11px] font-bold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 inline-flex items-center gap-1">
+                                <Truck className="w-3 h-3 text-indigo-600" /> Picked Up
                               </span>
                             )}
 
@@ -458,16 +475,25 @@ const FarmerDashboard = () => {
 
                             <Link
                               to={`/ticket/${ord._id}`}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold shadow-2xs transition-all flex items-center gap-1"
+                            >
+                              <span>Ticket</span>
+                              <ChevronRight className="w-3 h-3 opacity-60" />
+                            </Link>
+                          </div>
+                        )}
+                        {(!ord._id || ord._id.startsWith('ord_demo')) && (
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                            </span>
+                            <Link
+                              to={`/ticket/${ord._id || 'demo_1'}`}
                               className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold shadow-2xs transition-all"
                             >
                               Ticket
                             </Link>
                           </div>
-                        )}
-                        {(!ord._id || ord._id.startsWith('ord_demo')) && (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
-                          </span>
                         )}
                       </td>
                     </tr>

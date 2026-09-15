@@ -212,23 +212,29 @@ const payOrderEscrow = async (req, res) => {
 
     order.paymentStatus = 'PAID_ESCROW';
     order.paymentTransactionId = `TXN-ESCROW-${Date.now()}`;
-    order.status = 'IN_TRANSIT';
+    if (order.status === 'PENDING' || order.status === 'CONFIRMED') {
+      order.status = 'ACCEPTED';
+      order.logisticsStatus = 'ACCEPTED';
+    }
     await order.save();
 
     // Notify Farmer of Escrow Payment Confirmation
     for (const item of order.items) {
-      await Notification.create({
-        recipient: item.farmer._id || item.farmer,
-        title: 'Escrow Payment Secured! 💳',
-        message: `Buyer ${req.user.name} paid ₹${order.totalAmount} for Ticket #${order.orderNumber}. Dispatch produce now.`,
-        type: 'ORDER',
-        link: `/ticket/${order._id}`,
-      });
+      const farmerId = item.farmer?._id || item.farmer;
+      if (farmerId) {
+        await Notification.create({
+          recipient: farmerId,
+          title: 'Escrow Payment Secured! 💳',
+          message: `Buyer ${req.user.name} paid ₹${order.totalAmount} for Ticket #${order.orderNumber}. Prepare produce for carrier pickup.`,
+          type: 'ORDER',
+          link: `/ticket/${order._id}`,
+        });
+      }
     }
 
     return res.json({
       success: true,
-      message: 'Escrow Payment secured successfully! Produce is now in transit.',
+      message: 'Escrow Payment secured successfully! Produce is ready for carrier pickup.',
       order,
     });
   } catch (error) {
@@ -241,7 +247,9 @@ const payOrderEscrow = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { status, notes, vehicleAssigned, vehicleNumber } = req.body;
-    const order = await Order.findById(req.params.id).populate('buyer', 'name email phone');
+    const order = await Order.findById(req.params.id)
+      .populate('buyer', 'name email phone')
+      .populate('items.farmer', 'name email phone');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -282,14 +290,14 @@ const updateOrderStatus = async (req, res) => {
       }
     } else if (isLogistics) {
       // Logistics partner can accept unassigned orders or advance their assigned shipments
-      if (order.logisticsPartner && !isAssignedLogistics) {
+      if (order.logisticsPartner && !isAssignedLogistics && order.logisticsPartner.toString() !== userIdStr) {
         return res.status(403).json({
           success: false,
           message: 'This delivery is assigned to another logistics carrier.',
         });
       }
 
-      const logisticsAllowedStatuses = ['ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED'];
+      const logisticsAllowedStatuses = ['ACCEPTED', 'PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'];
       if (!logisticsAllowedStatuses.includes(status)) {
         return res.status(403).json({
           success: false,
@@ -319,11 +327,37 @@ const updateOrderStatus = async (req, res) => {
       if (!order.logisticsStatus) {
         order.logisticsStatus = 'PENDING';
       }
-    } else if (['ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED'].includes(status)) {
+    } else if (['ACCEPTED', 'PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(status)) {
       order.logisticsStatus = status;
     }
 
     order.status = status;
+
+    // Track timestamps & proofs
+    if (['PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT'].includes(status)) {
+      if (!order.pickupTimestamp) order.pickupTimestamp = new Date();
+      if (!order.pickupProof) {
+        order.pickupProof = {
+          verifiedAt: new Date(),
+          carrierName: req.user.name || 'Logistics Carrier',
+          vehicleNo: order.vehicleAssigned || 'HR-05-CC-5521',
+          notes: notes || 'Produce picked up from farm node.',
+        };
+      }
+    }
+
+    if (['DELIVERED', 'COMPLETED'].includes(status)) {
+      if (!order.deliveryTimestamp) order.deliveryTimestamp = new Date();
+      order.paymentStatus = 'RELEASED_TO_FARMER';
+      if (!order.deliveryProof) {
+        order.deliveryProof = {
+          receiverName: order.buyer?.name || 'Customer',
+          notes: notes || 'Consignment delivered to doorstep.',
+          deliveredAt: new Date(),
+          verifiedBy: req.user.name || 'Logistics Carrier',
+        };
+      }
+    }
 
     // If Seller declines/cancels order, restore produce stock
     if (status === 'CANCELLED') {
@@ -337,30 +371,72 @@ const updateOrderStatus = async (req, res) => {
       }
     }
 
-    if (status === 'COMPLETED') {
-      order.paymentStatus = 'RELEASED_TO_FARMER';
-    }
-
     await order.save();
 
-    // Notify Buyer of Status Update
-    await Notification.create({
-      recipient: order.buyer._id || order.buyer,
-      title: status === 'ACCEPTED' ? 'Buy Request Accepted! 🎉' : `Order Status Updated: ${status}`,
-      message:
-        status === 'ACCEPTED'
-          ? `Seller accepted your Buy Request (Ticket #${order.orderNumber})! You can now proceed to Pay & Confirm Escrow.`
-          : `Order Ticket #${order.orderNumber} status changed to ${status}.`,
-      type: 'ORDER',
-      link: `/ticket/${order._id}`,
-    });
+    // 1. Notify Buyer of Status Update
+    if (order.buyer) {
+      let buyerTitle = `Order Status Updated: ${status}`;
+      let buyerMsg = `Order Ticket #${order.orderNumber} status changed to ${status}.`;
+      let buyerLink = `/consumer/orders`;
 
-    // Update batch timeline
+      if (status === 'ACCEPTED') {
+        buyerTitle = 'Buy Request Accepted! 🎉';
+        buyerMsg = `Seller accepted your Buy Request (Ticket #${order.orderNumber})! You can now proceed to Pay & Confirm Escrow.`;
+        buyerLink = `/ticket/${order._id}`;
+      } else if (['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP'].includes(status)) {
+        buyerTitle = 'Produce Picked Up & On The Way! 🛵';
+        buyerMsg = `Ticket #${order.orderNumber}: Carrier (${order.vehicleAssigned || 'Carrier'}) has picked up your produce and is on the way!`;
+        buyerLink = `/consumer/orders`;
+      } else if (['DELIVERED', 'COMPLETED'].includes(status)) {
+        buyerTitle = 'Order Delivered! 🎉';
+        buyerMsg = `Ticket #${order.orderNumber}: Your produce order was successfully delivered to your doorstep. Tap to view ticket & details.`;
+        buyerLink = `/ticket/${order._id}`;
+      }
+
+      await Notification.create({
+        recipient: order.buyer._id || order.buyer,
+        title: buyerTitle,
+        message: buyerMsg,
+        type: 'ORDER',
+        link: buyerLink,
+      });
+    }
+
+    // 2. Notify Farmer(s) on status updates
+    if (order.items && order.items.length) {
+      for (const item of order.items) {
+        const farmerId = item.farmer?._id || item.farmer;
+        if (farmerId) {
+          let farmerTitle = `Order #${order.orderNumber} Status: ${status}`;
+          let farmerMsg = `Produce ticket #${order.orderNumber} is now ${status}.`;
+          let farmerLink = `/farmer/dashboard`;
+
+          if (['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP'].includes(status)) {
+            farmerTitle = 'Produce Lot Picked Up by Carrier 🚚';
+            farmerMsg = `Ticket #${order.orderNumber}: Carrier ${req.user.name || 'Logistics'} has picked up produce lot (Vehicle: ${order.vehicleAssigned || 'Carrier'}).`;
+          } else if (['DELIVERED', 'COMPLETED'].includes(status)) {
+            farmerTitle = 'Consignment Delivered & Escrow Released! 💰';
+            farmerMsg = `Ticket #${order.orderNumber}: Delivery confirmed! Escrow funds ₹${item.subtotal || order.totalProduceCost} released to your wallet.`;
+          }
+
+          await Notification.create({
+            recipient: farmerId,
+            title: farmerTitle,
+            message: farmerMsg,
+            type: 'ORDER',
+            link: farmerLink,
+          });
+        }
+      }
+    }
+
+    // 3. Update batch timeline
     for (const item of order.items) {
       if (item.batchId) {
         let stageName = 'IN_TRANSIT';
         if (status === 'CONFIRMED') stageName = 'ORDER_PLACED';
         if (status === 'ACCEPTED') stageName = 'SELLER_ACCEPTED';
+        if (['PICKUP_VERIFIED', 'PICKED_UP'].includes(status)) stageName = 'PICKUP_VERIFIED';
         if (status === 'DELIVERED') stageName = 'DELIVERED';
         if (status === 'COMPLETED') stageName = 'BUYER_VERIFIED';
 
@@ -371,7 +447,7 @@ const updateOrderStatus = async (req, res) => {
               timeline: {
                 stage: stageName,
                 timestamp: new Date(),
-                actor: req.user.name,
+                actor: req.user.name || 'KisanSetu System',
                 location: `${order.deliveryAddress?.city || 'Market'}, ${order.deliveryAddress?.state || 'State'}`,
                 notes: notes || `Order Ticket #${order.orderNumber} status updated to ${status}.`,
               },
@@ -383,6 +459,7 @@ const updateOrderStatus = async (req, res) => {
 
     return res.json({ success: true, message: `Order Ticket updated to ${status}`, order });
   } catch (error) {
+    console.error('updateOrderStatus error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

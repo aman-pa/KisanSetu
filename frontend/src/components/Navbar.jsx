@@ -141,12 +141,6 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/fpo/farmers',
           },
           {
-            label: 'Farmer Hub',
-            path: '/farmer-hub',
-            icon: Landmark,
-            isActive: (pathname) => pathname === '/farmer-hub',
-          },
-          {
             label: 'Stock',
             path: '/fpo/produce',
             icon: Package,
@@ -233,13 +227,6 @@ const Navbar = () => {
             isActive: (pathname, search) =>
               pathname === '/logistics/dashboard' && search && search.includes('fleet-telemetry'),
           },
-          {
-            label: 'Logistics Intelligence',
-            path: '/logistics/intelligence',
-            icon: Sparkles,
-            isActive: (pathname) =>
-              pathname === '/logistics/intelligence',
-          },
         ];
 
       case 'ADMIN':
@@ -255,12 +242,6 @@ const Navbar = () => {
             path: '/admin/dashboard',
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/admin/dashboard',
-          },
-          {
-            label: 'Farmer Hub',
-            path: '/farmer-hub',
-            icon: Landmark,
-            isActive: (pathname) => pathname === '/farmer-hub',
           },
           {
             label: 'Market Intelligence',
@@ -289,12 +270,6 @@ const Navbar = () => {
             path: '/marketplace',
             icon: Search,
             isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
-          },
-          {
-            label: 'Farmer Hub',
-            path: '/farmer-hub',
-            icon: Landmark,
-            isActive: (pathname) => pathname === '/farmer-hub',
           },
           {
             label: 'My Orders',
@@ -601,19 +576,21 @@ const Navbar = () => {
 
                         {/* Dropdown Items */}
                         <div className="space-y-1 text-xs font-bold text-slate-700">
-                          <Link
-                            to="/farmer-hub"
-                            onClick={() => setUserDropdownOpen(false)}
-                            className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-emerald-50 text-agri-primary hover:text-emerald-800 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Landmark className="w-4 h-4 text-emerald-600" />
-                              <span>Farmer Hub</span>
-                            </div>
-                            <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white">
-                              Govt
-                            </span>
-                          </Link>
+                          {role === 'FARMER' && (
+                            <Link
+                              to="/farmer-hub"
+                              onClick={() => setUserDropdownOpen(false)}
+                              className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-emerald-50 text-agri-primary hover:text-emerald-800 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Landmark className="w-4 h-4 text-emerald-600" />
+                                <span>Farmer Hub</span>
+                              </div>
+                              <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white">
+                                Govt
+                              </span>
+                            </Link>
+                          )}
 
                           <Link
                             to={getDashboardPath()}

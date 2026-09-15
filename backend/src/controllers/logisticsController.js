@@ -916,46 +916,97 @@ const assignVehicleToOrder = async (req, res) => {
 // @access Private (LOGISTICS, ADMIN)
 const verifyPickupQR = async (req, res) => {
   try {
-    const { batchId, orderId, driverNotes, temperatureC, location } = req.body;
+    const { batchId, orderId, driverNotes, temperatureC, location, vehicleAssigned } = req.body;
 
-    if (!batchId) {
-      return res.status(400).json({ success: false, message: 'Batch ID is required for QR verification' });
+    if (!batchId && !orderId) {
+      return res.status(400).json({ success: false, message: 'Batch ID or Order ID is required for QR verification' });
     }
 
     const BatchTraceability = require('../models/BatchTraceability');
-    const batchTrace = await BatchTraceability.findOne({ batchId });
+    const Notification = require('../models/Notification');
 
-    if (batchTrace) {
-      batchTrace.timeline.push({
-        stage: 'PICKUP_VERIFIED',
-        timestamp: new Date(),
-        actor: req.user.name || 'Logistics Carrier Partner',
-        location: location || 'Farm Gate Collection Node',
-        notes: driverNotes || `Batch QR verified at farm gate. Cold-chain baseline: ${temperatureC || 4.2}°C.`,
-        verificationData: {
-          verifiedBy: req.user._id,
-          temperatureC: Number(temperatureC) || 4.2,
-          timestamp: new Date().toISOString(),
-        },
-      });
-      await batchTrace.save();
+    let batchTrace = null;
+    if (batchId) {
+      batchTrace = await BatchTraceability.findOne({ batchId });
+      if (batchTrace) {
+        batchTrace.timeline.push({
+          stage: 'PICKUP_VERIFIED',
+          timestamp: new Date(),
+          actor: req.user.name || 'Logistics Carrier Partner',
+          location: location || 'Farm Gate Collection Node',
+          notes: driverNotes || `Batch QR verified at farm gate. Cold-chain baseline: ${temperatureC || 4.2}°C.`,
+          verificationData: {
+            verifiedBy: req.user._id,
+            temperatureC: Number(temperatureC) || 4.2,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        await batchTrace.save();
+      }
     }
 
+    let order = null;
     if (orderId) {
-      const order = await Order.findById(orderId);
-      if (order) {
-        order.status = 'IN_TRANSIT';
-        order.logisticsStatus = 'IN_TRANSIT';
-        await order.save();
+      order = await Order.findById(orderId).populate('buyer', 'name phone email').populate('items.farmer', 'name phone email');
+    } else if (batchId) {
+      order = await Order.findOne({ 'items.batchId': batchId }).populate('buyer', 'name phone email').populate('items.farmer', 'name phone email');
+    }
+
+    if (order) {
+      order.status = 'IN_TRANSIT';
+      order.logisticsStatus = 'IN_TRANSIT';
+      order.pickupTimestamp = new Date();
+      if (!order.logisticsPartner) {
+        order.logisticsPartner = req.user._id;
+      }
+      if (vehicleAssigned || !order.vehicleAssigned) {
+        order.vehicleAssigned = vehicleAssigned || order.vehicleAssigned || 'HR-05-CC-5521';
+      }
+      order.pickupProof = {
+        verifiedAt: new Date(),
+        carrierName: req.user.name || 'KisanSetu Logistics Carrier',
+        temperatureC: Number(temperatureC) || 4.2,
+        notes: driverNotes || 'Batch QR verified and cargo loaded for delivery.',
+        vehicleNo: order.vehicleAssigned,
+      };
+      await order.save();
+
+      // Notify Buyer
+      if (order.buyer) {
+        await Notification.create({
+          recipient: order.buyer._id || order.buyer,
+          title: 'Produce Picked Up & In Transit! 🛵',
+          message: `Ticket #${order.orderNumber}: Carrier (${order.vehicleAssigned}) has picked up your produce from the farm gate and is en route!`,
+          type: 'ORDER',
+          link: `/consumer/orders`,
+        });
+      }
+
+      // Notify Farmer(s)
+      if (order.items && order.items.length) {
+        for (const item of order.items) {
+          const farmerId = item.farmer?._id || item.farmer;
+          if (farmerId) {
+            await Notification.create({
+              recipient: farmerId,
+              title: 'Produce Lot Picked Up by Carrier 🚚',
+              message: `Ticket #${order.orderNumber}: Carrier ${req.user.name || 'Logistics'} has verified and loaded produce lot for delivery (${order.vehicleAssigned}).`,
+              type: 'ORDER',
+              link: `/farmer/dashboard`,
+            });
+          }
+        }
       }
     }
 
     return res.json({
       success: true,
-      message: `Batch QR ${batchId} verified successfully at farm gate!`,
+      message: `Batch QR ${batchId || order?.orderNumber} verified successfully at farm gate! Consignment is now IN_TRANSIT.`,
       batchTrace,
+      order,
     });
   } catch (error) {
+    console.error('verifyPickupQR error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -971,17 +1022,30 @@ const verifyDeliveryPOD = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Order ID is required' });
     }
 
-    const order = await Order.findById(orderId);
+    const Notification = require('../models/Notification');
+    const BatchTraceability = require('../models/BatchTraceability');
+
+    const order = await Order.findById(orderId)
+      .populate('buyer', 'name phone email')
+      .populate('items.farmer', 'name phone email');
+
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     order.status = 'DELIVERED';
     order.logisticsStatus = 'DELIVERED';
+    order.paymentStatus = 'RELEASED_TO_FARMER';
+    order.deliveryTimestamp = new Date();
+    order.deliveryProof = {
+      receiverName: receiverName || 'Authorized Consignee',
+      notes: proofNotes || `Consignment delivered to ${receiverName || 'Buyer'}.`,
+      deliveredAt: new Date(),
+      verifiedBy: req.user.name || 'Logistics Carrier',
+    };
     await order.save();
 
     // Update batch traceability if batchId present
-    const BatchTraceability = require('../models/BatchTraceability');
     if (order.items && order.items.length) {
       for (const item of order.items) {
         if (item.batchId) {
@@ -994,7 +1058,7 @@ const verifyDeliveryPOD = async (req, res) => {
                   timestamp: new Date(),
                   actor: req.user.name || 'Logistics Carrier',
                   location: `${order.deliveryAddress?.city || 'Destination DC'}, ${order.deliveryAddress?.state || ''}`,
-                  notes: proofNotes || `Consignment delivered to ${receiverName || 'Buyer DC'}.`,
+                  notes: proofNotes || `Consignment delivered to ${receiverName || 'Buyer'}.`,
                 },
               },
             }
@@ -1003,12 +1067,41 @@ const verifyDeliveryPOD = async (req, res) => {
       }
     }
 
+    // Send Real-Time Notifications
+    // 1. Notify Buyer
+    if (order.buyer) {
+      await Notification.create({
+        recipient: order.buyer._id || order.buyer,
+        title: 'Order Delivered Successfully! 🎉',
+        message: `Ticket #${order.orderNumber}: Your produce order was delivered to ${receiverName || 'your doorstep'}. Click to view ticket & traceability report.`,
+        type: 'ORDER',
+        link: `/ticket/${order._id}`,
+      });
+    }
+
+    // 2. Notify Farmer(s) & Release Escrow
+    if (order.items && order.items.length) {
+      for (const item of order.items) {
+        const farmerId = item.farmer?._id || item.farmer;
+        if (farmerId) {
+          await Notification.create({
+            recipient: farmerId,
+            title: 'Consignment Delivered & Escrow Released! 💰',
+            message: `Ticket #${order.orderNumber}: Buyer received consignment. Escrow payout of ₹${item.subtotal || order.totalProduceCost} released to your wallet!`,
+            type: 'ORDER',
+            link: `/farmer/dashboard`,
+          });
+        }
+      }
+    }
+
     return res.json({
       success: true,
-      message: `Consignment for Order #${order.orderNumber} confirmed as Delivered!`,
+      message: `Consignment for Order #${order.orderNumber} confirmed as Delivered! Escrow funds released to farmer.`,
       order,
     });
   } catch (error) {
+    console.error('verifyDeliveryPOD error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
