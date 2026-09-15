@@ -75,7 +75,7 @@ const placeOrder = async (req, res) => {
     const grandTotal = totalProduceCost + logisticsCost + platformFee;
 
     const orderNumber = `KS-TICKET-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-    const batchWindowEndsAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6-hour area batching window
+    const batchWindowEndsAt = req.user.role === 'CONSUMER' ? new Date(Date.now() + 6 * 60 * 60 * 1000) : null;
 
     const order = await Order.create({
       orderNumber,
