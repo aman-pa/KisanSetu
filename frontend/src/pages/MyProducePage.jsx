@@ -18,7 +18,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Clock,
+  Camera,
 } from 'lucide-react';
+import QualityDetailsModal from '../components/QualityDetailsModal';
+import ReverifyModal from '../components/ReverifyModal';
+import { calculateCurrentQuality } from '../utils/qualityCalculator';
 
 const MyProducePage = () => {
   const [listings, setListings] = useState([]);
@@ -28,6 +32,8 @@ const MyProducePage = () => {
   const [deleteLoading, setDeleteLoading] = useState(null);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertError, setAlertError] = useState('');
+  const [selectedQualityListing, setSelectedQualityListing] = useState(null);
+  const [reverifyListing, setReverifyListing] = useState(null);
 
   const fetchMyListings = async () => {
     try {
@@ -72,14 +78,25 @@ const MyProducePage = () => {
     }
   };
 
-  const calculateStockAgeText = (harvestDateStr) => {
+  const calculateStockAgeText = (harvestDateStr, cropName = '', category = '') => {
     if (!harvestDateStr) return 'Harvested Recently';
     const hDate = new Date(harvestDateStr);
     const today = new Date();
     const diffDays = Math.floor((today - hDate) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) return 'Harvested Today 🌱';
+    const isGrain = ['GRAINS', 'PULSES', 'SPICES'].includes((category || '').toUpperCase()) ||
+      ['wheat', 'rice', 'chana', 'mustard', 'barley', 'maize', 'dal'].some(kw => (cropName || '').toLowerCase().includes(kw));
+    const maxDays = isGrain ? 365 : 60;
+
+    if (diffDays < 0) return 'Future Harvest Date ⚠️';
+    if (diffDays > maxDays) {
+      return `Harvested ${diffDays} Days Ago ❌ (Spoiled / Expired Stock - Ineligible for Sale)`;
+    }
+    if (diffDays === 0) return 'Harvested Today 🌱';
     if (diffDays === 1) return 'Harvested 1 Day Ago 🟢';
-    return `Harvested ${diffDays} Days Ago 🟢`;
+    if (diffDays <= 3) return `Harvested ${diffDays} Days Ago 🟢`;
+    if (diffDays <= 7) return `Harvested ${diffDays} Days Ago 🟡`;
+    if (diffDays <= 30) return `Harvested ${diffDays} Days Ago 🟠`;
+    return `Harvested ${diffDays} Days Ago 🔴`;
   };
 
   const filteredListings = listings.filter((item) => {
@@ -228,7 +245,8 @@ const MyProducePage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredListings.map((item) => {
-              const stockAgeText = calculateStockAgeText(item.harvestDate);
+              const stockAgeText = calculateStockAgeText(item.harvestDate, item.cropName, item.category);
+              const isExpired = stockAgeText.includes('❌') || stockAgeText.includes('⚠️');
               const img1 = item.images && item.images[0] ? item.images[0] : 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80';
               const img2 = item.images && item.images[1] ? item.images[1] : null;
 
@@ -257,9 +275,15 @@ const MyProducePage = () => {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-bold pt-0.5">
-                        <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{stockAgeText}</span>
+                      <div className={`flex items-center gap-1.5 text-xs font-bold pt-0.5 ${
+                        isExpired
+                          ? 'text-rose-900 bg-rose-100 px-2.5 py-1 rounded-xl border border-rose-300'
+                          : stockAgeText.includes('🔴') || stockAgeText.includes('🟠')
+                          ? 'text-amber-700'
+                          : 'text-emerald-700'
+                      }`}>
+                        <Clock className={`w-3.5 h-3.5 ${isExpired ? 'text-rose-700' : 'text-emerald-600'}`} />
+                        <span className="truncate">{stockAgeText}</span>
                       </div>
 
                       <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 mt-2">
@@ -272,6 +296,59 @@ const MyProducePage = () => {
                           <span className="font-black text-emerald-700 text-base">₹{item.pricePerKg} / kg</span>
                         </div>
                       </div>
+
+                      {/* AI Visual Quality Summary Box */}
+                      {(() => {
+                        const q = item.currentQuality || calculateCurrentQuality(item.aiQualityAssessment, item.storageCondition, item.cropName);
+                        return (
+                          <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2 mt-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-extrabold text-slate-800 flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                Quality
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                {q.qualityStatus === 'VERIFIED' ? (
+                                  <span className="font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[10px] border border-emerald-300">
+                                    ✓ VERIFIED
+                                  </span>
+                                ) : q.qualityStatus === 'ESTIMATED' ? (
+                                  <span className="font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-[10px] border border-amber-300">
+                                    ⏱ ESTIMATED ({q.daysSinceVerification}d)
+                                  </span>
+                                ) : (
+                                  <span className="font-black text-slate-700 bg-slate-200 px-2 py-0.5 rounded text-[10px] border border-slate-300">
+                                    NOT VERIFIED
+                                  </span>
+                                )}
+                                <span className="font-black text-slate-900 bg-white px-2 py-0.5 rounded text-xs border border-slate-200">
+                                  {q.currentGrade} | {q.currentScore}%
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold">
+                              <span>Storage: <b className="text-emerald-800">{q.storageCondition}</b></span>
+                              <span>Decay: <b className="text-emerald-700">{q.dailyDecayRate}%/day</b></span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedQualityListing(item)}
+                                className="py-1.5 text-center text-[11px] font-extrabold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                              >
+                                <Award className="w-3.5 h-3.5 text-emerald-600" /> Details
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setReverifyListing(item)}
+                                className="py-1.5 text-center text-[11px] font-extrabold text-emerald-700 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-xl border border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                              >
+                                <Camera className="w-3.5 h-3.5 text-emerald-700" /> Re-verify
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -294,6 +371,39 @@ const MyProducePage = () => {
             })}
           </div>
         )}
+
+        {/* AI Crop Quality Details Modal */}
+        <QualityDetailsModal
+          isOpen={!!selectedQualityListing}
+          onClose={() => setSelectedQualityListing(null)}
+          assessment={selectedQualityListing?.aiQualityAssessment}
+          produceInfo={selectedQualityListing}
+        />
+
+        {/* Geo-Tagged Re-Verification Modal */}
+        <ReverifyModal
+          isOpen={Boolean(reverifyListing)}
+          onClose={() => setReverifyListing(null)}
+          listing={reverifyListing}
+          onSuccess={(updated) => {
+            setListings((prev) =>
+              prev.map((l) =>
+                l._id === updated._id
+                  ? {
+                      ...l,
+                      ...updated,
+                      currentQuality: calculateCurrentQuality(
+                        updated.aiQualityAssessment,
+                        updated.storageCondition,
+                        updated.cropName
+                      ),
+                    }
+                  : l
+              )
+            );
+            setAlertMessage(`Quality for ${updated.cropName} successfully re-verified! New baseline established.`);
+          }}
+        />
       </div>
     </DashboardLayout>
   );

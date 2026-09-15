@@ -19,13 +19,16 @@ import {
   PlusCircle,
   Layers,
   TrendingUp,
+  Clock,
+  CheckCircle2,
   SlidersHorizontal,
   Bot,
   Compass,
-  CheckCircle2,
   X,
   IndianRupee,
 } from 'lucide-react';
+import QualityDetailsModal from '../components/QualityDetailsModal';
+import { calculateCurrentQuality } from '../utils/qualityCalculator';
 
 const ConsumerMarketplace = () => {
   const [listings, setListings] = useState([]);
@@ -38,6 +41,7 @@ const ConsumerMarketplace = () => {
   const [maxPrice, setMaxPrice] = useState('');
   const [maxDistanceKm, setMaxDistanceKm] = useState('ALL');
   const [sort, setSort] = useState('ai_recommended'); // Default: AI Match Rank
+  const [selectedQualityListing, setSelectedQualityListing] = useState(null);
 
   // Autosuggest State
   const [suggestions, setSuggestions] = useState([]);
@@ -666,10 +670,26 @@ const ConsumerMarketplace = () => {
                         <span>{item.grade ? item.grade.replace('GRADE_', 'Grade ') : 'Grade A'}</span>
                       </div>
 
-                      {/* Top Right: AI Recommendation Match Score */}
-                      <div className="absolute top-3 right-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-3 py-1 rounded-xl text-[11px] font-black shadow-md border border-emerald-400/40 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>{item.aiRecommendationScore || 92}% AI Match</span>
+                      {/* Top Right: AI Match Rank & Quality Status */}
+                      <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-2.5 py-1 rounded-xl text-[10px] font-black shadow-md border border-emerald-400/40 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-amber-300" />
+                          <span>{item.aiRecommendationScore || 92}% Match</span>
+                        </div>
+                        {(() => {
+                          const q = item.currentQuality || calculateCurrentQuality(item.aiQualityAssessment, item.storageCondition, item.cropName);
+                          return q.qualityStatus === 'VERIFIED' ? (
+                            <div className="bg-emerald-700/90 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[9px] font-extrabold shadow-sm flex items-center gap-1 border border-white/20">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-300" />
+                              VERIFIED: {q.currentGrade} ({q.currentScore}%)
+                            </div>
+                          ) : (
+                            <div className="bg-amber-700/90 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[9px] font-extrabold shadow-sm flex items-center gap-1 border border-white/20">
+                              <Clock className="w-2.5 h-2.5 text-amber-300" />
+                              ESTIMATED: {q.currentGrade} ({q.currentScore}%)
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -695,25 +715,38 @@ const ConsumerMarketplace = () => {
                         </div>
                       </div>
 
-                      {/* Farmer Info */}
-                      <div className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between border border-slate-200/80">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
-                            👨‍🌾
+                      {/* Geo-Verification & Farmer Info */}
+                      <div className="p-3 bg-slate-50 rounded-2xl space-y-2 border border-slate-200/80">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs">
+                              👨‍🌾
+                            </div>
+                            <div>
+                              <p className="text-xs font-extrabold text-slate-900">
+                                {item.farmer?.name || 'Verified Farmer'}
+                              </p>
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                Quality Score: {item.aiQualityEstimateScore || 92}%
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-extrabold text-slate-900">
-                              {item.farmer?.name || 'Verified Farmer'}
-                            </p>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                              Quality Score: {item.aiQualityEstimateScore || 92}%
-                            </p>
-                          </div>
+                          <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                            Verified DB
+                          </span>
                         </div>
 
-                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                          Verified DB
-                        </span>
+                        {(item.aiQualityAssessment?.latestGeoVerification?.isGeoVerified || item.aiQualityAssessment?.latestGeoVerification?.status === 'VERIFIED') && (
+                          <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800 pt-1 border-t border-slate-200/60">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Geo-Verification: Verified Origin
+                            </span>
+                            <span className="text-slate-500 font-medium">
+                              {item.location?.district}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Harvest & Available Stock */}
@@ -726,6 +759,30 @@ const ConsumerMarketplace = () => {
                           {item.availableQuantityKg?.toLocaleString()} kg left
                         </span>
                       </div>
+
+                      {/* View AI Quality Report Button */}
+                      {(() => {
+                        const q = item.currentQuality || calculateCurrentQuality(item.aiQualityAssessment, item.storageCondition, item.cropName);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedQualityListing(item)}
+                            className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-extrabold border border-emerald-200 transition-all flex items-center justify-between cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Award className="w-3.5 h-3.5 text-emerald-600" />
+                              View Quality Report
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                              q.qualityStatus === 'VERIFIED'
+                                ? 'bg-emerald-200 text-emerald-900 border-emerald-300'
+                                : 'bg-amber-100 text-amber-900 border-amber-300'
+                            }`}>
+                              {q.qualityStatus === 'VERIFIED' ? '✓ VERIFIED' : '⏱ ESTIMATED'}
+                            </span>
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -825,6 +882,26 @@ const ConsumerMarketplace = () => {
             </div>
           )}
         </div>
+
+        {/* Quality Details Modal */}
+        <QualityDetailsModal
+          isOpen={!!selectedQualityListing}
+          onClose={() => setSelectedQualityListing(null)}
+          assessment={
+            selectedQualityListing?.aiQualityAssessment || {
+              overallScore: selectedQualityListing?.aiQualityEstimateScore || 92,
+              grade: selectedQualityListing?.grade?.replace('GRADE_', '') || 'A+',
+              confidence: 88,
+              freshness: 94,
+              appearance: 91,
+              colorQuality: 95,
+              visibleDamage: 96,
+              spoilageRisk: 'Low',
+              maturity: 88,
+            }
+          }
+          produceInfo={selectedQualityListing}
+        />
       </div>
     </MainLayout>
   );

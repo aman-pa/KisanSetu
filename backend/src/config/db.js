@@ -8,16 +8,16 @@ let mongoServer = null;
 
 const connectDB = async () => {
   try {
-    // Attempt local MongoDB service first with 5s timeout
-    console.log('[Database] Checking local MongoDB connection...');
+    const isAtlas = (process.env.MONGODB_URI || '').includes('mongodb+srv://');
+    console.log(`[Database] Connecting to ${isAtlas ? 'MongoDB Atlas Cloud' : 'MongoDB'}...`);
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/kisansetu', {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
     });
-    console.log(`[MongoDB] Connected to local MongoDB service.`);
+    console.log(`[MongoDB] Connected successfully to ${mongoose.connection.host} (Database: ${mongoose.connection.name})`);
     await autoSeedIfEmpty();
   } catch (err) {
-    console.warn(`[Database] Local MongoDB not running (${err.message}).`);
+    console.warn(`[Database] Primary MongoDB connection failed (${err.message}).`);
     console.log(`[Database] Initializing persistent storage database engine...`);
 
     try {

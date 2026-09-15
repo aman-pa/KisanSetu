@@ -3,6 +3,8 @@ const User = require('../models/User');
 const BatchTraceability = require('../models/BatchTraceability');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const { calculateCurrentQuality } = require('../utils/qualityCalculator');
+const { verifyProducePipeline, computeImageHash } = require('./qualityController');
 
 // Helper to generate QR code payload
 const generateBatchQR = async (batchId, cropName, farmerName, harvestDate) => {
@@ -22,24 +24,202 @@ const generateBatchQR = async (batchId, cropName, farmerName, harvestDate) => {
 // @access Private (FARMER, FPO)
 const createListing = async (req, res) => {
   try {
-    const { cropName, category, quantityKg, pricePerKg, grade, harvestDate, images, location } = req.body;
+    const {
+      cropName,
+      category,
+      quantityKg,
+      pricePerKg,
+      grade,
+      harvestDate,
+      images,
+      location,
+      storageCondition,
+      aiQualityAssessment,
+    } = req.body;
 
     if (!cropName || !quantityKg || !pricePerKg || !harvestDate) {
       return res.status(400).json({ success: false, message: 'Please provide crop name, quantity, price, and harvest date' });
     }
 
+    // Backend Strict Harvest Date Validation
+    const hDate = new Date(harvestDate);
+    if (isNaN(hDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_HARVEST_DATE',
+        message: 'Invalid harvest date provided.',
+      });
+    }
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    if (hDate > todayEnd) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_HARVEST_DATE',
+        message: 'Harvest date cannot be in the future.',
+      });
+    }
+
+    const isGrainCrop = ['GRAINS', 'PULSES', 'SPICES'].includes((category || '').toUpperCase()) ||
+      ['wheat', 'rice', 'chana', 'mustard', 'barley', 'maize', 'dal'].some((kw) => (cropName || '').toLowerCase().includes(kw));
+    const maxDaysAllowed = isGrainCrop ? 365 : 60;
+    const diffDaysFromToday = Math.floor((Date.now() - hDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDaysFromToday > maxDaysAllowed) {
+      return res.status(400).json({
+        success: false,
+        code: 'HARVEST_DATE_EXPIRED',
+        message: 'Harvest date exceeds the allowed freshness period for this produce category.',
+      });
+    }
+
     const batchId = `KS-BATCH-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
     const qrDataUrl = await generateBatchQR(batchId, cropName, req.user.name, harvestDate);
 
-    // AI Assisted visual quality assessment simulation (Grade A -> 92%, Grade B -> 82%, Grade C -> 72%)
+    // AI Assisted visual quality assessment
     let aiQualityScore = 92;
-    if (grade === 'GRADE_B') aiQualityScore = 81;
-    if (grade === 'GRADE_C') aiQualityScore = 70;
+    if (aiQualityAssessment && typeof aiQualityAssessment.overallScore === 'number') {
+      aiQualityScore = aiQualityAssessment.overallScore;
+    } else {
+      if (grade === 'GRADE_B') aiQualityScore = 81;
+      if (grade === 'GRADE_C') aiQualityScore = 70;
+    }
+
+    // Determine standard grade category
+    let finalGrade = grade || 'GRADE_A';
+    if (aiQualityAssessment?.grade) {
+      const g = aiQualityAssessment.grade.toUpperCase();
+      if (g.includes('A')) finalGrade = 'GRADE_A';
+      else if (g.includes('B')) finalGrade = 'GRADE_B';
+      else finalGrade = 'GRADE_C';
+    }
 
     // AI Price Recommendation calculation
     const currentAvg = Number(pricePerKg);
     const recommendedMin = Math.max(10, Math.round(currentAvg * 0.95));
     const recommendedMax = Math.round(currentAvg * 1.12);
+
+    const initialScore = (aiQualityAssessment && typeof aiQualityAssessment.overallScore === 'number')
+      ? aiQualityAssessment.overallScore
+      : aiQualityScore;
+    const initialGradeStr = aiQualityAssessment?.grade || (finalGrade === 'GRADE_A' ? 'A+' : finalGrade === 'GRADE_B' ? 'A' : 'B');
+    const assessedDate = new Date();
+
+    // Check if genuine device GPS coordinates were captured
+    const hasGenuineDeviceGPS =
+      Boolean(req.body.isDeviceGps || aiQualityAssessment?.latestGeoVerification?.isDeviceGps) &&
+      typeof location?.lat === 'number' &&
+      typeof location?.lng === 'number' &&
+      !isNaN(location.lat) &&
+      !isNaN(location.lng) &&
+      location.lat >= -90 &&
+      location.lat <= 90 &&
+      location.lng >= -180 &&
+      location.lng <= 180 &&
+      req.body.isManual !== true;
+
+    const initialGeoStatus = hasGenuineDeviceGPS ? 'VERIFIED' : 'NOT_VERIFIED';
+    const initialQualityStatus = hasGenuineDeviceGPS ? 'VERIFIED' : 'NOT_VERIFIED';
+
+    const initialAssessmentData = aiQualityAssessment ? {
+      ...aiQualityAssessment,
+      initialQualityScore: initialScore,
+      initialGrade: initialGradeStr,
+      assessedAt: assessedDate,
+      qualityStatus: initialQualityStatus,
+      latestVerifiedScore: initialScore,
+      latestVerifiedGrade: initialGradeStr,
+      latestVerifiedAt: assessedDate,
+      imageConsistency: aiQualityAssessment.imageConsistency || {
+        status: 'PASS',
+        isSameCrop: true,
+        image1Crop: cropName,
+        image2Crop: cropName,
+        selectedCrop: cropName,
+        confidence: 92,
+        message: `Both images verified as ${cropName}.`,
+      },
+      latestGeoVerification: {
+        latitude: hasGenuineDeviceGPS ? location.lat : null,
+        longitude: hasGenuineDeviceGPS ? location.lng : null,
+        capturedAt: assessedDate,
+        isGeoVerified: hasGenuineDeviceGPS,
+        status: initialGeoStatus,
+      },
+      qualityVerificationHistory: [
+        {
+          type: 'INITIAL_ASSESSMENT',
+          score: initialScore,
+          grade: initialGradeStr,
+          timestamp: assessedDate,
+          status: initialQualityStatus,
+          geoVerification: {
+            latitude: hasGenuineDeviceGPS ? location.lat : null,
+            longitude: hasGenuineDeviceGPS ? location.lng : null,
+            capturedAt: assessedDate,
+            isGeoVerified: hasGenuineDeviceGPS,
+            status: initialGeoStatus,
+          },
+          photo: images && images.length ? images[0] : '',
+          notes: 'Initial listing AI visual quality assessment.',
+        },
+      ],
+    } : undefined;
+
+    // Strict Verification Pipeline Validation (Authoritative Backend Enforcement)
+    const isStrictVerificationRequired =
+      req.body.strictVerification === true ||
+      req.body.isDeviceGps === true ||
+      Boolean(aiQualityAssessment?.latestGeoVerification?.isGeoVerified) ||
+      Boolean(req.body.requireVerification);
+
+    let authoritativeAssessment = initialAssessmentData;
+
+    if (isStrictVerificationRequired) {
+      const img1 = images && images.length > 0 ? images[0] : null;
+      const img2 = images && images.length > 1 ? images[1] : null;
+      const deviceCoords = location && typeof location.lat === 'number' && typeof location.lng === 'number'
+        ? { lat: location.lat, lng: location.lng }
+        : null;
+
+      const pipelineResult = await verifyProducePipeline({
+        cropName,
+        category: category || 'VEGETABLES',
+        harvestDate,
+        storageCondition: storageCondition || 'Room Temperature',
+        image1: img1,
+        image2: img2,
+        deviceCoords,
+      });
+
+      if (!pipelineResult.success) {
+        return res.status(400).json({
+          success: false,
+          code: pipelineResult.rejection?.code || 'VERIFICATION_FAILED',
+          stage: pipelineResult.failedGate,
+          title: pipelineResult.rejection?.title || 'VERIFICATION REJECTED',
+          message: pipelineResult.rejection?.message || 'Produce verification checks failed.',
+          details: pipelineResult.gates,
+        });
+      }
+
+      if (pipelineResult.qualityAssessment) {
+        authoritativeAssessment = {
+          ...pipelineResult.qualityAssessment,
+          initialQualityScore: pipelineResult.qualityAssessment.overallScore || initialScore,
+          initialGrade: pipelineResult.qualityAssessment.grade || initialGradeStr,
+          assessedAt: assessedDate,
+          qualityStatus: 'VERIFIED',
+          latestVerifiedScore: pipelineResult.qualityAssessment.overallScore || initialScore,
+          latestVerifiedGrade: pipelineResult.qualityAssessment.grade || initialGradeStr,
+          latestVerifiedAt: assessedDate,
+        };
+      }
+    }
+
+    const imageHashes = Array.isArray(images)
+      ? images.map((img) => computeImageHash(img)).filter(Boolean)
+      : [];
 
     const listing = await ProduceListing.create({
       farmer: req.user._id,
@@ -48,12 +228,14 @@ const createListing = async (req, res) => {
       quantityKg: Number(quantityKg),
       availableQuantityKg: Number(quantityKg),
       pricePerKg: Number(pricePerKg),
-      grade: grade || 'GRADE_A',
+      grade: finalGrade,
       harvestDate: new Date(harvestDate),
+      storageCondition: storageCondition || 'Room Temperature',
       images: images && images.length ? images : [
         'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
         'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80'
       ],
+      imageHashes,
       location: location || {
         district: req.user.address?.city || 'Karnal',
         state: req.user.address?.state || 'Haryana',
@@ -62,6 +244,7 @@ const createListing = async (req, res) => {
       },
       batchId,
       aiQualityEstimateScore: aiQualityScore,
+      aiQualityAssessment: authoritativeAssessment,
       aiPriceRecommendation: {
         min: recommendedMin,
         max: recommendedMax,
@@ -91,7 +274,9 @@ const createListing = async (req, res) => {
           timestamp: new Date(),
           actor: 'KisanSetu AI Vision Engine',
           location: 'Cloud AI Microservice',
-          notes: `Visual defect inspection completed. Estimated score: ${aiQualityScore}/100.`,
+          notes: aiQualityAssessment?.observations?.[0]
+            ? `AI Visual Quality: ${aiQualityAssessment.observations[0]} Score: ${aiQualityScore}/100 (Grade ${aiQualityAssessment.grade || 'A+'}).`
+            : `Visual defect inspection completed. Estimated score: ${aiQualityScore}/100.`,
         },
       ],
     });
@@ -195,20 +380,27 @@ const getListings = async (req, res) => {
     const refLat = Number(userLat) || 28.6139; // Default Delhi/NCR lat
     const refLng = Number(userLng) || 77.2090; // Default Delhi/NCR lng
 
-    // Enhance listings with distance & AI Recommendation Match Score
-    let listings = rawListings.map((item) => {
-      const doc = item.toObject();
+    // Enhance listings with dynamic current quality, sanitized geo coordinates, distance & AI Recommendation Match Score
+    let processedListings = rawListings.map((doc) => {
+      const l = doc.toObject();
+      l.currentQuality = calculateCurrentQuality(l.aiQualityAssessment, l.storageCondition, l.cropName, new Date(), l.harvestDate);
 
-      const farmerLat = doc.location?.lat || 29.6857;
-      const farmerLng = doc.location?.lng || 76.9905;
+      // Distance calculation
+      const farmerLat = l.location?.lat || 29.6857;
+      const farmerLng = l.location?.lng || 76.9905;
       const distKm = calculateDistanceKm(refLat, refLng, farmerLat, farmerLng);
+      l.distanceKm = distKm;
 
       // AI Match Ranking Score Calculation (0 to 100)
       // Factors: Quality score (40%), Distance proximity (30%), Price value (30%)
-      let qualityScore = doc.aiQualityEstimateScore || 90;
-      if (doc.grade === 'GRADE_A') qualityScore = Math.max(qualityScore, 92);
-      if (doc.grade === 'GRADE_B') qualityScore = 82;
-      if (doc.grade === 'GRADE_C') qualityScore = 72;
+      let qualityScore = l.currentQuality?.currentScore || l.aiQualityEstimateScore || 90;
+      if (l.grade === 'GRADE_A' || l.currentQuality?.currentGrade === 'A' || l.currentQuality?.currentGrade === 'A+') {
+        qualityScore = Math.max(qualityScore, 92);
+      } else if (l.grade === 'GRADE_B' || l.currentQuality?.currentGrade === 'B') {
+        qualityScore = Math.max(qualityScore, 82);
+      } else if (l.grade === 'GRADE_C' || l.currentQuality?.currentGrade === 'C') {
+        qualityScore = Math.max(qualityScore, 72);
+      }
 
       let proximityScore = 100;
       if (distKm > 10) proximityScore = 90;
@@ -216,32 +408,64 @@ const getListings = async (req, res) => {
       if (distKm > 50) proximityScore = 60;
       if (distKm > 100) proximityScore = 40;
 
-      const priceScore = Math.max(30, Math.min(100, Math.round(110 - (doc.pricePerKg || 30) * 1.2)));
+      const priceScore = Math.max(30, Math.min(100, Math.round(110 - (l.pricePerKg || 30) * 1.2)));
+      l.aiRecommendationScore = Math.round(qualityScore * 0.4 + proximityScore * 0.3 + priceScore * 0.3);
 
-      const aiRecommendationScore = Math.round(qualityScore * 0.4 + proximityScore * 0.3 + priceScore * 0.3);
+      // Sanitize exact coordinates for buyers - keep verification status and district/state
+      const isGeoVerified = l.aiQualityAssessment?.latestGeoVerification?.status === 'VERIFIED' ||
+                            l.aiQualityAssessment?.latestGeoVerification?.isGeoVerified === true;
+      const verificationDate = l.aiQualityAssessment?.latestGeoVerification?.capturedAt ||
+                               l.aiQualityAssessment?.latestVerifiedAt || null;
 
-      return {
-        ...doc,
-        distanceKm: distKm,
-        aiRecommendationScore,
-      };
+      if (l.location) {
+        l.location = {
+          district: l.location.district,
+          state: l.location.state,
+        };
+      }
+      if (l.aiQualityAssessment?.latestGeoVerification) {
+        l.aiQualityAssessment.latestGeoVerification = {
+          isGeoVerified,
+          status: isGeoVerified ? 'VERIFIED' : 'NOT_VERIFIED',
+          verificationDate,
+          district: l.location?.district,
+          state: l.location?.state,
+        };
+      }
+      if (Array.isArray(l.aiQualityAssessment?.qualityVerificationHistory)) {
+        l.aiQualityAssessment.qualityVerificationHistory = l.aiQualityAssessment.qualityVerificationHistory.map((h) => {
+          const hGeoVerified = h.geoVerification?.status === 'VERIFIED' || h.geoVerification?.isGeoVerified === true;
+          return {
+            ...h,
+            notes: h.notes ? h.notes.replace(/\(Lat:.*?, Lng:.*?\)/gi, '').trim() : h.notes,
+            geoVerification: {
+              isGeoVerified: hGeoVerified,
+              status: hGeoVerified ? 'VERIFIED' : 'NOT_VERIFIED',
+              verificationDate: h.timestamp || h.geoVerification?.capturedAt,
+              district: l.location?.district,
+              state: l.location?.state,
+            },
+          };
+        });
+      }
+      return l;
     });
 
     // Distance Filter
     if (maxDistanceKm && Number(maxDistanceKm) > 0) {
-      listings = listings.filter((item) => item.distanceKm <= Number(maxDistanceKm));
+      processedListings = processedListings.filter((item) => item.distanceKm <= Number(maxDistanceKm));
     }
 
     // AI Recommendation Ranking Sort
     if (sort === 'ai_recommended') {
-      listings.sort((a, b) => b.aiRecommendationScore - a.aiRecommendationScore);
+      processedListings.sort((a, b) => b.aiRecommendationScore - a.aiRecommendationScore);
     } else if (sort === 'distance_asc') {
-      listings.sort((a, b) => a.distanceKm - b.distanceKm);
+      processedListings.sort((a, b) => a.distanceKm - b.distanceKm);
     } else if (sort === 'quality_desc') {
-      listings.sort((a, b) => (b.aiQualityEstimateScore || 0) - (a.aiQualityEstimateScore || 0));
+      processedListings.sort((a, b) => (b.currentQuality?.currentScore || b.aiQualityEstimateScore || 0) - (a.currentQuality?.currentScore || a.aiQualityEstimateScore || 0));
     }
 
-    return res.json({ success: true, count: listings.length, listings });
+    return res.json({ success: true, count: processedListings.length, listings: processedListings });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -258,7 +482,57 @@ const getListingById = async (req, res) => {
 
     const batchTrace = await BatchTraceability.findOne({ batchId: listing.batchId });
 
-    return res.json({ success: true, listing, batchTrace });
+    const l = listing.toObject();
+    l.currentQuality = calculateCurrentQuality(l.aiQualityAssessment, l.storageCondition, l.cropName, new Date(), l.harvestDate);
+
+    // Sanitize coordinates if not owner farmer or admin
+    const isOwner = req.user && (req.user._id?.toString() === l.farmer?._id?.toString() || req.user.role === 'ADMIN');
+    if (!isOwner) {
+      const isGeoVerified = l.aiQualityAssessment?.latestGeoVerification?.status === 'VERIFIED' ||
+                            l.aiQualityAssessment?.latestGeoVerification?.isGeoVerified === true;
+      const verificationDate = l.aiQualityAssessment?.latestGeoVerification?.capturedAt ||
+                               l.aiQualityAssessment?.latestVerifiedAt || null;
+
+      if (l.location) {
+        l.location = {
+          district: l.location.district,
+          state: l.location.state,
+        };
+      }
+      if (l.aiQualityAssessment?.latestGeoVerification) {
+        l.aiQualityAssessment.latestGeoVerification = {
+          isGeoVerified,
+          status: isGeoVerified ? 'VERIFIED' : 'NOT_VERIFIED',
+          verificationDate,
+          district: l.location?.district,
+          state: l.location?.state,
+        };
+      }
+      if (Array.isArray(l.aiQualityAssessment?.qualityVerificationHistory)) {
+        l.aiQualityAssessment.qualityVerificationHistory = l.aiQualityAssessment.qualityVerificationHistory.map((h) => {
+          const hGeoVerified = h.geoVerification?.status === 'VERIFIED' || h.geoVerification?.isGeoVerified === true;
+          return {
+            ...h,
+            notes: h.notes ? h.notes.replace(/\(Lat:.*?, Lng:.*?\)/gi, '').trim() : h.notes,
+            geoVerification: {
+              isGeoVerified: hGeoVerified,
+              status: hGeoVerified ? 'VERIFIED' : 'NOT_VERIFIED',
+              verificationDate: h.timestamp || h.geoVerification?.capturedAt,
+              district: l.location?.district,
+              state: l.location?.state,
+            },
+          };
+        });
+      }
+      if (batchTrace && Array.isArray(batchTrace.timeline)) {
+        batchTrace.timeline = batchTrace.timeline.map((evt) => ({
+          ...evt.toObject ? evt.toObject() : evt,
+          location: evt.location ? evt.location.replace(/\(Lat:.*?, Lng:.*?\)/gi, '').trim() : evt.location,
+        }));
+      }
+    }
+
+    return res.json({ success: true, listing: l, batchTrace });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -270,7 +544,12 @@ const getListingById = async (req, res) => {
 const getMyListings = async (req, res) => {
   try {
     const listings = await ProduceListing.find({ farmer: req.user._id }).sort({ createdAt: -1 });
-    return res.json({ success: true, count: listings.length, listings });
+    const processedListings = listings.map((doc) => {
+      const l = doc.toObject();
+      l.currentQuality = calculateCurrentQuality(l.aiQualityAssessment, l.storageCondition, l.cropName, new Date(), l.harvestDate);
+      return l;
+    });
+    return res.json({ success: true, count: processedListings.length, listings: processedListings });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

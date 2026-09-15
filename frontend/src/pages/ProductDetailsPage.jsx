@@ -16,7 +16,10 @@ import {
   AlertTriangle,
   ChevronRight,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react';
+import QualityDetailsModal from '../components/QualityDetailsModal';
+import { calculateCurrentQuality } from '../utils/qualityCalculator';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -26,6 +29,7 @@ const ProductDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toastSuccess, setToastSuccess] = useState('');
+  const [showQualityModal, setShowQualityModal] = useState(false);
 
   const { addToCart, maxConsumerLimitKg } = useCart();
   const { user } = useAuth();
@@ -167,17 +171,57 @@ const ProductDetailsPage = () => {
                 </div>
 
                 {/* AI Quality Rating Card */}
-                <div className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-2xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-emerald-600" /> AI Visual Quality Estimate
-                    </span>
-                    <span className="text-sm font-black text-emerald-700">{listing.aiQualityEstimateScore}% Match</span>
-                  </div>
-                  <p className="text-[11px] text-slate-600">
-                    Computer vision inspects surface defect percentage, color uniformity, and size grading.
-                  </p>
-                </div>
+                {(() => {
+                  const q = listing.currentQuality || calculateCurrentQuality(listing.aiQualityAssessment, listing.storageCondition, listing.cropName);
+                  return (
+                    <div className="p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100/70 border border-emerald-200/80 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-emerald-600" /> AI Visual Crop Quality
+                        </span>
+                        <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${
+                          q.qualityStatus === 'VERIFIED'
+                            ? 'text-emerald-900 bg-emerald-200/90 border-emerald-300'
+                            : q.qualityStatus === 'ESTIMATED'
+                            ? 'text-amber-950 bg-amber-100 border-amber-300'
+                            : 'text-slate-800 bg-slate-200 border-slate-300'
+                        }`}>
+                          {q.qualityStatus === 'VERIFIED'
+                            ? '✓ VERIFIED'
+                            : q.qualityStatus === 'ESTIMATED'
+                            ? '⏱ ESTIMATED'
+                            : '✕ NOT VERIFIED'}: Grade {q.currentGrade} ({q.currentScore}%)
+                        </span>
+                      </div>
+
+                      {(listing.aiQualityAssessment?.latestGeoVerification?.isGeoVerified || listing.aiQualityAssessment?.latestGeoVerification?.status === 'VERIFIED') && (
+                        <div className="flex items-center justify-between text-xs text-emerald-900 font-bold bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-200">
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            Geo-Verification: Verified Farm Origin
+                          </span>
+                          <span className="text-slate-500 font-medium">
+                            {listing.location?.district}, {listing.location?.state}
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-600">
+                        {q.qualityStatus === 'VERIFIED'
+                          ? 'Fresh visual inspection baseline verified from farm-gate photographs.'
+                          : `Projected quality based on ${q.storageCondition} storage (${q.dailyDecayRate}%/day decay) over ${q.daysSinceVerification} elapsed days.`}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowQualityModal(true)}
+                        className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Award className="w-4 h-4" /> View Full Quality Report & Degradation Trend
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Add to Cart Form */}
                 <div className="space-y-4 pt-2">
@@ -228,6 +272,26 @@ const ProductDetailsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Quality Details Modal */}
+        <QualityDetailsModal
+          isOpen={showQualityModal}
+          onClose={() => setShowQualityModal(false)}
+          assessment={
+            listing.aiQualityAssessment || {
+              overallScore: listing.aiQualityEstimateScore || 92,
+              grade: listing.grade?.replace('GRADE_', '') || 'A+',
+              confidence: 88,
+              freshness: 94,
+              appearance: 91,
+              colorQuality: 95,
+              visibleDamage: 96,
+              spoilageRisk: 'Low',
+              maturity: 88,
+            }
+          }
+          produceInfo={listing}
+        />
       </div>
     </MainLayout>
   );

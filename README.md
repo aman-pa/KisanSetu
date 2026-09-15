@@ -59,3 +59,47 @@ npm run dev      # Starts Vite dev server on http://localhost:5173
 - **Bulk Buyer**: `buyer.freshmart@kisansetu.in` / `Buyer@123`
 - **Consumer**: `consumer.anita@kisansetu.in` / `Consumer@123`
 - **Logistics**: `logistics.express@kisansetu.in` / `Logistics@123`
+
+---
+
+## 🔍 AI Visual Crop Quality Assessment Architecture
+
+KisanSetu incorporates an automated, two-stage AI-powered visual crop inspection and degradation forecasting system.
+
+### Stage 1: Mandatory Image Quality Validation Gate
+Before running crop quality analysis, the system inspects both farm-gate photographs to ensure photographic clarity:
+- **Resolution**: Checks pixel dimensions (minimum 300x300 px, recommended 800px+).
+- **Illumination & Exposure**: Detects underexposed (mean brightness < 35) or overexposed/washed out images (> 230).
+- **Contrast & Dynamic Range**: Checks grayscale standard deviation variance.
+- **Focus & Sharpness**: Computes edge gradient variance (Laplacian approximation).
+- **Rejection Gate**: Any image scoring below **70/100** is rejected with human-friendly guidance (e.g., *"The image is too dark to assess the crop. Please upload a photo with better lighting"*), strictly preventing crop quality analysis until a clearer photo is provided.
+
+### Stage 2: AI Visual Crop Quality Assessment
+Once both uploaded photos pass Stage 1, the system conducts a visual quality assessment:
+- **Vision AI Provider**: Google Gemini Vision API (`gemini-3.8-flash`), with automated fallback to a resilient botanical heuristic computer-vision engine if the API key is not configured or during offline execution.
+- **Visual Attributes Evaluated**:
+  - `overallScore` (0–100%)
+  - `grade` (`A+`, `A`, `B`, `C`, `D`)
+  - `freshness`, `appearance`, `colorQuality`, `visibleDamage` (surface integrity), `spoilageRisk`, `maturity`, `confidence`
+  - `observations`: Detailed visual inspection findings
+  - `concerns`: Potential storage or handling risks
+- **Estimated Visual Quality Trend**: 14-day degradation forecast calibrated by storage method (`Room Temperature`, `Refrigerated`, `Cold Storage`, `Warehouse`, `Open Field`).
+
+### Image Quality Score vs. Crop Quality Score
+- **Image Quality Score (Stage 1)**: Measures photographic clarity (focus, lighting, resolution, blur). Answers: *"Is this photo sharp and well-lit enough to assess?"*
+- **Crop Quality Score (Stage 2)**: Measures botanical surface attributes of the produce (color, freshness, surface defects, maturity). Answers: *"What is the physical condition and grade of this crop?"*
+
+### Environment Configuration
+To enable the Google Gemini Vision API integration:
+1. Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
+2. Add your key to `backend/.env` (and optionally `ai-service/.env`):
+   ```env
+   GEMINI_API_KEY=your_actual_gemini_api_key_here
+   ```
+3. If `GEMINI_API_KEY` is not set or set to `your_gemini_api_key_here`, the system automatically runs the built-in resilient botanical heuristic engine without failing or interrupting listings.
+
+### AI Disclaimers & Scope of Assessment
+- AI visual assessment is based strictly on visual analysis of uploaded photos and provides an informational estimate.
+- It does **NOT** measure chemical composition, pesticide residue, or internal nutritional content.
+- Estimated degradation trends depend on actual temperature, humidity, storage facility, packaging, and transit handling.
+

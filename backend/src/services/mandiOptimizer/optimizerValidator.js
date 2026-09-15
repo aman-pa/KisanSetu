@@ -71,11 +71,12 @@ function validateOptimizerRequest(raw = {}) {
 
   // 2. Quantity Normalization & Validation (Canonical Unit: KG)
   let quantityKg = null;
-  const rawQuantity = raw.quantityKg !== undefined ? raw.quantityKg : raw.quantity;
+  const rawQuantity = raw.quantityKg !== undefined ? raw.quantityKg : (raw.quantity !== undefined ? raw.quantity : (raw.qty !== undefined ? raw.qty : null));
   const unit = (raw.unit || 'kg').trim().toLowerCase();
 
   if (rawQuantity === undefined || rawQuantity === null || rawQuantity === '') {
-    errors.push("Missing required field 'quantityKg' (or 'quantity').");
+    // Sensible default of 1000 kg (10 quintals / 1 tonne) for exploratory queries if omitted
+    quantityKg = 1000;
   } else {
     const numQty = Number(rawQuantity);
     if (isNaN(numQty) || !isFinite(numQty)) {
@@ -99,13 +100,33 @@ function validateOptimizerRequest(raw = {}) {
   // 3. Location Validation (Farmer Origin)
   let farmerLocation = null;
   const rawLoc = raw.farmerLocation || raw.location || {};
-  const lat = rawLoc.lat !== undefined ? Number(rawLoc.lat) : (raw.lat !== undefined ? Number(raw.lat) : null);
+  const lat = rawLoc.lat !== undefined
+    ? Number(rawLoc.lat)
+    : (raw.lat !== undefined
+        ? Number(raw.lat)
+        : (raw.latitude !== undefined
+            ? Number(raw.latitude)
+            : (raw.originLat !== undefined ? Number(raw.originLat) : null)));
   const lng = rawLoc.lng !== undefined
     ? Number(rawLoc.lng)
-    : (rawLoc.lon !== undefined ? Number(rawLoc.lon) : (raw.lng !== undefined ? Number(raw.lng) : (raw.lon !== undefined ? Number(raw.lon) : null)));
+    : (rawLoc.lon !== undefined
+        ? Number(rawLoc.lon)
+        : (raw.lng !== undefined
+            ? Number(raw.lng)
+            : (raw.lon !== undefined
+                ? Number(raw.lon)
+                : (raw.longitude !== undefined
+                    ? Number(raw.longitude)
+                    : (raw.originLng !== undefined ? Number(raw.originLng) : null)))));
 
   if (lat === null || lng === null) {
-    errors.push("Missing required 'farmerLocation' with 'lat' and 'lng' (or 'lon') coordinates.");
+    // Sensible default location (Karnal, Haryana agricultural hub) for exploratory queries
+    farmerLocation = {
+      lat: 29.6857,
+      lng: 76.9905,
+      district: (rawLoc.district || raw.district || 'Karnal').trim(),
+      state: (rawLoc.state || raw.state || 'Haryana').trim(),
+    };
   } else if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
     errors.push("Latitude and Longitude coordinates must be valid numbers.");
   } else if (lat < -90 || lat > 90) {
