@@ -49,9 +49,10 @@ const ConsumerOrdersPage = () => {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'CONFIRMED':
       case 'PENDING':
         return {
-          label: 'Awaiting Farmer Approval',
+          label: status === 'CONFIRMED' ? 'Order Confirmed (Escrow Secured)' : 'Awaiting Farmer Approval',
           color: 'bg-amber-50 text-amber-800 border-amber-300',
           icon: Clock,
         };
@@ -92,7 +93,7 @@ const ConsumerOrdersPage = () => {
 
   const filteredOrders = orders.filter((ord) => {
     if (activeFilter === 'ALL') return true;
-    if (activeFilter === 'PENDING') return ord.status === 'PENDING';
+    if (activeFilter === 'PENDING') return ord.status === 'PENDING' || ord.status === 'CONFIRMED';
     if (activeFilter === 'ACCEPTED') return ord.status === 'ACCEPTED' || ord.status === 'PICKUP_VERIFIED';
     if (activeFilter === 'IN_TRANSIT') return ord.status === 'IN_TRANSIT';
     if (activeFilter === 'DELIVERED') return ord.status === 'DELIVERED' || ord.status === 'COMPLETED';

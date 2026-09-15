@@ -30,6 +30,7 @@ import {
   TrendingUp,
   Package,
   PackagePlus,
+  Users,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -110,28 +111,46 @@ const Navbar = () => {
       case 'FPO':
         return [
           {
-            label: 'Home',
-            path: '/',
-            icon: Home,
-            isActive: (pathname) => pathname === '/',
-          },
-          {
-            label: 'FPO Hub',
+            label: 'Overview',
             path: '/fpo/dashboard',
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/fpo/dashboard',
           },
           {
-            label: 'Add Bulk Listing',
-            path: '/farmer/add-produce',
-            icon: PackagePlus,
-            isActive: (pathname) => pathname === '/farmer/add-produce',
+            label: 'Farmers',
+            path: '/fpo/farmers',
+            icon: Users,
+            isActive: (pathname) => pathname === '/fpo/farmers',
           },
           {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
+            label: 'Produce / Inventory',
+            path: '/fpo/produce',
+            icon: Package,
             isActive: (pathname) =>
+              pathname === '/fpo/produce' ||
+              pathname === '/farmer/produce' ||
+              pathname === '/farmer/add-produce',
+          },
+          {
+            label: 'Consumer Orders',
+            path: '/fpo/consumer-orders',
+            icon: ShoppingBag,
+            isActive: (pathname) =>
+              pathname === '/fpo/consumer-orders' || pathname === '/consumer/orders',
+          },
+          {
+            label: 'Bulk Buyer Orders',
+            path: '/fpo/bulk-orders',
+            icon: Building2,
+            isActive: (pathname) =>
+              pathname === '/fpo/bulk-orders' || pathname === '/buyer/procurement',
+          },
+          {
+            label: 'FPO Intelligence',
+            path: '/fpo/intelligence',
+            icon: Sparkles,
+            isActive: (pathname) =>
+              pathname === '/fpo/intelligence' ||
               pathname === '/market-intelligence' ||
               pathname.startsWith('/farmer/market-intelligence') ||
               pathname.startsWith('/farmer/demand-forecast') ||

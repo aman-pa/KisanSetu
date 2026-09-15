@@ -15,6 +15,8 @@ import FarmerDashboard from './pages/FarmerDashboard';
 import MyProducePage from './pages/MyProducePage';
 import AddProducePage from './pages/AddProducePage';
 import FPODashboard from './pages/FPODashboard';
+import FPOFarmersPage from './pages/FPOFarmersPage';
+import FPOProduceInventoryPage from './pages/FPOProduceInventoryPage';
 import BulkBuyerDashboard from './pages/BulkBuyerDashboard';
 import LogisticsDashboard from './pages/LogisticsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -103,6 +105,46 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
                 <FPODashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/farmers"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPOFarmersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/produce"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPOProduceInventoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/consumer-orders"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <ConsumerOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/bulk-orders"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <BulkBuyerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/intelligence"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <MarketIntelligencePage />
               </ProtectedRoute>
             }
           />

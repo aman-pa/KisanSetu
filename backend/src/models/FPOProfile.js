@@ -20,6 +20,21 @@ const fpoProfileSchema = new mongoose.Schema(
     },
     cropsHandled: [String],
     operatingRegions: [String],
+    serviceRadiusKm: {
+      type: Number,
+      default: 15, // standard 10-20 km for farmer membership
+      min: 10,
+      max: 20,
+    },
+    location: {
+      village: String,
+      district: String,
+      state: String,
+      coordinates: {
+        lat: Number,
+        lng: Number,
+      },
+    },
     verificationDocUrl: String,
     totalRevenue: {
       type: Number,

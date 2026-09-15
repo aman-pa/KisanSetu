@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import FPOMembershipCard from '../components/FPOMembershipCard';
 import {
   DollarSign,
   Package,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 
 const FarmerDashboard = () => {
+  const { user } = useAuth();
   const [listings, setListings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +131,7 @@ const FarmerDashboard = () => {
 
   const totalQuintalsSold = (calculatedTotalKgSold / 100).toFixed(1);
   const pendingOrdersCount = displayOrders.filter(
-    (o) => o.status === 'PENDING' || o.status === 'ACCEPTED' || o.status === 'IN_TRANSIT'
+    (o) => o.status === 'PENDING' || o.status === 'CONFIRMED' || o.status === 'ACCEPTED' || o.status === 'IN_TRANSIT'
   ).length;
 
   return (
@@ -239,6 +242,9 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
+        {/* FPO Membership Card: "Be a Part of an FPO" */}
+        <FPOMembershipCard user={user} />
+
         {/* Section 1: Detailed Sales History ("What I Have Sold & To Whom") */}
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden space-y-0">
           <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
@@ -341,7 +347,7 @@ const FarmerDashboard = () => {
 
                       {/* Action */}
                       <td className="py-4 px-6 text-right">
-                        {ord.status === 'PENDING' && ord._id && !ord._id.startsWith('ord_demo') && (
+                        {(ord.status === 'PENDING' || ord.status === 'CONFIRMED') && ord._id && !ord._id.startsWith('ord_demo') && (
                           <button
                             onClick={() => handleUpdateOrderStatus(ord._id, 'ACCEPTED')}
                             className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all"
