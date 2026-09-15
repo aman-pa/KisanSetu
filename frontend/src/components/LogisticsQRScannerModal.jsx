@@ -32,6 +32,7 @@ const LogisticsQRScannerModal = ({ isOpen, onClose, selectedOrder, mode = 'PICKU
           temperatureC: Number(temperatureC),
           driverNotes: notes || `Batch QR ${batchId} verified at farm gate by driver.`,
           location: selectedOrder?.farmerLocation || 'Farm Gate Collection Node',
+          vehicleAssigned: selectedOrder?.vehicleAssigned || 'HR-05-CC-5521',
         });
 
         if (data.success) {

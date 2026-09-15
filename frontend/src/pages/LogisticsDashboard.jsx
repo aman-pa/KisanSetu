@@ -856,6 +856,26 @@ const LogisticsDashboard = () => {
       prev.map((t) => (t.isConsumer ? { ...t, status: 'IN_TRANSIT', vehicleAssigned: activeRoster[0]?.vehicleNo || 'HR-05-CC-5521' } : t))
     );
 
+    // Update real orders in DB if live tasks exist
+    if (tasks && tasks.length > 0) {
+      const pendingConsumerTasks = tasks.filter(
+        (t) => (t.isConsumer || t.buyerRole === 'CONSUMER' || (t.totalOrderKg || t.quantityKg || 0) <= 50) &&
+          !['DELIVERED', 'COMPLETED', 'CANCELLED'].includes(t.status)
+      );
+      for (const t of pendingConsumerTasks) {
+        try {
+          await API.put(`/orders/${t._id}/status`, {
+            status: 'IN_TRANSIT',
+            vehicleAssigned: activeRoster[0]?.vehicleNo || 'HR-05-CC-5521',
+            notes: `Dispatched via 20km Area-Batch Fleet. Carrier: ${activeRoster[0]?.name || 'EV Delivery Partner'}.`,
+          });
+        } catch (e) {
+          console.error('Error dispatching task in DB:', e);
+        }
+      }
+      fetchLogisticsData();
+    }
+
     // Update fleet telemetry active status
     setFleetVehicles((prev) =>
       prev.map((v, i) => (i < activeSize ? { ...v, status: 'IN_TRANSIT' } : v))

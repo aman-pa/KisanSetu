@@ -88,16 +88,24 @@ const ConsumerOrdersPage = () => {
           icon: Clock,
         };
       case 'ACCEPTED':
-      case 'PICKUP_VERIFIED':
         return {
-          label: 'Accepted',
+          label: 'Accepted by Farmer',
           color: 'bg-blue-50 text-blue-800 border-blue-300',
           dotColor: 'bg-blue-500',
           icon: CheckCircle2,
         };
-      case 'IN_TRANSIT':
+      case 'PICKUP_VERIFIED':
+      case 'PICKED_UP':
         return {
-          label: 'In Transit',
+          label: 'Picked Up from Farm',
+          color: 'bg-teal-50 text-teal-800 border-teal-300',
+          dotColor: 'bg-teal-500',
+          icon: Truck,
+        };
+      case 'IN_TRANSIT':
+      case 'OUT_FOR_DELIVERY':
+        return {
+          label: 'In Transit 🛵',
           color: 'bg-indigo-50 text-indigo-800 border-indigo-300',
           dotColor: 'bg-indigo-500',
           icon: Truck,
@@ -105,7 +113,7 @@ const ConsumerOrdersPage = () => {
       case 'DELIVERED':
       case 'COMPLETED':
         return {
-          label: 'Delivered',
+          label: 'Delivered ✅',
           color: 'bg-emerald-50 text-emerald-800 border-emerald-300',
           dotColor: 'bg-emerald-600',
           icon: CheckCircle2,
@@ -131,8 +139,8 @@ const ConsumerOrdersPage = () => {
     const matchesFilter =
       activeFilter === 'ALL' ||
       (activeFilter === 'PENDING' && (ord.status === 'PENDING' || ord.status === 'CONFIRMED')) ||
-      (activeFilter === 'ACCEPTED' && (ord.status === 'ACCEPTED' || ord.status === 'PICKUP_VERIFIED')) ||
-      (activeFilter === 'IN_TRANSIT' && ord.status === 'IN_TRANSIT') ||
+      (activeFilter === 'ACCEPTED' && ord.status === 'ACCEPTED') ||
+      (activeFilter === 'IN_TRANSIT' && (['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status))) ||
       (activeFilter === 'DELIVERED' && (ord.status === 'DELIVERED' || ord.status === 'COMPLETED'));
 
     if (!matchesFilter) return false;
@@ -532,9 +540,105 @@ const ConsumerOrdersPage = () => {
                             <span className="bg-emerald-200 text-emerald-950 text-[10px] px-2 py-0.5 rounded-full font-extrabold">PAID</span>
                           </h4>
                           <p className="text-[11px] text-emerald-800 font-medium leading-relaxed">
-                            Your payment has been completed and safely locked in KisanSetu Escrow. The farmer has been notified to dispatch your produce.
+                            Your payment has been completed and safely locked in KisanSetu Escrow. The farmer and carrier have been notified.
                           </p>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Live Picked Up & In-Transit Card */}
+                    {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(selectedOrder.status) && (
+                      <div className="p-4 bg-gradient-to-r from-indigo-50 via-blue-50/70 to-indigo-50/40 border border-indigo-200 rounded-2xl space-y-2.5 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-indigo-100 pb-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs">
+                              <Truck className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                                <span>Produce Picked Up &amp; On the Way! 🛵</span>
+                                <span className="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-0.2 rounded-full font-extrabold animate-pulse">
+                                  LIVE EN ROUTE
+                                </span>
+                              </h4>
+                              <p className="text-[11px] text-indigo-700 font-medium">
+                                Assigned Carrier: <b className="text-indigo-950">{selectedOrder.vehicleAssigned || 'HR-05-CC-5521 (EV Delivery)'}</b>
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedOrder.items?.[0]?.batchId && (
+                            <Link
+                              to={`/trace/${selectedOrder.items[0].batchId}`}
+                              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] shadow-2xs flex items-center gap-1.5 transition-all self-start sm:self-auto"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                              <span>Live Batch Trace</span>
+                              <ExternalLink className="w-3 h-3 opacity-70" />
+                            </Link>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                          <div className="p-2 bg-white/80 rounded-xl border border-indigo-100">
+                            <span className="text-slate-400 font-bold block text-[10px]">Pickup Status</span>
+                            <span className="font-extrabold text-emerald-700">Verified at Farm Gate ✓</span>
+                          </div>
+                          <div className="p-2 bg-white/80 rounded-xl border border-indigo-100">
+                            <span className="text-slate-400 font-bold block text-[10px]">Carrier Vehicle</span>
+                            <span className="font-extrabold text-slate-800">{selectedOrder.vehicleAssigned || 'HR-05-CC-5521'}</span>
+                          </div>
+                          <div className="p-2 bg-white/80 rounded-xl border border-indigo-100 col-span-2 sm:col-span-1">
+                            <span className="text-slate-400 font-bold block text-[10px]">Estimated Delivery</span>
+                            <span className="font-extrabold text-indigo-900">Today (~45-60 mins)</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Live Delivered Confirmation Card */}
+                    {['DELIVERED', 'COMPLETED'].includes(selectedOrder.status) && (
+                      <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border border-emerald-300 rounded-2xl space-y-3 shadow-2xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/70 pb-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-xs">
+                              <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                                <span>Delivered to Your Doorstep! ✅</span>
+                                <span className="bg-emerald-200 text-emerald-950 text-[10px] px-2 py-0.2 rounded-full font-black">
+                                  COMPLETED
+                                </span>
+                              </h4>
+                              <p className="text-[11px] text-emerald-800 font-medium">
+                                Delivered on {new Date(selectedOrder.deliveryTimestamp || selectedOrder.updatedAt).toLocaleDateString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })} • Escrow payment released to farmer.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            <Link
+                              to={`/ticket/${selectedOrder._id}`}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-[11px] shadow-2xs flex items-center gap-1.5 transition-all"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-emerald-300" />
+                              <span>View Ticket / Invoice</span>
+                            </Link>
+                          </div>
+                        </div>
+
+                        {selectedOrder.deliveryProof && (
+                          <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-[11px] text-emerald-900 flex items-center justify-between gap-2">
+                            <span><b>Receiver:</b> {selectedOrder.deliveryProof.receiverName || selectedOrder.buyer?.name || 'Customer'}</span>
+                            <span className="text-slate-500 text-[10px] italic truncate">{selectedOrder.deliveryProof.notes || 'Handed over in pristine condition.'}</span>
+                          </div>
+                        )}
                       </div>
                     )}
 
