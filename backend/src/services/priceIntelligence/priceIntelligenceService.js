@@ -11,8 +11,84 @@ const { generateRecommendation } = require('./recommendationEngine');
 const { rankMandisForCommodity } = require('./mandiComparison');
 const { runRecommendationBacktest } = require('./priceIntelligenceValidator');
 
-const SUPPORTED_COMMODITIES = ['Tomato', 'Potato', 'Onion', 'Wheat', 'Rice', 'Apple'];
+const SUPPORTED_COMMODITIES = [
+  'Tomato',
+  'Potato',
+  'Onion',
+  'Wheat',
+  'Rice',
+  'Apple',
+  'Mustard',
+  'Maize',
+  'Soybean',
+  'Cotton',
+  'Sugarcane',
+  'Banana',
+  'Mango',
+  'Green Chilli',
+  'Garlic',
+  'Ginger',
+  'Turmeric',
+  'Cauliflower',
+  'Cabbage',
+  'Brinjal',
+  'Spinach',
+  'Okra',
+  'Carrot',
+  'Capsicum',
+  'Peas',
+  'Cucumber',
+  'Bitter Gourd',
+  'Bottle Gourd',
+  'Coriander',
+  'Mint',
+  'Groundnut',
+  'Moong',
+  'Urad',
+  'Chana',
+  'Arhar',
+  'Masoor',
+];
 const SUPPORTED_HORIZONS = [7, 15, 30];
+
+const COMMODITY_BASE_PRICES = {
+  Tomato: 2200,
+  Potato: 1600,
+  Onion: 2800,
+  Wheat: 2275,
+  Rice: 3400,
+  Apple: 7500,
+  Mustard: 5450,
+  Maize: 2090,
+  Soybean: 4600,
+  Cotton: 7120,
+  Sugarcane: 350,
+  Banana: 2200,
+  Mango: 5500,
+  'Green Chilli': 4200,
+  Garlic: 9500,
+  Ginger: 8200,
+  Turmeric: 7800,
+  Cauliflower: 1800,
+  Cabbage: 1400,
+  Brinjal: 1700,
+  Spinach: 1600,
+  Okra: 3200,
+  Carrot: 2100,
+  Capsicum: 4500,
+  Peas: 4800,
+  Cucumber: 1900,
+  'Bitter Gourd': 3100,
+  'Bottle Gourd': 1500,
+  Coriander: 6500,
+  Mint: 4200,
+  Groundnut: 6377,
+  Moong: 8558,
+  Urad: 6950,
+  Chana: 5440,
+  Arhar: 7000,
+  Masoor: 6425,
+};
 
 // In-process 10-minute caching layer
 const cache = new Map();
@@ -35,8 +111,29 @@ async function fetchMarketDailySeries(commodity, marketOrDistrict) {
     arrivals = await CommodityArrival.find({ commodity }).sort({ arrivalDate: 1 }).lean();
   }
 
-  if (prices.length === 0) {
-    return [];
+  if (prices.length < 3) {
+    const basePrice = COMMODITY_BASE_PRICES[commodity] || 2500;
+    const baseArrival = 100;
+    const generated = [];
+    const now = new Date();
+    for (let i = 15; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dStr = d.toISOString().slice(0, 10);
+      const variance = Math.sin(i / 2) * 0.06;
+      const modal = Math.round(basePrice * (1 + variance));
+      generated.push({
+        date: dStr,
+        modalPrice: modal,
+        minPrice: Math.round(modal * 0.92),
+        maxPrice: Math.round(modal * 1.08),
+        arrivalQuantity: Math.round(baseArrival * (1 + variance * 0.4) * 10) / 10,
+        market: marketOrDistrict || 'APMC Mandi',
+        district: 'Regional District',
+        state: 'Haryana',
+        isSynthetic: true,
+      });
+    }
+    return generated;
   }
 
   const dailyMap = new Map();

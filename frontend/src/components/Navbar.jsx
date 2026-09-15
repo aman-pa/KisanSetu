@@ -26,9 +26,14 @@ import {
   CreditCard,
   Truck,
   Sparkles,
+  ShoppingBag,
   TrendingUp,
   Package,
   PackagePlus,
+  Users,
+  Landmark,
+  Navigation,
+  Thermometer,
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -38,12 +43,21 @@ const Navbar = () => {
   const location = useLocation();
 
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('PERSONAL'); // 'PERSONAL' | 'BUSINESS' | 'SECURITY' | 'ORDERS'
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setUserDropdownOpen(false);
   }, [location.pathname]);
+
+  // Support opening profile modal via CustomEvent
+  useEffect(() => {
+    const handleOpenModal = () => setProfileModalOpen(true);
+    window.addEventListener('kisansetu:openProfileModal', handleOpenModal);
+    return () => window.removeEventListener('kisansetu:openProfileModal', handleOpenModal);
+  }, []);
 
   const getNavLinks = () => {
     if (!user) {
@@ -64,12 +78,6 @@ const Navbar = () => {
             pathname.startsWith('/farmer/demand-forecast') ||
             pathname.startsWith('/farmer/price-recommendation'),
         },
-        {
-          label: 'Batch QR Trace',
-          path: '/trace/KS-BATCH-994821',
-          icon: ShieldCheck,
-          isActive: (pathname) => pathname.startsWith('/trace'),
-        },
       ];
     }
 
@@ -87,6 +95,12 @@ const Navbar = () => {
             path: '/farmer/dashboard',
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/farmer/dashboard',
+          },
+          {
+            label: 'Farmer Hub',
+            path: '/farmer-hub',
+            icon: Landmark,
+            isActive: (pathname) => pathname === '/farmer-hub',
           },
           {
             label: 'My Produce',
@@ -115,38 +129,50 @@ const Navbar = () => {
       case 'FPO':
         return [
           {
-            label: 'Home',
-            path: '/',
-            icon: Home,
-            isActive: (pathname) => pathname === '/',
-          },
-          {
-            label: 'FPO Hub',
+            label: 'Overview',
             path: '/fpo/dashboard',
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/fpo/dashboard',
           },
           {
-            label: 'Add Bulk Listing',
-            path: '/farmer/add-produce',
-            icon: PackagePlus,
-            isActive: (pathname) => pathname === '/farmer/add-produce',
+            label: 'Farmers',
+            path: '/fpo/farmers',
+            icon: Users,
+            isActive: (pathname) => pathname === '/fpo/farmers',
           },
           {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
+            label: 'Stock',
+            path: '/fpo/produce',
+            icon: Package,
             isActive: (pathname) =>
+              pathname === '/fpo/produce' ||
+              pathname === '/farmer/produce' ||
+              pathname === '/farmer/add-produce',
+          },
+          {
+            label: 'Consumer Orders',
+            path: '/fpo/consumer-orders',
+            icon: ShoppingBag,
+            isActive: (pathname) =>
+              pathname === '/fpo/consumer-orders' || pathname === '/consumer/orders',
+          },
+          {
+            label: 'Bulk Buyer Orders',
+            path: '/fpo/bulk-orders',
+            icon: Building2,
+            isActive: (pathname) =>
+              pathname === '/fpo/bulk-orders' || pathname === '/buyer/procurement',
+          },
+          {
+            label: 'FPO Intelligence',
+            path: '/fpo/intelligence',
+            icon: Sparkles,
+            isActive: (pathname) =>
+              pathname === '/fpo/intelligence' ||
               pathname === '/market-intelligence' ||
               pathname.startsWith('/farmer/market-intelligence') ||
               pathname.startsWith('/farmer/demand-forecast') ||
               pathname.startsWith('/farmer/price-recommendation'),
-          },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
           },
         ];
 
@@ -159,26 +185,16 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Procurement Engine',
+            label: 'Marketplace',
+            path: '/marketplace',
+            icon: Search,
+            isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
+          },
+          {
+            label: 'Dashboard',
             path: '/buyer/procurement',
-            icon: Building2,
+            icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/buyer/procurement',
-          },
-          {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
-            isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
-          },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
           },
         ];
 
@@ -191,16 +207,25 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Logistics Hub',
-            path: '/logistics/dashboard',
+            label: 'Shipment Dispatches',
+            path: '/logistics/dashboard?tab=dispatches',
             icon: Truck,
-            isActive: (pathname) => pathname === '/logistics/dashboard',
+            isActive: (pathname, search) =>
+              pathname === '/logistics/dashboard' && (!search || search.includes('dispatches')),
           },
           {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
+            label: 'TSP Route Map',
+            path: '/logistics/dashboard?tab=route-map',
+            icon: Navigation,
+            isActive: (pathname, search) =>
+              pathname === '/logistics/dashboard' && search && search.includes('route-map'),
+          },
+          {
+            label: 'Fleet & Cold-Chain',
+            path: '/logistics/dashboard?tab=fleet-telemetry',
+            icon: Thermometer,
+            isActive: (pathname, search) =>
+              pathname === '/logistics/dashboard' && search && search.includes('fleet-telemetry'),
           },
         ];
 
@@ -228,12 +253,6 @@ const Navbar = () => {
               pathname.startsWith('/farmer/demand-forecast') ||
               pathname.startsWith('/farmer/price-recommendation'),
           },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
-          },
         ];
 
       case 'BUYER':
@@ -253,20 +272,10 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/marketplace' || pathname.startsWith('/product/'),
           },
           {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
-            isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
-          },
-          {
-            label: 'Batch QR Trace',
-            path: '/trace/KS-BATCH-994821',
-            icon: ShieldCheck,
-            isActive: (pathname) => pathname.startsWith('/trace'),
+            label: 'My Orders',
+            path: '/consumer/orders',
+            icon: ShoppingBag,
+            isActive: (pathname) => pathname === '/consumer/orders',
           },
         ];
     }
@@ -483,7 +492,7 @@ const Navbar = () => {
             <nav className="hidden md:flex items-center gap-2 text-sm font-medium" aria-label="Global Navigation">
               {navLinks.map((item) => {
                 const Icon = item.icon;
-                const active = item.isActive(location.pathname);
+                const active = item.isActive(location.pathname, location.search);
                 return (
                   <Link
                     key={item.path}
@@ -524,26 +533,105 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* Profile Photo Trigger */}
+              {/* Profile Photo Trigger with Dropdown */}
               {user ? (
-                <button
-                  onClick={() => setProfileModalOpen(true)}
-                  className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-slate-200 hover:border-agri-primary/40 hover:bg-emerald-50/60 transition-all cursor-pointer shadow-sm group"
-                  title="Click to view profile, manage email, address & password"
-                >
-                  <img
-                    src={user.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
-                    alt={user.name}
-                    className="w-9 h-9 rounded-xl object-cover border-2 border-agri-primary/30 group-hover:scale-105 transition-transform"
-                  />
-                  <div className="text-left hidden sm:block">
-                    <p className="text-xs font-extrabold text-slate-900 leading-tight">{user.name}</p>
-                    <span className={`inline-block text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadge().color}`}>
-                      {getRoleBadge().label}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-agri-primary" />
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-slate-200 hover:border-agri-primary/40 hover:bg-emerald-50/60 transition-all cursor-pointer shadow-sm group focus:outline-none focus:ring-2 focus:ring-agri-primary/20"
+                    aria-expanded={userDropdownOpen}
+                    title="User profile menu & quick navigation"
+                  >
+                    <img
+                      src={user.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+                      alt={user.name}
+                      className="w-9 h-9 rounded-xl object-cover border-2 border-agri-primary/30 group-hover:scale-105 transition-transform"
+                    />
+                    <div className="text-left hidden sm:block">
+                      <p className="text-xs font-extrabold text-slate-900 leading-tight">{user.name}</p>
+                      <span className={`inline-block text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadge().color}`}>
+                        {getRoleBadge().label}
+                      </span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 group-hover:text-agri-primary transition-transform ${userDropdownOpen ? 'rotate-180 text-agri-primary' : ''}`} />
+                  </button>
+
+                  {/* Profile Dropdown Panel */}
+                  {userDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setUserDropdownOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                        {/* User Header */}
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-2">
+                          <p className="text-xs font-black text-slate-900 leading-tight">{user.name}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                          <span className={`inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded border ${getRoleBadge().color}`}>
+                            {getRoleBadge().label}
+                          </span>
+                        </div>
+
+                        {/* Dropdown Items */}
+                        <div className="space-y-1 text-xs font-bold text-slate-700">
+                          {role === 'FARMER' && (
+                            <Link
+                              to="/farmer-hub"
+                              onClick={() => setUserDropdownOpen(false)}
+                              className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-emerald-50 text-agri-primary hover:text-emerald-800 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Landmark className="w-4 h-4 text-emerald-600" />
+                                <span>Farmer Hub</span>
+                              </div>
+                              <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white">
+                                Govt
+                              </span>
+                            </Link>
+                          )}
+
+                          <Link
+                            to={getDashboardPath()}
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors"
+                          >
+                            <LayoutDashboard className="w-4 h-4 text-slate-500" />
+                            <span>Role Dashboard</span>
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              setProfileModalOpen(true);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors text-left cursor-pointer"
+                          >
+                            <User className="w-4 h-4 text-slate-500" />
+                            <span>Account Settings & Profile</span>
+                          </button>
+                        </div>
+
+                        <div className="border-t border-slate-100 my-1 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              logout();
+                              navigate('/login');
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 font-bold text-xs transition-colors text-left cursor-pointer"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               ) : (
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Link
@@ -580,7 +668,7 @@ const Navbar = () => {
           <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-emerald-900/10 px-4 pt-2 pb-4 shadow-md space-y-1 animate-in fade-in slide-in-from-top-2">
             {navLinks.map((item) => {
               const Icon = item.icon;
-              const active = item.isActive(location.pathname);
+              const active = item.isActive(location.pathname, location.search);
               return (
                 <Link
                   key={item.path}

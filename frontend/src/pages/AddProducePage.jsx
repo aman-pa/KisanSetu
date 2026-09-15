@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   PackagePlus,
   Sparkles,
@@ -46,6 +47,7 @@ const CROP_DATABASE = [
 const CATEGORY_LIST = ['Vegetables', 'Fruits', 'Grains', 'Pulses', 'Spices'];
 
 const AddProducePage = () => {
+  const { user } = useAuth();
   // Start completely empty with no pre-filled values
   const [cropName, setCropName] = useState('');
   const [cropSearch, setCropSearch] = useState('');
@@ -610,15 +612,15 @@ const AddProducePage = () => {
           : 'GRADE_C',
         harvestDate,
         storageCondition: storageCondition || 'Room Temperature',
-        images: imagesArray,
+        images: imagesArray.length > 0 ? imagesArray : ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80'],
         strictVerification: true,
         isDeviceGps: true,
         aiQualityAssessment: qualityAssessmentPayload,
         location: {
-          district: 'Karnal',
-          state: 'Haryana',
-          lat: deviceCoords?.lat || 29.6857,
-          lng: deviceCoords?.lng || 76.9905,
+          district: user?.address?.city || 'Karnal',
+          state: user?.address?.state || 'Haryana',
+          lat: deviceCoords?.lat || user?.address?.lat || 29.6857,
+          lng: deviceCoords?.lng || user?.address?.lng || 76.9905,
         },
       };
 

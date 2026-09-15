@@ -55,21 +55,59 @@ const orderSchema = new mongoose.Schema(
     logisticsPartner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      default: null,
+    },
+    vehicleAssigned: {
+      type: String,
+      default: null,
     },
     status: {
       type: String,
-      enum: ['PENDING', 'ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'DISPUTED', 'CANCELLED'],
+      enum: ['PENDING', 'CONFIRMED', 'ACCEPTED', 'PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED', 'DISPUTED', 'CANCELLED'],
+      default: 'CONFIRMED',
+    },
+    logisticsStatus: {
+      type: String,
+      enum: ['PENDING', 'ACCEPTED', 'PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
       default: 'PENDING',
     },
     paymentStatus: {
       type: String,
-      enum: ['UNPAID', 'PAID_ESCROW', 'RELEASED_TO_FARMER', 'REFUNDED'],
+      enum: ['UNPAID', 'PAID_ESCROW', 'PAID', 'RELEASED_TO_FARMER', 'REFUNDED'],
       default: 'PAID_ESCROW',
     },
     paymentTransactionId: String,
     procurementRequestRef: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ProcurementRequest',
+    },
+    batchWindowEndsAt: {
+      type: Date,
+    },
+    pickupTimestamp: {
+      type: Date,
+    },
+    deliveryTimestamp: {
+      type: Date,
+    },
+    pickupProof: {
+      verifiedAt: Date,
+      carrierName: String,
+      temperatureC: Number,
+      notes: String,
+      vehicleNo: String,
+    },
+    deliveryProof: {
+      receiverName: String,
+      notes: String,
+      deliveredAt: Date,
+      verifiedBy: String,
+    },
+    driverDetails: {
+      name: String,
+      phone: String,
+      vehicleType: String,
+      vehicleNumber: String,
     },
   },
   { timestamps: true }

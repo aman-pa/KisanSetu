@@ -19,6 +19,9 @@ import {
   Phone,
 } from 'lucide-react';
 
+import { fetchLocationByPincode, getCurrentGpsLocation } from '../services/locationService';
+import { verifyImageClarity } from '../utils/imageVerification';
+
 const RegisterPage = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,11 +30,45 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('FARMER');
 
-  // Address
+  // Real Address & Location Tracing
   const [street, setStreet] = useState('');
-  const [city, setCity] = useState('Karnal');
-  const [state, setState] = useState('Haryana');
-  const [pincode, setPincode] = useState('132001');
+  const [pincode, setPincode] = useState('110001');
+  const [city, setCity] = useState('Delhi');
+  const [state, setState] = useState('Delhi');
+  const [lat, setLat] = useState(28.6139);
+  const [lng, setLng] = useState(77.2090);
+
+  // Area Options for typed pincode
+  const [areaOptions, setAreaOptions] = useState([]);
+  const [selectedAreaName, setSelectedAreaName] = useState('');
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [locationSuccessMsg, setLocationSuccessMsg] = useState('');
+  const [locationErrorMsg, setLocationErrorMsg] = useState('');
+
+  // Profile Photo & Aadhaar Identity Upload State
+  const [profileImage, setProfileImage] = useState('');
+  const [profileImageError, setProfileImageError] = useState('');
+  const [profileImageVerified, setProfileImageVerified] = useState(false);
+
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+
+  const handleProfilePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    setProfileImageError('');
+    setProfileImageVerified(false);
+
+    if (file) {
+      const result = await verifyImageClarity(file, 'PROFILE');
+      if (!result.valid) {
+        setProfileImageError(result.message);
+        setProfileImage('');
+      } else {
+        setProfileImage(result.dataUrl);
+        setProfileImageVerified(true);
+      }
+    }
+  };
 
   // Role details
   const [farmSizeAcres, setFarmSizeAcres] = useState(5);
@@ -50,7 +87,58 @@ const RegisterPage = () => {
   const { register, setUser } = useAuth();
   const navigate = useNavigate();
 
-  // Step 1: Send OTP to Email/Phone
+  // Handle Pincode Typing / Lookup via official India Post API
+  const handlePincodeLookup = async (val) => {
+    setPincode(val);
+    setLocationSuccessMsg('');
+    setLocationErrorMsg('');
+    setAreaOptions([]);
+    setSelectedAreaName('');
+
+    if (val.trim().length === 6 && !isNaN(Number(val))) {
+      setPincodeLoading(true);
+      const res = await fetchLocationByPincode(val);
+      setPincodeLoading(false);
+
+      if (res.success) {
+        setCity(res.district);
+        setState(res.state);
+        setLat(res.lat);
+        setLng(res.lng);
+        setAreaOptions(res.areaOptions || []);
+        if (res.areaOptions && res.areaOptions.length > 0) {
+          setSelectedAreaName(res.areaOptions[0].name);
+        }
+        setLocationSuccessMsg(`📍 Pincode ${val} verified via India Post API! District: ${res.district}, State: ${res.state}`);
+      } else {
+        setLocationErrorMsg(res.message);
+      }
+    }
+  };
+
+  // Handle GPS Location Button Click
+  const handleUseGpsLocation = async () => {
+    setGpsLoading(true);
+    setLocationSuccessMsg('');
+    setLocationErrorMsg('');
+    try {
+      const loc = await getCurrentGpsLocation();
+      setLat(loc.lat);
+      setLng(loc.lng);
+      setPincode(loc.pincode);
+      setCity(loc.district);
+      setState(loc.state);
+      if (loc.street) setStreet(loc.street);
+
+      setLocationSuccessMsg(`🎯 Live GPS Acquired: ${loc.lat.toFixed(4)}°N, ${loc.lng.toFixed(4)}°E (${loc.district}, ${loc.state})`);
+    } catch (err) {
+      setLocationErrorMsg(err.message || 'Failed to acquire GPS location.');
+    } finally {
+      setGpsLoading(false);
+    }
+  };
+
+  // Step 1: Send OTP to Email/Phone (with Profile Photo & Aadhaar Validation)
   const handleInitiateRegistration = async (e) => {
     e.preventDefault();
     setError('');
@@ -59,6 +147,16 @@ const RegisterPage = () => {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (!profileImage) {
+      setError('Please upload a clear face profile photo before registering.');
+      return;
+    }
+
+    if (!aadhaarNumber || aadhaarNumber.trim().length !== 12 || isNaN(Number(aadhaarNumber))) {
+      setError('Please enter a valid 12-digit Aadhaar Card Number.');
       return;
     }
 
@@ -118,7 +216,9 @@ const RegisterPage = () => {
         phone: phone.trim(),
         password,
         role,
-        address: { street, city, state, pincode },
+        address: { street, city, state, pincode, lat, lng },
+        profileImage,
+        aadhaarNumber: aadhaarNumber.trim(),
         profileDetails: {
           farmSizeAcres: Number(farmSizeAcres),
           orgName,
@@ -199,6 +299,53 @@ const RegisterPage = () => {
 
           {/* Registration Form */}
           <form onSubmit={handleInitiateRegistration} className="space-y-4">
+
+            {/* Profile Photo Upload Slot (Face Image Clarity Verification) */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <span>👤 Upload Profile Photo (Clear Face Photo)</span>
+                    {profileImageVerified && (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Face Quality Verified
+                      </span>
+                    )}
+                  </label>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Upload a clear, un-blurred photo of your face. Low resolution or blurry photos will be rejected.
+                  </p>
+                </div>
+              </div>
+
+              {profileImageError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{profileImageError}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-300 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-2xs">
+                  {profileImage ? (
+                    <img src={profileImage} alt="Profile Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl text-slate-400">📷</span>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePhotoChange}
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Accepted: JPG, PNG (Sharp &amp; Clear, Min 150x150px)</p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
@@ -272,6 +419,113 @@ const RegisterPage = () => {
                   onChange={(e) => setStreet(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold"
                   placeholder="Kheri Village / GT Road"
+                />
+              </div>
+            </div>
+
+            {/* Real Pincode & GPS Location Tracing Section */}
+            <div className="p-4 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
+                <div>
+                  <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <span>📍 Real Location Tracing (Pincode or GPS)</span>
+                    <span className="bg-emerald-200 text-emerald-950 text-[10px] px-2 py-0.5 rounded-full font-bold">India Post API Verified</span>
+                  </label>
+                  <p className="text-[10px] text-slate-500 font-medium">Enter ANY 6-digit Indian Pincode OR click GPS to trace your exact coordinates.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleUseGpsLocation}
+                  disabled={gpsLoading}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                >
+                  <span>🎯 {gpsLoading ? 'Acquiring GPS...' : 'Use My Current Location'}</span>
+                </button>
+              </div>
+
+              {locationSuccessMsg && (
+                <div className="p-2.5 bg-emerald-100/90 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                  <span>{locationSuccessMsg}</span>
+                </div>
+              )}
+
+              {locationErrorMsg && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold rounded-xl flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  <span>{locationErrorMsg}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Enter Any 6-Digit Pincode:</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      maxLength="6"
+                      value={pincode}
+                      onChange={(e) => handlePincodeLookup(e.target.value)}
+                      placeholder="e.g. 110016, 132001, 800001, 400001"
+                      className="w-full px-4 py-2 rounded-xl border border-emerald-300 text-xs font-black text-slate-900 bg-white focus:ring-2 focus:ring-agri-primary focus:outline-none"
+                    />
+                    {pincodeLoading && (
+                      <span className="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-600 animate-pulse">
+                        Verifying...
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Area / Post Office Dropdown (if multiple post offices returned for this pincode) */}
+                {areaOptions.length > 0 ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Select Exact Area / Post Office:</label>
+                    <select
+                      value={selectedAreaName}
+                      onChange={(e) => setSelectedAreaName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-emerald-300 text-xs font-bold bg-white focus:ring-2 focus:ring-agri-primary"
+                    >
+                      {areaOptions.map((area, idx) => (
+                        <option key={idx} value={area.name}>
+                          {area.name} ({area.district}, {area.state})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-xs space-y-1">
+                    <div className="flex justify-between items-center font-bold text-slate-800 text-[11px]">
+                      <span>Traced District &amp; State:</span>
+                      <span className="text-emerald-700 font-extrabold">{city}, {state}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      GPS Coordinates: <span className="font-mono text-slate-900 font-bold">{lat.toFixed(4)}°N, {lng.toFixed(4)}°E</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mandatory Aadhaar Identity Verification (All Roles) */}
+            <div className="p-4 bg-blue-50/70 border border-blue-200/90 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
+                <label className="block text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <span>🆔 Official Aadhaar Card Identity Verification</span>
+                  <span className="bg-blue-200 text-blue-950 text-[10px] px-2 py-0.5 rounded-full font-bold">Mandatory Verification</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">12-Digit Aadhaar Card Number:</label>
+                <input
+                  type="text"
+                  maxLength="12"
+                  value={aadhaarNumber}
+                  onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 5489 1234 5678"
+                  className="w-full px-4 py-2.5 rounded-xl border border-blue-300 text-xs font-black font-mono tracking-widest text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>

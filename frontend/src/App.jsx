@@ -15,11 +15,18 @@ import FarmerDashboard from './pages/FarmerDashboard';
 import MyProducePage from './pages/MyProducePage';
 import AddProducePage from './pages/AddProducePage';
 import FPODashboard from './pages/FPODashboard';
+import FPOFarmersPage from './pages/FPOFarmersPage';
+import FPOProduceInventoryPage from './pages/FPOProduceInventoryPage';
+import FPOBulkOrdersPage from './pages/FPOBulkOrdersPage';
 import BulkBuyerDashboard from './pages/BulkBuyerDashboard';
 import LogisticsDashboard from './pages/LogisticsDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import BatchTraceabilityPage from './pages/BatchTraceabilityPage';
 import MarketIntelligencePage from './pages/MarketIntelligencePage';
+import FPOIntelligencePage from './pages/FPOIntelligencePage';
+import ConsumerOrdersPage from './pages/ConsumerOrdersPage';
+import TradeTicketPage from './pages/TradeTicketPage';
+import FarmerHubPage from './pages/FarmerHubPage';
 
 function App() {
   return (
@@ -36,6 +43,18 @@ function App() {
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/cart" element={<CartCheckoutPage />} />
           <Route path="/trace/:batchId" element={<BatchTraceabilityPage />} />
+          <Route path="/consumer/orders" element={<ConsumerOrdersPage />} />
+          <Route path="/ticket/:id" element={<TradeTicketPage />} />
+
+          {/* Authenticated-Only Farmer Hub Dashboard */}
+          <Route
+            path="/farmer-hub"
+            element={
+              <ProtectedRoute>
+                <FarmerHubPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Role-Protected Farmer & FPO Routes */}
           <Route
@@ -104,6 +123,46 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/fpo/farmers"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPOFarmersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/produce"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPOProduceInventoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/consumer-orders"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <ConsumerOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/bulk-orders"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPOBulkOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fpo/intelligence"
+            element={
+              <ProtectedRoute allowedRoles={['FPO', 'ADMIN']}>
+                <FPOIntelligencePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Role-Protected Buyer Routes */}
           <Route
@@ -119,7 +178,7 @@ function App() {
           <Route
             path="/logistics/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['LOGISTICS', 'ADMIN']}>
+              <ProtectedRoute allowedRoles={['LOGISTICS', 'ADMIN', 'FPO']}>
                 <LogisticsDashboard />
               </ProtectedRoute>
             }

@@ -36,10 +36,25 @@ const userSchema = new mongoose.Schema(
       city: String,
       state: String,
       pincode: String,
+      lat: Number,
+      lng: Number,
     },
     profileImage: {
       type: String,
-      default: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      default: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    },
+    aadhaarNumber: {
+      type: String,
+    },
+    aadhaarFrontImage: {
+      type: String,
+    },
+    aadhaarBackImage: {
+      type: String,
+    },
+    isIdentityVerified: {
+      type: Boolean,
+      default: true,
     },
     isVerified: {
       type: Boolean,

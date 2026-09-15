@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import FPOMembershipCard from '../components/FPOMembershipCard';
 import {
   DollarSign,
   Package,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 
 const FarmerDashboard = () => {
+  const { user } = useAuth();
   const [listings, setListings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +131,7 @@ const FarmerDashboard = () => {
 
   const totalQuintalsSold = (calculatedTotalKgSold / 100).toFixed(1);
   const pendingOrdersCount = displayOrders.filter(
-    (o) => o.status === 'PENDING' || o.status === 'ACCEPTED' || o.status === 'IN_TRANSIT'
+    (o) => o.status === 'PENDING' || o.status === 'CONFIRMED' || o.status === 'ACCEPTED' || o.status === 'IN_TRANSIT'
   ).length;
 
   return (
@@ -239,6 +242,67 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
+        {/* Area Batch Logistics Status */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                <Clock className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  Area Batch Logistics
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                    6-Hour Window Active
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Nearby consumer orders are grouped by area so you dispatch together in single low-cost trips.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] font-extrabold uppercase text-slate-400 block">Freight Savings</span>
+              <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 inline-block">
+                ~75% Transport Cost Saved
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 font-bold text-[11px]">
+                <span>Delhi NCR (110016)</span>
+                <span className="text-emerald-700 font-extrabold">Active</span>
+              </div>
+              <p className="font-extrabold text-slate-900 text-sm">2 Orders • 45 kg</p>
+              <p className="text-[10px] text-slate-400 font-medium">Dispatch window: ~3h 15m remaining</p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 font-bold text-[11px]">
+                <span>Karnal District</span>
+                <span className="text-emerald-700 font-extrabold">Active</span>
+              </div>
+              <p className="font-extrabold text-slate-900 text-sm">3 Orders • 120 kg</p>
+              <p className="text-[10px] text-slate-400 font-medium">Dispatch window: ~4h 45m remaining</p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-500 font-bold text-[11px]">
+                <span>Gurgaon Sector 45</span>
+                <span className="text-amber-700 font-extrabold">Accumulating</span>
+              </div>
+              <p className="font-extrabold text-slate-900 text-sm">1 Order • 25 kg</p>
+              <p className="text-[10px] text-slate-400 font-medium">Gathering neighborhood orders...</p>
+            </div>
+          </div>
+        </div>
+
+        {/* FPO Membership Card: "Be a Part of an FPO" */}
+        <FPOMembershipCard user={user} />
+
         {/* Section 1: Detailed Sales History ("What I Have Sold & To Whom") */}
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden space-y-0">
           <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
@@ -321,46 +385,115 @@ const FarmerDashboard = () => {
                         <span className="font-black text-emerald-700 text-sm">₹{(ord.totalProduceCost || 0).toLocaleString()}</span>
                       </td>
 
-                      {/* Status */}
+                      {/* Status & Escrow */}
                       <td className="py-4 px-6 space-y-1">
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${
                             ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              : ord.status === 'IN_TRANSIT'
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status)
+                              ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                              : ord.status === 'ACCEPTED'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}
                         >
-                          {ord.status}
+                          {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status)
+                            ? '🚚 PICKED UP & IN TRANSIT'
+                            : ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
+                            ? 'DELIVERED ✅'
+                            : ord.status}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-semibold block">
-                          {ord.paymentStatus || 'ESCROW PROTECTED'}
+
+                        {ord.vehicleAssigned && ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP'].includes(ord.status) && (
+                          <span className="text-[10px] font-semibold text-indigo-700 block">
+                            Carrier: <b>{ord.vehicleAssigned}</b>
+                          </span>
+                        )}
+
+                        <span
+                          className={`text-[10px] font-bold block ${
+                            ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord.paymentStatus === 'RELEASED_TO_FARMER'
+                              ? 'text-emerald-800 font-black'
+                              : ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                              ? 'text-indigo-800 font-black'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord.paymentStatus === 'RELEASED_TO_FARMER'
+                            ? 'Escrow Released to Farmer 💰'
+                            : ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
+                            ? 'Escrow Locked 💳 (Buyer Paid)'
+                            : ord.paymentStatus || 'Awaiting Payment'}
                         </span>
                       </td>
 
                       {/* Action */}
                       <td className="py-4 px-6 text-right">
-                        {ord.status === 'PENDING' && ord._id && !ord._id.startsWith('ord_demo') && (
-                          <button
-                            onClick={() => handleUpdateOrderStatus(ord._id, 'ACCEPTED')}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all"
-                          >
-                            Accept Order
-                          </button>
+                        {ord._id && !ord._id.startsWith('ord_demo') && (
+                          <div className="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                            {['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && ord.status === 'ACCEPTED' && (
+                              <span className="text-[10px] font-black text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300 inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-700" /> Ready for Pickup
+                              </span>
+                            )}
+
+                            {ord.status === 'PENDING' && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(ord._id, 'ACCEPTED')}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm transition-all cursor-pointer"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(ord._id, 'CANCELLED')}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] shadow-sm transition-all cursor-pointer"
+                                >
+                                  Decline
+                                </button>
+                              </>
+                            )}
+
+                            {ord.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && (
+                              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                                Awaiting Buyer Payment
+                              </span>
+                            )}
+
+                            {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status) && (
+                              <span className="text-[11px] font-bold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 inline-flex items-center gap-1">
+                                <Truck className="w-3 h-3 text-indigo-600" /> Picked Up
+                              </span>
+                            )}
+
+                            {(ord.status === 'DELIVERED' || ord.status === 'COMPLETED') && (
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                              </span>
+                            )}
+
+                            <Link
+                              to={`/ticket/${ord._id}`}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold shadow-2xs transition-all flex items-center gap-1"
+                            >
+                              <span>Ticket</span>
+                              <ChevronRight className="w-3 h-3 opacity-60" />
+                            </Link>
+                          </div>
                         )}
-                        {ord.status === 'ACCEPTED' && ord._id && !ord._id.startsWith('ord_demo') && (
-                          <button
-                            onClick={() => handleUpdateOrderStatus(ord._id, 'IN_TRANSIT')}
-                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1"
-                          >
-                            <Truck className="w-3 h-3" /> Dispatch Lot
-                          </button>
-                        )}
-                        {(ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord._id?.startsWith('ord_demo')) && (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
-                          </span>
+                        {(!ord._id || ord._id.startsWith('ord_demo')) && (
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                            </span>
+                            <Link
+                              to={`/ticket/${ord._id || 'demo_1'}`}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold shadow-2xs transition-all"
+                            >
+                              Ticket
+                            </Link>
+                          </div>
                         )}
                       </td>
                     </tr>

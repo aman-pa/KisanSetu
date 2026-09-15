@@ -99,6 +99,7 @@ export const CartProvider = ({ children }) => {
     const qty = Number(quantityKg);
     if (!qty || qty <= 0) return;
 
+    const dist = listing.distanceKm || 18.5;
     const existingIndex = cartItems.findIndex((item) => item.listingId === listing._id);
     let updatedCart = [...cartItems];
 
@@ -111,6 +112,7 @@ export const CartProvider = ({ children }) => {
         pricePerKg: listing.pricePerKg,
         grade: listing.grade,
         quantityKg: qty,
+        distanceKm: dist,
         farmerName: listing.farmer?.name || 'Farmer Partner',
         farmerId: listing.farmer?._id || listing.farmer,
         batchId: listing.batchId,
@@ -118,15 +120,22 @@ export const CartProvider = ({ children }) => {
       });
     }
 
-    // Check Consumer Purchase Limit
-    if (user?.role === 'CONSUMER') {
-      const totalKg = updatedCart.reduce((sum, i) => sum + i.quantityKg, 0);
-      if (totalKg > maxConsumerLimitKg) {
-        throw new Error(
-          `Consumer Order Limit Exceeded! You have ${totalKg} kg in cart. Consumer accounts are capped at max ${maxConsumerLimitKg} kg per order to ensure fair retail distribution. For bulk orders, use a Bulk Buyer account.`
-        );
-      }
+    setCartItems(updatedCart);
+  };
+
+  const updateQuantity = (listingId, newQuantityKg) => {
+    const qty = Number(newQuantityKg);
+    if (!qty || qty <= 0) {
+      removeFromCart(listingId);
+      return;
     }
+
+    const updatedCart = cartItems.map((item) => {
+      if (item.listingId === listingId) {
+        return { ...item, quantityKg: qty };
+      }
+      return item;
+    });
 
     setCartItems(updatedCart);
   };
@@ -149,6 +158,7 @@ export const CartProvider = ({ children }) => {
       value={{
         cartItems,
         addToCart,
+        updateQuantity,
         removeFromCart,
         clearCart,
         totalProduceCost,

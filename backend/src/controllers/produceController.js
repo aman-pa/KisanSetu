@@ -1,4 +1,5 @@
 const ProduceListing = require('../models/ProduceListing');
+const User = require('../models/User');
 const BatchTraceability = require('../models/BatchTraceability');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
@@ -287,11 +288,62 @@ const createListing = async (req, res) => {
   }
 };
 
-// @desc Get All Produce Listings with Filtering & Search
+// Helper for distance calculation between two lat/lng points
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 18.5; // Default fallback distance in km
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+};
+
+// @desc Get Typeahead Produce Suggestions (for 2-3 char search)
+// @route GET /api/products/suggestions
+const getSuggestions = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 1) {
+      return res.json({ success: true, suggestions: [] });
+    }
+
+    const regex = new RegExp(q.trim(), 'i');
+    const matches = await ProduceListing.find({
+      status: 'AVAILABLE',
+      availableQuantityKg: { $gt: 0 },
+      cropName: regex,
+    })
+      .select('cropName category grade pricePerKg location images')
+      .limit(10);
+
+    const suggestions = matches.map((m) => ({
+      id: m._id,
+      cropName: m.cropName,
+      category: m.category,
+      grade: m.grade,
+      pricePerKg: m.pricePerKg,
+      district: m.location?.district || 'Karnal',
+      state: m.location?.state || 'Haryana',
+      image: m.images?.[0] || '',
+    }));
+
+    return res.json({ success: true, count: suggestions.length, suggestions });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc Get All Produce Listings with Filtering, AI Recommendation & Location Proximity
 // @route GET /api/products
 const getListings = async (req, res) => {
   try {
-    const { search, category, district, state, grade, minPrice, maxPrice, sort } = req.query;
+    const { search, category, district, state, grade, minPrice, maxPrice, sort, userLat, userLng, maxDistanceKm } = req.query;
 
     let query = { status: 'AVAILABLE', availableQuantityKg: { $gt: 0 } };
 
@@ -321,13 +373,43 @@ const getListings = async (req, res) => {
     if (sort === 'price_desc') sortOptions = { pricePerKg: -1 };
     if (sort === 'quantity_desc') sortOptions = { availableQuantityKg: -1 };
 
-    const listings = await ProduceListing.find(query)
+    let rawListings = await ProduceListing.find(query)
       .populate('farmer', 'name phone profileImage address')
       .sort(sortOptions);
 
-    const processedListings = listings.map((doc) => {
+    const refLat = Number(userLat) || 28.6139; // Default Delhi/NCR lat
+    const refLng = Number(userLng) || 77.2090; // Default Delhi/NCR lng
+
+    // Enhance listings with dynamic current quality, sanitized geo coordinates, distance & AI Recommendation Match Score
+    let processedListings = rawListings.map((doc) => {
       const l = doc.toObject();
       l.currentQuality = calculateCurrentQuality(l.aiQualityAssessment, l.storageCondition, l.cropName, new Date(), l.harvestDate);
+
+      // Distance calculation
+      const farmerLat = l.location?.lat || 29.6857;
+      const farmerLng = l.location?.lng || 76.9905;
+      const distKm = calculateDistanceKm(refLat, refLng, farmerLat, farmerLng);
+      l.distanceKm = distKm;
+
+      // AI Match Ranking Score Calculation (0 to 100)
+      // Factors: Quality score (40%), Distance proximity (30%), Price value (30%)
+      let qualityScore = l.currentQuality?.currentScore || l.aiQualityEstimateScore || 90;
+      if (l.grade === 'GRADE_A' || l.currentQuality?.currentGrade === 'A' || l.currentQuality?.currentGrade === 'A+') {
+        qualityScore = Math.max(qualityScore, 92);
+      } else if (l.grade === 'GRADE_B' || l.currentQuality?.currentGrade === 'B') {
+        qualityScore = Math.max(qualityScore, 82);
+      } else if (l.grade === 'GRADE_C' || l.currentQuality?.currentGrade === 'C') {
+        qualityScore = Math.max(qualityScore, 72);
+      }
+
+      let proximityScore = 100;
+      if (distKm > 10) proximityScore = 90;
+      if (distKm > 25) proximityScore = 75;
+      if (distKm > 50) proximityScore = 60;
+      if (distKm > 100) proximityScore = 40;
+
+      const priceScore = Math.max(30, Math.min(100, Math.round(110 - (l.pricePerKg || 30) * 1.2)));
+      l.aiRecommendationScore = Math.round(qualityScore * 0.4 + proximityScore * 0.3 + priceScore * 0.3);
 
       // Sanitize exact coordinates for buyers - keep verification status and district/state
       const isGeoVerified = l.aiQualityAssessment?.latestGeoVerification?.status === 'VERIFIED' ||
@@ -368,6 +450,20 @@ const getListings = async (req, res) => {
       }
       return l;
     });
+
+    // Distance Filter
+    if (maxDistanceKm && Number(maxDistanceKm) > 0) {
+      processedListings = processedListings.filter((item) => item.distanceKm <= Number(maxDistanceKm));
+    }
+
+    // AI Recommendation Ranking Sort
+    if (sort === 'ai_recommended') {
+      processedListings.sort((a, b) => b.aiRecommendationScore - a.aiRecommendationScore);
+    } else if (sort === 'distance_asc') {
+      processedListings.sort((a, b) => a.distanceKm - b.distanceKm);
+    } else if (sort === 'quality_desc') {
+      processedListings.sort((a, b) => (b.currentQuality?.currentScore || b.aiQualityEstimateScore || 0) - (a.currentQuality?.currentScore || a.aiQualityEstimateScore || 0));
+    }
 
     return res.json({ success: true, count: processedListings.length, listings: processedListings });
   } catch (error) {
@@ -480,4 +576,4 @@ const deleteListing = async (req, res) => {
   }
 };
 
-module.exports = { createListing, getListings, getListingById, getMyListings, deleteListing };
+module.exports = { createListing, getListings, getListingById, getMyListings, deleteListing, getSuggestions };

@@ -100,7 +100,7 @@ const sendRegistrationOTP = async (req, res) => {
 // @route POST /api/auth/verify-registration-otp
 const verifyRegistrationOTPAndCreateUser = async (req, res) => {
   try {
-    const { name, email, phone, password, role, address, profileDetails, otp } = req.body;
+    const { name, email, phone, password, role, address, profileDetails, profileImage, aadhaarNumber, aadhaarFrontImage, aadhaarBackImage, otp } = req.body;
 
     if (!name || !email || !password || !role || !otp) {
       return res.status(400).json({ success: false, message: 'Please provide all required registration details and OTP' });
@@ -137,6 +137,11 @@ const verifyRegistrationOTPAndCreateUser = async (req, res) => {
       password,
       role,
       address: address || { street: '', city: 'Delhi', state: 'Delhi', pincode: '110001' },
+      profileImage: profileImage || undefined,
+      aadhaarNumber: aadhaarNumber || '',
+      aadhaarFrontImage: aadhaarFrontImage || '',
+      aadhaarBackImage: aadhaarBackImage || '',
+      isIdentityVerified: true,
       isVerified: true,
     });
 
