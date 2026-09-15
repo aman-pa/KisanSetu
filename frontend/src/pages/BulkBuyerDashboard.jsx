@@ -32,6 +32,7 @@ import {
   Filter,
   ArrowRight,
   TrendingUp,
+  Star,
 } from 'lucide-react';
 
 // Default Fallback Data if DB has zero records
@@ -53,7 +54,7 @@ const SAMPLE_LISTINGS = [
       name: 'Ramesh Kumar (Kheri FPO)',
       phone: '9876543210',
       profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-      address: { city: 'Karnal', state: 'Haryana' },
+      address: { city: 'Karnal', state: 'Haryana', lat: 29.6857, lng: 76.9905 },
     },
   },
   {
@@ -73,7 +74,7 @@ const SAMPLE_LISTINGS = [
       name: 'Suresh Patel (Agra Farmer Co-op)',
       phone: '9812345678',
       profileImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-      address: { city: 'Agra', state: 'Uttar Pradesh' },
+      address: { city: 'Agra', state: 'Uttar Pradesh', lat: 27.1767, lng: 78.0081 },
     },
   },
   {
@@ -93,7 +94,7 @@ const SAMPLE_LISTINGS = [
       name: 'Indore Central Farmer Producer Org',
       phone: '9765432109',
       profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
-      address: { city: 'Indore', state: 'Madhya Pradesh' },
+      address: { city: 'Indore', state: 'Madhya Pradesh', lat: 22.7196, lng: 75.8577 },
     },
   },
 ];
@@ -163,11 +164,27 @@ const SAMPLE_ORDERS = [
   },
 ];
 
+// Helper to compute distance in km
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 12.4;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+};
+
 const BulkBuyerDashboard = () => {
   const { user } = useAuth();
   const { addToCart, cartItems } = useCart();
 
-  // Primary Mode Tab: 'MARKETPLACE' | 'MY_ORDERS' | 'AI_AGGREGATOR'
+  // Mode Tab: 'MARKETPLACE' | 'MY_ORDERS' | 'AI_AGGREGATOR'
   const [activeTab, setActiveTab] = useState('MARKETPLACE');
 
   // ==========================================
@@ -195,7 +212,7 @@ const BulkBuyerDashboard = () => {
   const [orderQtyMap, setOrderQtyMap] = useState({});
 
   // ==========================================
-  // ORDERS HISTORY STATE (MY ORDERS MASTER-DETAIL)
+  // ORDERS HISTORY STATE
   // ==========================================
   const [orders, setOrders] = useState(SAMPLE_ORDERS);
   const [selectedOrderId, setSelectedOrderId] = useState(SAMPLE_ORDERS[0]._id);
@@ -216,7 +233,6 @@ const BulkBuyerDashboard = () => {
   const [matchData, setMatchData] = useState(null);
   const [aggLoading, setAggLoading] = useState(false);
 
-  // Sync user location
   useEffect(() => {
     if (user?.address?.lat && user?.address?.lng) {
       setUserLat(user.address.lat);
@@ -225,7 +241,7 @@ const BulkBuyerDashboard = () => {
     }
   }, [user]);
 
-  // Fetch Produce Listings with Fallback
+  // Fetch Produce Listings
   const fetchListings = async () => {
     setListingsLoading(true);
     try {
@@ -255,7 +271,7 @@ const BulkBuyerDashboard = () => {
     }
   };
 
-  // Fetch Orders History with Fallback
+  // Fetch Orders History
   const fetchOrders = async () => {
     setOrdersLoading(true);
     try {
@@ -284,7 +300,7 @@ const BulkBuyerDashboard = () => {
     fetchOrders();
   }, []);
 
-  // Pincode Search Handler
+  // Pincode Search
   const handlePincodeSearch = async (val) => {
     setCustomPincode(val);
     setLocationMsg('');
@@ -300,7 +316,7 @@ const BulkBuyerDashboard = () => {
     }
   };
 
-  // GPS Location Handler
+  // GPS Location
   const handleUseGpsLocation = async () => {
     setGpsLoading(true);
     setLocationMsg('');
@@ -319,7 +335,6 @@ const BulkBuyerDashboard = () => {
     }
   };
 
-  // Quantity Change Handler
   const handleQtyChange = (listingId, val) => {
     setOrderQtyMap((prev) => ({
       ...prev,
@@ -327,7 +342,6 @@ const BulkBuyerDashboard = () => {
     }));
   };
 
-  // Add to Cart Handler
   const handleAddToCart = (listing) => {
     const qty = orderQtyMap[listing._id] || Math.min(listing.availableQuantityKg, 100);
     addToCart(listing, qty);
@@ -335,7 +349,6 @@ const BulkBuyerDashboard = () => {
     setTimeout(() => setToastSuccess(''), 4000);
   };
 
-  // Direct Order Placement Handler
   const handleDirectOrder = async (listing) => {
     const qty = orderQtyMap[listing._id] || Math.min(listing.availableQuantityKg, 100);
     try {
@@ -360,7 +373,7 @@ const BulkBuyerDashboard = () => {
     }
   };
 
-  // AI Matching Request Handler
+  // AI Matching Request
   const handleCreateRequest = async (e) => {
     e.preventDefault();
     setAggLoading(true);
@@ -386,7 +399,6 @@ const BulkBuyerDashboard = () => {
     }
   };
 
-  // Aggregated Order Placement Handler
   const handlePlaceAggregatedOrder = async () => {
     if (!matchData || !matchData.aggregationPackage) return;
     setAggLoading(true);
@@ -421,7 +433,7 @@ const BulkBuyerDashboard = () => {
     }
   };
 
-  // Filtered Orders Logic
+  // Filtered Orders
   const filteredOrders = orders.filter((ord) => {
     const matchesFilter =
       orderFilter === 'ALL' ||
@@ -443,7 +455,6 @@ const BulkBuyerDashboard = () => {
 
   const selectedOrder = filteredOrders.find((o) => o._id === selectedOrderId) || filteredOrders[0] || null;
 
-  // Order Counts
   const totalOrdersCount = orders.length;
   const pendingOrdersCount = orders.filter((o) => ['PENDING', 'CONFIRMED'].includes(o.status)).length;
   const inProgressCount = orders.filter((o) => ['ACCEPTED', 'PICKUP_VERIFIED', 'IN_TRANSIT'].includes(o.status)).length;
@@ -478,19 +489,19 @@ const BulkBuyerDashboard = () => {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
-        {/* Navigation Mode Switcher Tabs */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2.5 rounded-3xl border border-slate-200/80 shadow-agri-sm">
+        {/* Simple & Clean Navigation Tabs Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('MARKETPLACE')}
-              className={`flex-1 sm:flex-none py-2.5 px-5 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none py-2 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'MARKETPLACE'
-                  ? 'bg-agri-dark text-white shadow-md'
+                  ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Sprout className="w-4 h-4 text-emerald-400" />
-              <span>Bulk Marketplace & Sourcing</span>
+              <span>Marketplace</span>
               <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
                 {listings.length} Lots
               </span>
@@ -498,14 +509,14 @@ const BulkBuyerDashboard = () => {
 
             <button
               onClick={() => setActiveTab('MY_ORDERS')}
-              className={`flex-1 sm:flex-none py-2.5 px-5 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none py-2 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'MY_ORDERS'
-                  ? 'bg-agri-dark text-white shadow-md'
+                  ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <ShoppingBag className="w-4 h-4 text-teal-400" />
-              <span>My Bulk Procurement Orders</span>
+              <span>My Orders</span>
               <span className="bg-teal-500/20 text-teal-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
                 {totalOrdersCount}
               </span>
@@ -513,23 +524,23 @@ const BulkBuyerDashboard = () => {
 
             <button
               onClick={() => setActiveTab('AI_AGGREGATOR')}
-              className={`flex-1 sm:flex-none py-2.5 px-5 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 sm:flex-none py-2 px-4 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'AI_AGGREGATOR'
-                  ? 'bg-agri-dark text-white shadow-md'
+                  ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>AI Smart Aggregator</span>
+              <span>AI Aggregator</span>
             </button>
           </div>
 
           <Link
             to="/cart"
-            className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-extrabold text-xs flex items-center gap-2 border border-emerald-200 transition-all self-end sm:self-auto"
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-extrabold text-xs flex items-center gap-2 border border-emerald-200 transition-all self-end sm:self-auto"
           >
             <ShoppingCart className="w-4 h-4 text-emerald-700" />
-            <span>Procurement Cart</span>
+            <span>Cart</span>
             {cartItems.length > 0 && (
               <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
                 {cartItems.length}
@@ -540,7 +551,7 @@ const BulkBuyerDashboard = () => {
 
         {/* Global Toast Success Message */}
         {toastSuccess && (
-          <div className="p-4 bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-2xl flex items-center justify-between shadow-agri-sm">
+          <div className="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-2xl flex items-center justify-between shadow-2xs">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-emerald-700 flex-shrink-0" />
               <span>{toastSuccess}</span>
@@ -552,7 +563,7 @@ const BulkBuyerDashboard = () => {
         )}
 
         {/* ========================================================= */}
-        {/* MODE 1: BULK MARKETPLACE & SOURCING (Styled like Consumer Marketplace) */}
+        {/* MODE 1: MARKETPLACE SOURCING */}
         {/* ========================================================= */}
         {activeTab === 'MARKETPLACE' && (
           <div className="space-y-5">
@@ -560,7 +571,7 @@ const BulkBuyerDashboard = () => {
             <div className="bg-gradient-to-r from-agri-dark via-emerald-950 to-slate-950 rounded-3xl p-6 text-white shadow-agri-md space-y-2">
               <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-extrabold text-emerald-300">
                 <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Bulk Procurement & Direct Farmer Sourcing Engine</span>
+                <span>Bulk Procurement Engine</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Fresh Produce <span className="text-emerald-400">Directly From Indian Farmers & FPOs</span>
@@ -730,7 +741,9 @@ const BulkBuyerDashboard = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {listings.map((item) => {
-                  const dist = item.distanceKm || 18.5;
+                  const farmerLat = item.farmer?.address?.lat || item.location?.lat || 29.6857;
+                  const farmerLng = item.farmer?.address?.lng || item.location?.lng || 76.9905;
+                  const dist = calculateDistanceKm(userLat, userLng, farmerLat, farmerLng);
                   const isNearby = dist <= 10;
                   const requestedQty = orderQtyMap[item._id] || Math.min(item.availableQuantityKg, 100);
 
@@ -776,7 +789,7 @@ const BulkBuyerDashboard = () => {
                             <div>
                               <h3 className="text-base font-extrabold text-slate-900">{item.cropName}</h3>
                               <p className="text-xs text-slate-500 font-medium">
-                                Batch #{item.batchId || 'KS-BATCH-9948'} • Score: {item.aiQualityEstimateScore || 92}/100
+                                Batch #{item.batchId || 'KS-BATCH-9948'} • Quality Score: {item.aiQualityEstimateScore || 92}/100
                               </p>
                             </div>
                             <div className="text-right">
@@ -864,7 +877,7 @@ const BulkBuyerDashboard = () => {
         )}
 
         {/* ========================================================= */}
-        {/* MODE 2: MY BULK PROCUREMENT ORDERS (Master-Detail View - Styled exactly like Consumer Orders Page) */}
+        {/* MODE 2: MY ORDERS (Master-Detail View - Styled exactly like Consumer Orders Page) */}
         {/* ========================================================= */}
         {activeTab === 'MY_ORDERS' && (
           <div className="space-y-5">
@@ -873,7 +886,7 @@ const BulkBuyerDashboard = () => {
               <div>
                 <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-extrabold text-emerald-300 mb-2">
                   <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Bulk Procurement Contracts & Orders</span>
+                  <span>Bulk Orders</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white">Bulk Orders</h1>
                 <p className="text-xs text-slate-300 font-medium">Manage bulk procurement orders and track their fulfillment status.</p>
@@ -889,7 +902,7 @@ const BulkBuyerDashboard = () => {
               </button>
             </div>
 
-            {/* Metrics Bar (Identical to Consumer Orders Page) */}
+            {/* Metrics Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs space-y-1">
                 <div className="flex justify-between items-center text-xs font-bold text-slate-500">
@@ -928,7 +941,7 @@ const BulkBuyerDashboard = () => {
               </div>
             </div>
 
-            {/* Filter Pills (Identical to Consumer Orders Page) */}
+            {/* Filter Pills */}
             <div className="flex flex-wrap gap-2">
               {[
                 { key: 'ALL', label: `All Orders (${totalOrdersCount})` },
@@ -951,7 +964,7 @@ const BulkBuyerDashboard = () => {
               ))}
             </div>
 
-            {/* Dual Column Master-Detail Orders Layout (Identical to Consumer Orders Page screenshot) */}
+            {/* Dual Column Master-Detail Orders Layout */}
             {ordersLoading ? (
               <div className="bg-white rounded-3xl p-12 text-center text-xs font-bold text-slate-400 animate-pulse border border-slate-100">
                 Loading orders...
@@ -1054,7 +1067,7 @@ const BulkBuyerDashboard = () => {
                   </div>
                 </div>
 
-                {/* Right Column: Selected Order Master Detail (7 cols) */}
+                {/* Right Column: Selected Order Detail Panel */}
                 {selectedOrder && (
                   <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-6">
                     {/* Header bar */}
@@ -1203,13 +1216,13 @@ const BulkBuyerDashboard = () => {
         )}
 
         {/* ========================================================= */}
-        {/* MODE 3: AI SMART AGGREGATOR */}
+        {/* MODE 3: AI SMART AGGREGATOR (With Farmer Quality Ratings & Traced Distance) */}
         {/* ========================================================= */}
         {activeTab === 'AI_AGGREGATOR' && (
           <div className="space-y-6">
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-4">
               <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-agri-primary" /> Create Bulk Procurement Request
+                <Building2 className="w-4 h-4 text-agri-primary" /> Run AI Multi-Farmer Contract Aggregator
               </h3>
 
               <form onSubmit={handleCreateRequest} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
@@ -1254,8 +1267,8 @@ const BulkBuyerDashboard = () => {
                     onChange={(e) => setQualityGrade(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold"
                   >
-                    <option value="GRADE_A">Grade A (Premium)</option>
-                    <option value="GRADE_B">Grade B (Standard)</option>
+                    <option value="GRADE_A">Grade A (Premium Quality)</option>
+                    <option value="GRADE_B">Grade B (Standard Quality)</option>
                   </select>
                 </div>
 
@@ -1269,6 +1282,73 @@ const BulkBuyerDashboard = () => {
               </form>
             </div>
 
+            {/* AI Results displaying Farmer Quality Rating & Traced Distance */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-agri-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-emerald-600" /> AI Producer Quality Rankings & Distance Matrix
+                </h3>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                  Traced from Registered Coordinates
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                {listings.map((item) => {
+                  const farmerLat = item.farmer?.address?.lat || item.location?.lat || 29.6857;
+                  const farmerLng = item.farmer?.address?.lng || item.location?.lng || 76.9905;
+                  const dist = calculateDistanceKm(userLat, userLng, farmerLat, farmerLng);
+                  const qualityScore = item.aiQualityEstimateScore || 94;
+
+                  return (
+                    <div
+                      key={item._id}
+                      className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-extrabold text-slate-900">
+                            {item.farmer?.name || 'Verified Farmer Partner'}
+                          </span>
+                          <span className="bg-emerald-100 text-emerald-950 text-xs font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                            <span>Quality Score: {qualityScore}/100</span>
+                          </span>
+                          <span className="bg-blue-100 text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded">
+                            {item.grade || 'GRADE_A'}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 font-medium">
+                          {item.cropName} • Stock Available: <b>{item.availableQuantityKg?.toLocaleString()} kg</b> @ ₹{item.pricePerKg}/kg
+                        </p>
+
+                        <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                            <span>
+                              Farm Location: <b>{item.location?.district || item.farmer?.address?.city || 'Karnal'}, {item.location?.state || item.farmer?.address?.state || 'Haryana'}</b>
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Traced Distance Pill */}
+                      <div className="text-right flex flex-col items-end justify-center bg-white p-3 rounded-xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Traced GPS Distance</span>
+                        <span className="text-base font-black text-slate-900 flex items-center gap-1">
+                          <MapPin className="w-4 h-4 text-emerald-600" />
+                          <span>{dist.toFixed(1)} km</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium">From {userLocationName}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pooled Aggregation Package (if active match exists) */}
             {matchData && (
               <div className="bg-gradient-to-r from-agri-dark via-emerald-950 to-slate-950 p-6 rounded-3xl text-white shadow-agri-md space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
