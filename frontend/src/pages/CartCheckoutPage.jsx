@@ -282,8 +282,8 @@ const CartCheckoutPage = () => {
                       </div>
                       <p className="text-[10px] text-slate-400">
                         {user?.role === 'CONSUMER'
-                          ? 'Standard retail baseline estimate (₹60)'
-                          : 'Commercial freight baseline estimate (5% + ₹500)'}
+                          ? '🌿 5-Hour Area Eco-Pooling (₹60 flat rate within 20km FPO radius)'
+                          : '🚚 Dedicated Commercial Linehaul (Direct heavy freight dispatch)'}
                       </p>
                     </div>
                     <div className="flex justify-between">

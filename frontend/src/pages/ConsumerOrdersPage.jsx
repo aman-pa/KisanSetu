@@ -707,6 +707,24 @@ const ConsumerOrdersPage = () => {
                       </div>
                     </div>
 
+                    {/* 5-Hour Area-Batching Notification Box */}
+                    <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-white p-3.5 rounded-2xl border border-emerald-200/80 flex items-start gap-3 shadow-2xs">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 font-bold text-xs shadow-xs">
+                        🌿
+                      </div>
+                      <div className="space-y-0.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-emerald-950">5-Hour Area Pooling Active (10–20km Hub)</span>
+                          <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            48% Saved
+                          </span>
+                        </div>
+                        <p className="text-slate-600 font-medium leading-relaxed text-[11px]">
+                          Your order is grouped with neighbor deliveries within a 20km radius of the local FPO hub over a 5-hour window. This cuts delivery costs for both farmers and consumers.
+                        </p>
+                      </div>
+                    </div>
+
                     {/* Order Progress Stepper Timeline */}
                     <div className="bg-slate-50/90 p-4 rounded-2xl border border-slate-200/80 space-y-3 shadow-2xs">
                       <div className="flex items-center justify-between">

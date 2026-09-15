@@ -75,7 +75,9 @@ const placeOrder = async (req, res) => {
     const grandTotal = totalProduceCost + logisticsCost + platformFee;
 
     const orderNumber = `KS-TICKET-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-    const batchWindowEndsAt = req.user.role === 'CONSUMER' ? new Date(Date.now() + 6 * 60 * 60 * 1000) : null;
+    // 5-Hour Area-Batching window for Retail Consumers within 10-20km FPO radius; Immediate direct dispatch for Bulk Buyers
+    const isConsumer = req.user.role === 'CONSUMER';
+    const batchWindowEndsAt = isConsumer ? new Date(Date.now() + 5 * 60 * 60 * 1000) : null;
 
     const order = await Order.create({
       orderNumber,
