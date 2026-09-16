@@ -2,10 +2,10 @@
 > **"Predict. Connect. Aggregate. Deliver."**
 
 SIH 2026 Problem Statement **SIH26033**: *"Multiple intermediaries reduce farmers earnings and increase consumer prices."*
-
-KisanSetu AI is a modern, end-to-end digital agricultural marketplace that connects farmers and FPOs directly with consumers and bulk buyers. Powered by AI demand forecasting, price recommendation, smart buyer-farmer matching, multi-stage quality verification, batch QR traceability, and logistics route optimization.
-
 ---
+**KisanSetu AI** is an AI-powered digital agricultural marketplace designed to connect **farmers, Farmer Producer Organizations (FPOs) directly with consumers, bulk buyers, and logistics partners** through a unified platform.
+It combines digital marketplace infrastructure with **demand forecasting, price recommendation, smart supply-demand matching, visual crop quality assessment, batch traceability, and logistics route optimization**.
+
 
 ## 🏗️ Architecture
 
@@ -24,6 +24,31 @@ SIH/
 4. **Bulk Buyer**: Submit large procurement requirements, view AI Smart Matching matrix, purchase aggregated multi-farmer lots.
 5. **Logistics**: View pickup tasks, inspect Leaflet optimized route maps, record digital pickup quality verification.
 6. **Admin**: Government/Platform intelligence dashboard, regional surplus & shortage heatmap, purchase limit configuration, dispute resolution.
+
+### Core Concept
+
+```text
+                    👨‍🌾 FARMERS
+                         │
+                         ▼
+                    🏢 FPOs
+                 Supply Aggregation
+                         │
+            ┌────────────┴────────────┐
+            │                         │
+            ▼                         ▼
+       🛒 CONSUMERS              📦 BULK BUYERS
+       Local Orders             Large Procurement
+            │                         │
+            └────────────┬────────────┘
+                         ▼
+                🚚 LOGISTICS
+                         │
+                  Route Optimization
+                         │
+                         ▼
+                    DELIVERY
+
 
 ## 🚀 Quick Start
 
@@ -73,7 +98,27 @@ Before running crop quality analysis, the system inspects both farm-gate photogr
 - **Contrast & Dynamic Range**: Checks grayscale standard deviation variance.
 - **Focus & Sharpness**: Computes edge gradient variance (Laplacian approximation).
 - **Rejection Gate**: Any image scoring below **70/100** is rejected with human-friendly guidance (e.g., *"The image is too dark to assess the crop. Please upload a photo with better lighting"*), strictly preventing crop quality analysis until a clearer photo is provided.
-
+```text
+Farmer uploads 2 images
+          │
+          ▼
+┌──────────────────────────┐
+│   IMAGE QUALITY GATE     │
+│                          │
+│ Resolution               │
+│ Lighting                 │
+│ Exposure                 │
+│ Contrast                 │
+│ Sharpness                │
+└────────────┬─────────────┘
+             │
+       ┌─────┴─────┐
+       │           │
+     Reject       Pass
+       │           │
+       ▼           ▼
+Upload Guidance   AI Analysis
+```
 ### Stage 2: AI Visual Crop Quality Assessment
 Once both uploaded photos pass Stage 1, the system conducts a visual quality assessment:
 - **Vision AI Provider**: Google Gemini Vision API (`gemini-3.8-flash`), with automated fallback to a resilient botanical heuristic computer-vision engine if the API key is not configured or during offline execution.
@@ -84,11 +129,36 @@ Once both uploaded photos pass Stage 1, the system conducts a visual quality ass
   - `observations`: Detailed visual inspection findings
   - `concerns`: Potential storage or handling risks
 - **Estimated Visual Quality Trend**: 14-day degradation forecast calibrated by storage method (`Room Temperature`, `Refrigerated`, `Cold Storage`, `Warehouse`, `Open Field`).
+                              
 
 ### Image Quality Score vs. Crop Quality Score
 - **Image Quality Score (Stage 1)**: Measures photographic clarity (focus, lighting, resolution, blur). Answers: *"Is this photo sharp and well-lit enough to assess?"*
 - **Crop Quality Score (Stage 2)**: Measures botanical surface attributes of the produce (color, freshness, surface defects, maturity). Answers: *"What is the physical condition and grade of this crop?"*
-
+```text
+                 TWO CROP IMAGES
+                        │
+                        ▼
+             ┌────────────────────┐
+             │ Image Quality Gate │
+             └─────────┬──────────┘
+                       │
+                 Pass / Reject
+                       │
+                       ▼
+                Vision Analysis
+                       │
+              ┌────────┴────────┐
+              │                 │
+              ▼                 ▼
+       Gemini Vision       Local Fallback
+              │                 │
+              └────────┬────────┘
+                       ▼
+             Crop Quality Result
+                       │
+                       ▼
+             14-Day Trend Estimate
+```
 ### Environment Configuration
 To enable the Google Gemini Vision API integration:
 1. Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
