@@ -73,7 +73,7 @@ const FarmerDashboard = () => {
       buyerOrg: 'FreshMart Supermarket Chain',
       buyerLocation: 'Delhi NCR',
       status: 'DELIVERED',
-      paymentStatus: 'ESCROW RELEASED',
+      paymentStatus: 'PAID',
     },
     {
       _id: 'ord_demo_2',
@@ -86,7 +86,7 @@ const FarmerDashboard = () => {
       buyerOrg: 'AgriProcure FPO Cooperative',
       buyerLocation: 'Karnal, Haryana',
       status: 'IN_TRANSIT',
-      paymentStatus: 'ESCROW PROTECTED',
+      paymentStatus: 'PAID',
     },
     {
       _id: 'ord_demo_3',
@@ -99,7 +99,7 @@ const FarmerDashboard = () => {
       buyerOrg: 'GreenLeaf Organics Ltd',
       buyerLocation: 'Gurgaon, Haryana',
       status: 'DELIVERED',
-      paymentStatus: 'ESCROW RELEASED',
+      paymentStatus: 'PAID',
     },
     {
       _id: 'ord_demo_4',
@@ -112,7 +112,7 @@ const FarmerDashboard = () => {
       buyerOrg: 'Reliance Retail Procurement',
       buyerLocation: 'Chandigarh',
       status: 'DELIVERED',
-      paymentStatus: 'ESCROW RELEASED',
+      paymentStatus: 'PAID',
     },
   ];
 
@@ -135,8 +135,8 @@ const FarmerDashboard = () => {
   ).length;
 
   return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <DashboardLayout role="FARMER">
+      <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-[#0A2412] via-[#12401E] to-[#1B5E2B] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
           <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -150,7 +150,7 @@ const FarmerDashboard = () => {
               Produce Sales & Earnings 🌾
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-medium">
-              Track direct buyer purchases, check total crop earnings, manage active produce lots, and monitor escrow payment releases.
+              Track direct buyer purchases, check total crop earnings, manage active produce lots, and monitor payment status.
             </p>
           </div>
 
@@ -185,7 +185,7 @@ const FarmerDashboard = () => {
             <div className="pt-1">
               <p className="text-2xl sm:text-3xl font-black text-slate-900">₹{calculatedTotalEarnings.toLocaleString()}</p>
               <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> 100% Direct Escrow Paid
+                <CheckCircle2 className="w-3.5 h-3.5" /> Direct Farmer Payouts
               </p>
             </div>
           </div>
@@ -385,8 +385,8 @@ const FarmerDashboard = () => {
                         <span className="font-black text-emerald-700 text-sm">₹{(ord.totalProduceCost || 0).toLocaleString()}</span>
                       </td>
 
-                      {/* Status & Escrow */}
-                      <td className="py-4 px-6 space-y-1">
+                      {/* Status & Payment */}
+                      <td className="py-4 px-6 space-y-1.5">
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${
                             ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
@@ -395,14 +395,20 @@ const FarmerDashboard = () => {
                               ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
                               : ord.status === 'ACCEPTED'
                               ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : ord.status === 'CANCELLED'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
                               : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}
                         >
                           {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status)
-                            ? '🚚 PICKED UP & IN TRANSIT'
+                            ? '🚚 Picked Up & In Transit'
                             : ord.status === 'DELIVERED' || ord.status === 'COMPLETED'
-                            ? 'DELIVERED ✅'
-                            : ord.status}
+                            ? 'Delivered ✅'
+                            : ord.status === 'ACCEPTED'
+                            ? 'Order Confirmed'
+                            : ord.status === 'CANCELLED'
+                            ? 'Cancelled ❌'
+                            : 'Pending Approval ⏳'}
                         </span>
 
                         {ord.vehicleAssigned && ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP'].includes(ord.status) && (
@@ -412,19 +418,23 @@ const FarmerDashboard = () => {
                         )}
 
                         <span
-                          className={`text-[10px] font-bold block ${
+                          className={`text-[11px] font-bold block ${
                             ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord.paymentStatus === 'RELEASED_TO_FARMER'
-                              ? 'text-emerald-800 font-black'
+                              ? 'text-emerald-700 font-extrabold'
                               : ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
-                              ? 'text-indigo-800 font-black'
-                              : 'text-slate-500'
+                              ? 'text-indigo-700 font-bold'
+                              : ord.status === 'CANCELLED'
+                              ? 'text-rose-600'
+                              : 'text-amber-700'
                           }`}
                         >
                           {ord.status === 'DELIVERED' || ord.status === 'COMPLETED' || ord.paymentStatus === 'RELEASED_TO_FARMER'
-                            ? 'Escrow Released to Farmer 💰'
+                            ? 'Payment Done ✅'
                             : ['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus)
-                            ? 'Escrow Locked 💳 (Buyer Paid)'
-                            : ord.paymentStatus || 'Awaiting Payment'}
+                            ? 'Payment Done (In Transit) 💳'
+                            : ord.status === 'CANCELLED'
+                            ? 'Payment Cancelled'
+                            : 'Payment Pending ⏳'}
                         </span>
                       </td>
 
@@ -456,20 +466,20 @@ const FarmerDashboard = () => {
                             )}
 
                             {ord.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(ord.paymentStatus) && (
-                              <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-                                Awaiting Buyer Payment
+                              <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                Payment Pending
                               </span>
                             )}
 
                             {['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(ord.status) && (
                               <span className="text-[11px] font-bold text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 inline-flex items-center gap-1">
-                                <Truck className="w-3 h-3 text-indigo-600" /> Picked Up
+                                <Truck className="w-3 h-3 text-indigo-600" /> In Transit
                               </span>
                             )}
 
                             {(ord.status === 'DELIVERED' || ord.status === 'COMPLETED') && (
                               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Delivered
                               </span>
                             )}
 
@@ -485,13 +495,14 @@ const FarmerDashboard = () => {
                         {(!ord._id || ord._id.startsWith('ord_demo')) && (
                           <div className="flex items-center justify-end gap-2">
                             <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Delivered
                             </span>
                             <Link
                               to={`/ticket/${ord._id || 'demo_1'}`}
-                              className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold shadow-2xs transition-all"
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-[11px] font-bold shadow-2xs transition-all flex items-center gap-1"
                             >
-                              Ticket
+                              <span>Ticket</span>
+                              <ChevronRight className="w-3 h-3 opacity-60" />
                             </Link>
                           </div>
                         )}

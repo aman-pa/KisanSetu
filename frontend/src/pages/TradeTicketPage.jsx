@@ -330,10 +330,10 @@ const TradeTicketPage = () => {
                 </div>
                 <div>
                   <div className="text-xs font-black uppercase text-emerald-950">
-                    Trade Status: <span className="text-emerald-700 font-extrabold">{order.status}</span>
+                    Order Status: <span className="text-emerald-700 font-extrabold">{['DELIVERED', 'COMPLETED'].includes(order.status) ? 'Delivered ✅' : ['IN_TRANSIT', 'PICKUP_VERIFIED', 'PICKED_UP'].includes(order.status) ? 'In Transit 🚚' : order.status}</span>
                   </div>
                   <p className="text-[11px] text-emerald-800 font-medium">
-                    Payment Escrow Status: <b>{order.paymentStatus === 'RELEASED_TO_FARMER' ? 'Escrow Released to Farmer 💰' : order.paymentStatus}</b>
+                    Payment Status: <b>{['DELIVERED', 'COMPLETED'].includes(order.status) || order.paymentStatus === 'RELEASED_TO_FARMER' ? 'Payment Done ✅' : ['PAID', 'PAID_ESCROW'].includes(order.paymentStatus) ? 'Payment Done 💳' : order.paymentStatus === 'CANCELLED' ? 'Cancelled / Unpaid' : 'Payment Pending ⏳'}</b>
                   </p>
                 </div>
               </div>
@@ -425,7 +425,7 @@ const TradeTicketPage = () => {
                     {['DELIVERED', 'COMPLETED'].includes(order.status) ? '✓' : '4'}
                   </div>
                   <p className="font-extrabold text-slate-900">4. Delivered</p>
-                  <p className="text-[10px] text-slate-500 font-semibold">POD Verified &amp; Escrow Released</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Delivered &amp; Payment Done ✅</p>
                 </div>
               </div>
             </div>
