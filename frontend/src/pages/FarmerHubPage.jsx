@@ -156,7 +156,7 @@ const FarmerHubPage = () => {
               {/* Heading */}
               <div className="space-y-1.5">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                  Farmer Hub
+                  Agri Schemes &amp; Support
                 </span>
                 <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   Government{' '}

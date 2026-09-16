@@ -97,7 +97,7 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/farmer/dashboard',
           },
           {
-            label: 'Farmer Hub',
+            label: 'Agri Schemes',
             path: '/farmer-hub',
             icon: Landmark,
             isActive: (pathname) => pathname === '/farmer-hub',

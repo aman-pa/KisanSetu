@@ -147,7 +147,7 @@ const FarmerDashboard = () => {
               Direct Farm Produce Dashboard
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Farmer Sales Command Center 🌾
+              Produce Sales & Earnings 🌾
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl font-medium">
               Track direct buyer purchases, check total crop earnings, manage active produce lots, and monitor escrow payment releases.
