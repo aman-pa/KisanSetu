@@ -31,9 +31,6 @@ import {
   Check,
   Copy,
 } from 'lucide-react';
-import DemandForecastCard from '../components/DemandForecastCard';
-import PriceIntelligenceCard from '../components/PriceIntelligenceCard';
-import FarmerActionCard from '../components/FarmerActionCard';
 
 // Default Comprehensive Seed Data for User Analytics & Directory if DB has minimal records
 const DEMO_PLATFORM_USERS = [
@@ -893,15 +890,6 @@ const AdminDashboard = () => {
         {/* ========================================================================= */}
         {activeTab === 'POLICY_SETTINGS' && (
           <div className="space-y-6">
-            {/* Phase 4: Farmer Action Intelligence & Decision Support */}
-            <FarmerActionCard defaultCommodity="Wheat" defaultMandi="Karnal" />
-
-            {/* Phase 3: AI Price Intelligence */}
-            <PriceIntelligenceCard defaultCommodity="Tomato" defaultMandi="Karnal" />
-
-            {/* Phase 2: AI Demand Forecast */}
-            <DemandForecastCard defaultCommodity="Tomato" defaultDistrict="Delhi NCR" />
-
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Admin Purchase Limit Controller */}
               <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
