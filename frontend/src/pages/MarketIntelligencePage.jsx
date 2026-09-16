@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MainLayout from '../layouts/MainLayout';
 import MandiOptimizerCard from '../components/MandiOptimizerCard';
@@ -73,7 +73,14 @@ const MODULES = [
 
 const MarketIntelligencePage = () => {
   const { role } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (role === 'ADMIN') {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [role, navigate]);
 
   // Filter modules for Consumer/Buyer role (remove optimizer & weather)
   const isConsumer = role === 'CONSUMER' || role === 'BUYER';

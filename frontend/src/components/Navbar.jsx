@@ -243,16 +243,6 @@ const Navbar = () => {
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/admin/dashboard',
           },
-          {
-            label: 'Market Intelligence',
-            path: '/market-intelligence',
-            icon: TrendingUp,
-            isActive: (pathname) =>
-              pathname === '/market-intelligence' ||
-              pathname.startsWith('/farmer/market-intelligence') ||
-              pathname.startsWith('/farmer/demand-forecast') ||
-              pathname.startsWith('/farmer/price-recommendation'),
-          },
         ];
 
       case 'BUYER':
