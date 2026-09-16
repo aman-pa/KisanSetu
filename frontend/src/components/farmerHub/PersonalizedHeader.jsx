@@ -40,7 +40,7 @@ const PersonalizedHeader = ({ user, onOpenProfileModal, translations }) => {
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-black uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 text-agri-gold" />
-            <span>Authenticated Farmer Hub</span>
+            <span>Agri Schemes &amp; Subsidies</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">

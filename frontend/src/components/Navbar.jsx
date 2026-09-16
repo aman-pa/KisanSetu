@@ -97,7 +97,7 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/farmer/dashboard',
           },
           {
-            label: 'Farmer Hub',
+            label: 'Agri Schemes',
             path: '/farmer-hub',
             icon: Landmark,
             isActive: (pathname) => pathname === '/farmer-hub',
@@ -576,41 +576,16 @@ const Navbar = () => {
 
                         {/* Dropdown Items */}
                         <div className="space-y-1 text-xs font-bold text-slate-700">
-                          {role === 'FARMER' && (
-                            <Link
-                              to="/farmer-hub"
-                              onClick={() => setUserDropdownOpen(false)}
-                              className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-emerald-50 text-agri-primary hover:text-emerald-800 transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Landmark className="w-4 h-4 text-emerald-600" />
-                                <span>Farmer Hub</span>
-                              </div>
-                              <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white">
-                                Govt
-                              </span>
-                            </Link>
-                          )}
-
-                          <Link
-                            to={getDashboardPath()}
-                            onClick={() => setUserDropdownOpen(false)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors"
-                          >
-                            <LayoutDashboard className="w-4 h-4 text-slate-500" />
-                            <span>Role Dashboard</span>
-                          </Link>
-
                           <button
                             type="button"
                             onClick={() => {
                               setUserDropdownOpen(false);
                               setProfileModalOpen(true);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors text-left cursor-pointer"
+                            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-slate-50 hover:text-agri-primary transition-colors text-left cursor-pointer"
                           >
                             <User className="w-4 h-4 text-slate-500" />
-                            <span>Account Settings & Profile</span>
+                            <span>Account Settings &amp; Profile</span>
                           </button>
                         </div>
 
