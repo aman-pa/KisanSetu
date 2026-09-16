@@ -24,6 +24,7 @@ import {
   Send,
   CreditCard,
   XCircle,
+  Truck,
 } from 'lucide-react';
 
 const TradeTicketPage = () => {
@@ -46,34 +47,52 @@ const TradeTicketPage = () => {
     setError('');
 
     // Check if it's a demo/offline ID format
-    if (id && (id.startsWith('ord_bulk') || id.startsWith('demo_') || id.startsWith('req_'))) {
-      const isCompleted = id === 'ord_bulk_2';
+    if (id && (id.startsWith('ord_demo') || id.startsWith('ord_bulk') || id.startsWith('demo_') || id.startsWith('req_'))) {
+      const isCompleted = id === 'ord_bulk_2' || id === 'ord_demo_1' || id === 'ord_demo_3' || id === 'ord_demo_4';
+      const cropMap = {
+        ord_demo_1: { crop: 'Organic Tomato (Grade A)', qty: 1200, price: 28, total: 33600, buyer: 'FreshMart Supermarkets Ltd' },
+        ord_demo_2: { crop: 'Kufri Pukhraj Potato', qty: 2500, price: 18, total: 45000, buyer: 'AgriProcure FPO Cooperative' },
+        ord_demo_3: { crop: 'Fresh Green Spinach', qty: 800, price: 28, total: 22400, buyer: 'GreenLeaf Organics Ltd' },
+        ord_demo_4: { crop: 'Sharbati Wheat (Grade A)', qty: 1500, price: 27, total: 40500, buyer: 'Reliance Retail Procurement' },
+      };
+      const preset = cropMap[id] || { crop: 'Tomato (Grade A)', qty: 3000, price: 29, total: 87000, buyer: 'FreshMart Supermarkets Ltd' };
+
       const mockOrder = {
         _id: id,
-        orderNumber: id.startsWith('ord_bulk_') ? `KS-BULK-${id.replace('ord_bulk_', '').slice(-6) || '881920'}` : `KS-ORD-99120`,
+        orderNumber: id.startsWith('ord_bulk_')
+          ? `KS-BULK-${id.replace('ord_bulk_', '').slice(-6) || '881920'}`
+          : id.startsWith('ord_demo_')
+          ? `ORD-89${id.replace('ord_demo_', '')}1`
+          : `KS-ORD-99120`,
         status: isCompleted ? 'DELIVERED' : 'IN_TRANSIT',
         paymentStatus: 'PAID',
-        totalAmount: 87000,
+        vehicleAssigned: 'HR-05-CC-5521',
+        totalAmount: preset.total,
+        totalProduceCost: preset.total,
+        logisticsCost: 0,
+        platformFee: 0,
         createdAt: new Date().toISOString(),
+        buyerRole: 'BULK_BUYER',
         buyer: {
-          name: 'FreshMart Supermarkets Ltd',
+          name: preset.buyer,
           phone: '+91 98111 22334',
           email: 'procurement@freshmart.in',
-          companyName: 'FreshMart Retail Network',
+          companyName: preset.buyer,
           address: { street: 'Sector 62 Central Warehouse', city: 'Noida', state: 'Uttar Pradesh', pincode: '201301' },
         },
         deliveryAddress: { street: 'Sector 62 Central Warehouse', city: 'Noida', state: 'Uttar Pradesh', pincode: '201301' },
         items: [
           {
-            cropName: 'Tomato (Grade A)',
-            quantityKg: 3000,
-            pricePerKg: 29,
-            subtotal: 87000,
+            cropName: preset.crop,
+            quantityKg: preset.qty,
+            pricePerKg: preset.price,
+            subtotal: preset.total,
             grade: 'GRADE_A',
             batchId: 'KS-BATCH-991201',
             farmer: {
               name: 'Baldev Singh (FPO Member)',
               phone: '+91 98765 43210',
+              email: 'baldev.farmer@kisansetu.in',
               address: { city: 'Karnal', state: 'Haryana' },
             },
           },
@@ -93,33 +112,37 @@ const TradeTicketPage = () => {
       }
     } catch (err) {
       // Fallback for non-ObjectId or demo IDs
-      if (id && id.includes('bulk')) {
+      if (id) {
         setOrder({
           _id: id,
-          orderNumber: `KS-BULK-881920`,
-          status: 'IN_TRANSIT',
+          orderNumber: `KS-TICKET-${id.slice(-6).toUpperCase()}`,
+          status: 'DELIVERED',
           paymentStatus: 'PAID',
-          totalAmount: 87000,
+          vehicleAssigned: 'HR-05-CC-5521',
+          totalAmount: 224,
+          totalProduceCost: 224,
+          logisticsCost: 0,
+          platformFee: 0,
           createdAt: new Date().toISOString(),
           buyer: {
-            name: 'FreshMart Supermarkets Ltd',
-            phone: '+91 98111 22334',
-            email: 'procurement@freshmart.in',
-            companyName: 'FreshMart Retail Network',
-            address: { street: 'Sector 62 Central Warehouse', city: 'Noida', state: 'Uttar Pradesh', pincode: '201301' },
+            name: user?.name || 'Verified Buyer',
+            phone: user?.phone || '+91 98111 22334',
+            email: user?.email || 'buyer@kisansetu.in',
+            address: { street: 'Main Road', city: 'Delhi', state: 'Delhi', pincode: '110001' },
           },
-          deliveryAddress: { street: 'Sector 62 Central Warehouse', city: 'Noida', state: 'Uttar Pradesh', pincode: '201301' },
+          deliveryAddress: { street: 'Main Road', city: 'Delhi', state: 'Delhi', pincode: '110001' },
           items: [
             {
-              cropName: 'Tomato (Grade A)',
-              quantityKg: 3000,
-              pricePerKg: 29,
-              subtotal: 87000,
+              cropName: 'Fresh Tomato (Grade A)',
+              quantityKg: 8,
+              pricePerKg: 28,
+              subtotal: 224,
               grade: 'GRADE_A',
-              batchId: 'KS-BATCH-991201',
+              batchId: `KS-BATCH-${id.slice(-6).toUpperCase()}`,
               farmer: {
-                name: 'Baldev Singh (FPO Member)',
+                name: 'Ramesh Kumar (Kisan)',
                 phone: '+91 98765 43210',
+                email: 'ramesh.farmer@kisansetu.in',
                 address: { city: 'Karnal', state: 'Haryana' },
               },
             },
@@ -360,13 +383,13 @@ const TradeTicketPage = () => {
                   </div>
                 )}
 
-                {/* 2. BUYER ACTION: Pay Escrow if Seller Accepted */}
+                {/* 2. BUYER ACTION: Pay if Seller Accepted */}
                 {isBuyer && order.status === 'ACCEPTED' && !['PAID', 'PAID_ESCROW'].includes(order.paymentStatus) && (
                   <button
                     onClick={() => setIsPaymentModalOpen(true)}
                     className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-agri-dark to-agri-primary text-white text-xs font-black shadow-md flex items-center gap-2 cursor-pointer animate-pulse"
                   >
-                    <CreditCard className="w-4 h-4 text-emerald-300" /> Pay &amp; Confirm Escrow (₹{order.totalAmount?.toLocaleString()})
+                    <CreditCard className="w-4 h-4 text-emerald-300" /> Pay Now (₹{order.totalAmount?.toLocaleString()})
                   </button>
                 )}
 
@@ -380,7 +403,7 @@ const TradeTicketPage = () => {
                 {/* Delivered Badge */}
                 {(order.status === 'DELIVERED' || order.status === 'COMPLETED') && (
                   <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-3.5 py-1.5 rounded-xl border border-emerald-300 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-700" /> Handover Complete &amp; Settled
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" /> Delivered &amp; Payment Done ✅
                   </span>
                 )}
               </div>
@@ -409,7 +432,7 @@ const TradeTicketPage = () => {
                     {['ACCEPTED', 'PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED'].includes(order.status) ? '✓' : '2'}
                   </div>
                   <p className="font-extrabold text-slate-900">2. Farmer Accepted</p>
-                  <p className="text-[10px] text-slate-500 font-semibold">Packed &amp; Escrow Paid</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Confirmed &amp; Paid</p>
                 </div>
 
                 <div className={`p-2.5 rounded-xl border space-y-0.5 ${['PICKUP_VERIFIED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'COMPLETED'].includes(order.status) ? 'bg-white border-emerald-300 shadow-2xs' : 'bg-slate-100/80 border-slate-200 opacity-60'}`}>
