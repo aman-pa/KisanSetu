@@ -72,6 +72,12 @@ const getAdminDashboardStats = async (req, res) => {
       },
     ];
 
+    const allUsers = await User.find().select('-password').sort({ createdAt: -1 });
+    const populatedOrders = await Order.find()
+      .populate('buyer', 'name email phone role address')
+      .populate('items.farmer', 'name email phone role address')
+      .sort({ createdAt: -1 });
+
     return res.json({
       success: true,
       stats: {
@@ -99,6 +105,8 @@ const getAdminDashboardStats = async (req, res) => {
           consumerMaxPurchaseLimitKg: consumerMaxLimitKg,
         },
       },
+      usersList: allUsers,
+      recentOrders: populatedOrders,
       surplusShortageAlerts,
     });
   } catch (error) {
