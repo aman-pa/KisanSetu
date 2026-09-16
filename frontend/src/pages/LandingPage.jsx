@@ -116,7 +116,11 @@ const LandingPage = () => {
           icon: ShieldCheck,
         };
       case 'ADMIN':
-        return null;
+        return {
+          to: '/admin/dashboard',
+          label: 'Platform Directory',
+          icon: Users,
+        };
       case 'CONSUMER':
       case 'BUYER':
       default:
@@ -566,12 +570,14 @@ const LandingPage = () => {
             >
               <PrimaryHeroIcon className="w-4 h-4 text-emerald-700" /> {primaryHeroCta.label}
             </Link>
-            <Link
-              to={secondaryHeroCta.to}
-              className="px-8 py-3.5 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/60 text-white font-bold text-sm border border-white/25 backdrop-blur-md transition-all flex items-center justify-center gap-2"
-            >
-              <SecondaryHeroIcon className="w-4 h-4 text-emerald-300" /> {secondaryHeroCta.label}
-            </Link>
+            {secondaryHeroCta && (
+              <Link
+                to={secondaryHeroCta.to}
+                className="px-8 py-3.5 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/60 text-white font-bold text-sm border border-white/25 backdrop-blur-md transition-all flex items-center justify-center gap-2"
+              >
+                {SecondaryHeroIcon && <SecondaryHeroIcon className="w-4 h-4 text-emerald-300" />} {secondaryHeroCta.label}
+              </Link>
+            )}
           </div>
         </div>
       </section>
