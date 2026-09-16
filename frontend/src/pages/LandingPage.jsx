@@ -116,11 +116,7 @@ const LandingPage = () => {
           icon: ShieldCheck,
         };
       case 'ADMIN':
-        return {
-          to: '/market-intelligence',
-          label: 'Market Intelligence',
-          icon: TrendingUp,
-        };
+        return null;
       case 'CONSUMER':
       case 'BUYER':
       default:
@@ -161,7 +157,7 @@ const LandingPage = () => {
   const businessSegmentCta = getBusinessSegmentCta();
 
   const PrimaryHeroIcon = primaryHeroCta.icon;
-  const SecondaryHeroIcon = secondaryHeroCta.icon;
+  const SecondaryHeroIcon = secondaryHeroCta?.icon;
 
   return (
     <MainLayout>
@@ -175,7 +171,7 @@ const LandingPage = () => {
               {/* Trust Tag */}
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Direct Farm-to-Table Marketplace & Agri Network</span>
+                <span>Direct Farm-to-Table Marketplace &amp; Agri Network</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.14] text-slate-900">
@@ -200,13 +196,15 @@ const LandingPage = () => {
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
 
-                <Link
-                  to={secondaryHeroCta.to}
-                  className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white border-2 border-emerald-700/30 text-emerald-900 font-bold text-sm hover:bg-emerald-50 hover:border-emerald-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <SecondaryHeroIcon className="w-5 h-5 text-emerald-600" />
-                  <span>{secondaryHeroCta.label}</span>
-                </Link>
+                {secondaryHeroCta && (
+                  <Link
+                    to={secondaryHeroCta.to}
+                    className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white border-2 border-emerald-700/30 text-emerald-900 font-bold text-sm hover:bg-emerald-50 hover:border-emerald-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    {SecondaryHeroIcon && <SecondaryHeroIcon className="w-5 h-5 text-emerald-600" />}
+                    <span>{secondaryHeroCta.label}</span>
+                  </Link>
+                )}
               </div>
 
               {/* Quick Categories Bar */}
@@ -219,11 +217,13 @@ const LandingPage = () => {
                   🍎 Farm Fruits
                 </Link>
                 <Link to="/marketplace" className="px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 transition-colors shadow-sm">
-                  🌾 Grains & Pulses
+                  🌾 Grains &amp; Pulses
                 </Link>
-                <Link to="/market-intelligence" className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors font-bold shadow-sm">
-                  📊 Market Intelligence
-                </Link>
+                {(!user || user.role !== 'ADMIN') && (
+                  <Link to="/market-intelligence" className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors font-bold shadow-sm">
+                    📊 Market Intelligence
+                  </Link>
+                )}
               </div>
 
               {/* Key Value Metrics */}
