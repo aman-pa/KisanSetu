@@ -98,6 +98,7 @@ Before running crop quality analysis, the system inspects both farm-gate photogr
 - **Contrast & Dynamic Range**: Checks grayscale standard deviation variance.
 - **Focus & Sharpness**: Computes edge gradient variance (Laplacian approximation).
 - **Rejection Gate**: Any image scoring below **70/100** is rejected with human-friendly guidance (e.g., *"The image is too dark to assess the crop. Please upload a photo with better lighting"*), strictly preventing crop quality analysis until a clearer photo is provided.
+```text
 Farmer uploads 2 images
           │
           ▼
@@ -117,7 +118,7 @@ Farmer uploads 2 images
        │           │
        ▼           ▼
 Upload Guidance   AI Analysis
-
+```
 ### Stage 2: AI Visual Crop Quality Assessment
 Once both uploaded photos pass Stage 1, the system conducts a visual quality assessment:
 - **Vision AI Provider**: Google Gemini Vision API (`gemini-3.8-flash`), with automated fallback to a resilient botanical heuristic computer-vision engine if the API key is not configured or during offline execution.
@@ -133,6 +134,7 @@ Once both uploaded photos pass Stage 1, the system conducts a visual quality ass
 ### Image Quality Score vs. Crop Quality Score
 - **Image Quality Score (Stage 1)**: Measures photographic clarity (focus, lighting, resolution, blur). Answers: *"Is this photo sharp and well-lit enough to assess?"*
 - **Crop Quality Score (Stage 2)**: Measures botanical surface attributes of the produce (color, freshness, surface defects, maturity). Answers: *"What is the physical condition and grade of this crop?"*
+```text
                                                TWO CROP IMAGES
                         │
                         ▼
@@ -156,7 +158,7 @@ Once both uploaded photos pass Stage 1, the system conducts a visual quality ass
                        │
                        ▼
              14-Day Trend Estimate
-
+```
 ### Environment Configuration
 To enable the Google Gemini Vision API integration:
 1. Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
