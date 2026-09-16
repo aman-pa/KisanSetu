@@ -204,11 +204,11 @@ const StateSchemeSelector = ({ initialSelectedState = 'Haryana' }) => {
 
         {/* Tab 2: Interactive State Search Input with Live Autocomplete Dropdown */}
         {activeTab === 'state-search' && (
-          <div className="space-y-3" ref={dropdownRef}>
+          <div className="space-y-2" ref={dropdownRef}>
             <div className="flex items-center justify-between">
               <label className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-violet-600" />
-                <span>Search State (e.g. Type "Jh" for Jharkhand, "Utt" for UP / Uttarakhand):</span>
+                <span>Search State:</span>
               </label>
               {selectedState && (
                 <button
@@ -226,7 +226,7 @@ const StateSchemeSelector = ({ initialSelectedState = 'Haryana' }) => {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Start typing state name (e.g. Jharkhand, Uttar Pradesh, Punjab, Bihar, Rajasthan...)"
+                  placeholder="Search state name..."
                   value={stateSearchInput}
                   onChange={(e) => {
                     setStateSearchInput(e.target.value);
@@ -234,7 +234,7 @@ const StateSchemeSelector = ({ initialSelectedState = 'Haryana' }) => {
                     setIsDropdownOpen(true);
                   }}
                   onFocus={() => setIsDropdownOpen(true)}
-                  className="w-full pl-10 pr-24 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all outline-none"
+                  className="w-full pl-10 pr-20 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all outline-none"
                 />
 
                 <div className="absolute right-2.5 flex items-center gap-1.5">
@@ -263,13 +263,13 @@ const StateSchemeSelector = ({ initialSelectedState = 'Haryana' }) => {
                 <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-2 max-h-64 overflow-y-auto divide-y divide-slate-50 animate-in fade-in zoom-in-95 duration-150">
                   <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
                     <span>Matching States ({matchingStateSuggestions.length})</span>
-                    <span>Click to View Schemes</span>
+                    <span>Select State</span>
                   </div>
 
                   {matchingStateSuggestions.length > 0 ? (
                     matchingStateSuggestions.map((st) => {
                       const schemeCount = (FALLBACK_STATE_SCHEMES[st] || []).length;
-                      const isSelected = selectedState.toLowerCase() === st.toLowerCase();
+                      const isSelected = (selectedState || stateSearchInput).toLowerCase() === st.toLowerCase();
                       return (
                         <button
                           key={st}
@@ -300,46 +300,6 @@ const StateSchemeSelector = ({ initialSelectedState = 'Haryana' }) => {
                 </div>
               )}
             </div>
-
-            {/* Quick State Selection Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[11px] font-extrabold text-slate-400 mr-1">Popular:</span>
-              {POPULAR_STATES.map((st) => {
-                const isSelected = selectedState.toLowerCase() === st.toLowerCase();
-                return (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => handleSelectState(st)}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-violet-700 text-white shadow-2xs font-extrabold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-violet-50 hover:text-violet-800 border border-slate-200/80'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active State Filter Tag */}
-            {selectedState && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-xs font-bold text-slate-500">Active State Filter:</span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-violet-100 text-violet-900 border border-violet-200 text-xs font-black">
-                  <MapPin className="w-3.5 h-3.5 text-violet-700" />
-                  <span>{selectedState}</span>
-                  <button
-                    type="button"
-                    onClick={handleClearStateSearch}
-                    className="ml-1 text-violet-600 hover:text-violet-950 font-black cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </span>
-              </div>
-            )}
           </div>
         )}
 
