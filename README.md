@@ -135,7 +135,7 @@ Once both uploaded photos pass Stage 1, the system conducts a visual quality ass
 - **Image Quality Score (Stage 1)**: Measures photographic clarity (focus, lighting, resolution, blur). Answers: *"Is this photo sharp and well-lit enough to assess?"*
 - **Crop Quality Score (Stage 2)**: Measures botanical surface attributes of the produce (color, freshness, surface defects, maturity). Answers: *"What is the physical condition and grade of this crop?"*
 ```text
-                                               TWO CROP IMAGES
+                 TWO CROP IMAGES
                         │
                         ▼
              ┌────────────────────┐
