@@ -238,7 +238,7 @@ const Navbar = () => {
             isActive: (pathname) => pathname === '/',
           },
           {
-            label: 'Admin Command',
+            label: 'Admin Dashboard',
             path: '/admin/dashboard',
             icon: LayoutDashboard,
             isActive: (pathname) => pathname === '/admin/dashboard',

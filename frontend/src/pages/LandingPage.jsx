@@ -68,7 +68,7 @@ const LandingPage = () => {
       case 'ADMIN':
         return {
           to: '/admin/dashboard',
-          label: 'Admin Command Center',
+          label: 'Admin Dashboard',
           icon: ShieldCheck,
         };
       case 'CONSUMER':
